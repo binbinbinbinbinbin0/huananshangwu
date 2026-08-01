@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>投标数据管理看板</title>
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/dist/ag-grid-community.min.noStyle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/styles/ag-grid.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.0.0/styles/ag-theme-quartz.css">
+<style>
+:root {
+  --bg-primary: #0b1120;
+  --bg-secondary: #111827;
+  --bg-card: #1f2937;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border: #374151;
+  --accent-blue: #3b82f6;
+  --accent-green: #10b981;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
+  --accent-cyan: #06b6d4;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+/* 导航 */
+.navbar {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; }
+.logo-icon { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.nav-right { display: flex; align-items: center; gap: 16px; }
+.user-list { display: flex; align-items: center; }
+.user-avatar {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--bg-secondary);
+  display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; margin-left: -8px; cursor: pointer; transition: transform 0.2s;
+}
+.user-avatar:hover { transform: scale(1.1); z-index: 10; }
+.user-avatar:nth-child(1) { background: #3b82f6; z-index: 5; }
+.user-avatar:nth-child(2) { background: #10b981; z-index: 4; }
+.user-avatar:nth-child(3) { background: #f59e0b; z-index: 3; }
+.user-avatar:nth-child(4) { background: #8b5cf6; z-index: 2; }
+.online-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; border: 2px solid var(--bg-secondary); position: absolute; bottom: -2px; right: -2px; }
+.user-avatar-wrap { position: relative; margin-left: -8px; }
+.user-count { color: var(--text-secondary); font-size: 12px; margin-left: 10px; }
+.nav-btn {
+  background: var(--accent-blue); color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px; font-weight: 500;
+}
+.nav-btn:hover { background: #2563eb; }
+.nav-btn-secondary {
+  background: transparent; color: var(--text-secondary); border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 6px;
+}
+.nav-btn-secondary:hover { border-color: var(--accent-blue); color: var(--text-primary); }
+
+/* 主内容区 */
+.main-content { padding: 20px 24px; max-width: 100%; }
+
+/* KPI 区域 */
+.kpi-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 18px;
+}
+.kpi-card {
+  background: var(--bg-card); border-radius: 10px; padding: 16px; border: 1px solid var(--border); transition: all 0.3s;
+}
+.kpi-card:hover { border-color: var(--accent-blue); transform: translateY(-2px); }
+.kpi-label { color: var(--text-secondary); font-size: 12px; margin-bottom: 6px; }
+.kpi-value { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.kpi-delta { font-size: 12px; font-weight: 500; }
+.kpi-delta.up { color: var(--accent-green); }
+.kpi-delta.down { color: var(--accent-red); }
+.kpi-progress { margin-top: 8px; height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
+.kpi-progress-fill { height: 100%; border-radius: 2px; }
+.kpi-blue .kpi-value { color: var(--accent-blue); }
+.kpi-blue .kpi-progress-fill { background: var(--accent-blue); }
+.kpi-green .kpi-value { color: var(--accent-green); }
+.kpi-green .kpi-progress-fill { background: var(--accent-green); }
+.kpi-orange .kpi-value { color: var(--accent-orange); }
+.kpi-orange .kpi-progress-fill { background: var(--accent-orange); }
+.kpi-red .kpi-value { color: var(--accent-red); }
+.kpi-red .kpi-progress-fill { background: var(--accent-red); }
+.kpi-purple .kpi-value { color: var(--accent-purple); }
+.kpi-purple .kpi-progress-fill { background: var(--accent-purple); }
+.kpi-cyan .kpi-value { color: var(--accent-cyan); }
+.kpi-cyan .kpi-progress-fill { background: var(--accent-cyan); }
+
+/* KPI 卡片可点击筛选 */
+.kpi-card.clickable { cursor: pointer; }
+.kpi-filter-hint { font-size: 11px; opacity: 0.55; margin-left: 4px; }
+.kpi-card.active-filter { border-color: var(--accent-green) !important; box-shadow: 0 0 0 2px rgba(16,185,129,0.35); }
+
+/* 图表区 */
+.chart-section { margin-top: 22px; }
+.chart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.chart-header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.chart-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.chart-legend { font-size: 12px; color: var(--text-secondary); }
+.avg-badge { display: inline-block; margin-left: 8px; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; color: #f59e0b; background: rgba(245,158,11,0.14); border: 1px solid rgba(245,158,11,0.35); vertical-align: middle; }
+.chart-box { width: 100%; height: 340px; }
+
+/* 类型统计 */
+/* 类型 + 分组 一行紧凑筛选 */
+.quick-filter-row {
+  display: flex; gap: 10px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none;
+}
+.quick-filter-row::-webkit-scrollbar { display: none; }
+.qf-card {
+  background: var(--bg-card); border-radius: 8px; padding: 9px 13px; border: 1px solid var(--border);
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; cursor: pointer;
+  transition: all 0.2s ease; flex-shrink: 0; user-select: none;
+}
+.qf-card:hover { border-color: var(--accent-blue); transform: translateY(-1px); }
+.qf-card.active-filter { border-color: var(--accent-blue) !important; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+.qf-icon { font-size: 15px; flex-shrink: 0; }
+.qf-label { font-size: 12px; color: var(--text-secondary); }
+.qf-value { font-size: 17px; font-weight: 700; color: var(--text-primary); min-width: 20px; text-align: center; }
+.qf-type .qf-value { color: var(--accent-orange); }
+.qf-client .qf-value { color: var(--accent-blue); }
+
+/* 工具栏 */
+.toolbar {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; background: var(--bg-card); padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border);
+}
+.toolbar-group { display: flex; align-items: center; gap: 8px; }
+.toolbar-label { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
+.toolbar-input, .toolbar-select {
+  background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border);
+  padding: 7px 12px; border-radius: 6px; font-size: 13px; outline: none; min-width: 120px;
+}
+.toolbar-input:focus, .toolbar-select:focus { border-color: var(--accent-blue); }
+.toolbar-btn {
+  background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border);
+  padding: 7px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 5px;
+}
+.toolbar-btn:hover { border-color: var(--accent-blue); color: var(--accent-blue); }
+.toolbar-btn.primary { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+.toolbar-btn.primary:hover { background: #2563eb; color: white; }
+.toolbar-btn.success { background: var(--accent-green); color: white; border-color: var(--accent-green); }
+.toolbar-btn.success:hover { background: #059669; }
+.toolbar-btn.danger { background: var(--accent-red); color: white; border-color: var(--accent-red); }
+.toolbar-btn.danger:hover { background: #dc2626; }
+.toolbar-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+/* Ag-Grid 自定义主题 */
+.ag-theme-quartz {
+  --ag-background-color: var(--bg-card) !important;
+  --ag-foreground-color: var(--text-primary) !important;
+  --ag-header-background-color: var(--bg-secondary) !important;
+  --ag-header-foreground-color: var(--text-primary) !important;
+  --ag-row-hover-color: rgba(59, 130, 246, 0.08) !important;
+  --ag-selected-row-background-color: rgba(59, 130, 246, 0.15) !important;
+  --ag-border-color: var(--border) !important;
+  --ag-cell-horizontal-padding: 14px !important;
+  --ag-cell-vertical-padding: 10px !important;
+  --ag-header-cell-horizontal-padding: 14px !important;
+  --ag-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  --ag-font-size: 13px !important;
+  --ag-checkbox-checked-color: var(--accent-blue) !important;
+  --ag-range-selection-border-color: var(--accent-blue) !important;
+  --ag-input-focus-border-color: var(--accent-blue) !important;
+  --ag-input-focus-box-shadow: 0 0 0 2px rgba(59,130,246,0.2) !important;
+  --ag-row-border-color: var(--border) !important;
+  --ag-row-border-width: 1px !important;
+  --ag-odd-row-background-color: rgba(17, 24, 39, 0.3) !important;
+  --ag-secondary-foreground-color: var(--text-secondary) !important;
+  --ag-input-background-color: var(--bg-secondary) !important;
+  --ag-input-text-color: var(--text-primary) !important;
+  --ag-toggle-button-on-background-color: var(--accent-blue) !important;
+  --ag-toggle-button-on-icon-color: white !important;
+  --ag-modal-overlay-background-color: rgba(0,0,0,0.6) !important;
+  --ag-popup-shadow: 0 20px 60px rgba(0,0,0,0.5) !important;
+  --ag-menu-background-color: var(--bg-secondary) !important;
+  --ag-menu-border-color: var(--border) !important;
+  --ag-filter-tool-panel-group-indent: 20px !important;
+}
+
+.ag-theme-quartz .ag-header-cell { font-weight: 600; font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* 自定义单元格样式 */
+.status-cell { display: flex; align-items: center; gap: 6px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.status-text { font-size: 13px; font-weight: 500; }
+.status-blue { color: #60a5fa; }
+.status-blue .status-dot { background: #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.5); }
+.status-green { color: #34d399; }
+.status-green .status-dot { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+.status-orange { color: #fbbf24; }
+.status-orange .status-dot { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+.status-red { color: #f87171; }
+.status-red .status-dot { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+.status-gray { color: #9ca3af; }
+.status-gray .status-dot { background: #6b7280; }
+
+.amount-cell { font-family: 'Courier New', monospace; font-weight: 600; color: var(--accent-cyan); }
+
+.urgent { color: var(--accent-red) !important; font-weight: 700; }
+.warning { color: var(--accent-orange) !important; font-weight: 600; }
+
+/* 底部信息栏 */
+.footer-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; margin-top: 12px; background: var(--bg-card);
+  border-radius: 10px; border: 1px solid var(--border); font-size: 13px; color: var(--text-secondary);
+}
+.footer-left { display: flex; align-items: center; gap: 16px; }
+.footer-right { display: flex; align-items: center; gap: 12px; }
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200;
+  display: none; align-items: center; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  width: 100%; max-width: 760px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.08));
+}
+.modal-title { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.modal-close { background: none; border: none; color: var(--text-secondary); font-size: 22px; cursor: pointer; padding: 4px; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
+.modal-close:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+.modal-body { padding: 24px; }
+
+/* 表单分组 */
+.form-section { margin-bottom: 20px; }
+.form-section-title {
+  font-size: 13px; font-weight: 600; color: var(--accent-blue); text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid rgba(59,130,246,0.2); display: flex; align-items: center; gap: 8px;
+}
+.form-section-title .icon { font-size: 16px; }
+.form-row { display: flex; gap: 16px; margin-bottom: 14px; }
+.form-row:last-child { margin-bottom: 0; }
+.form-group { flex: 1; min-width: 0; }
+.form-group label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 500; }
+.form-group label .required { color: var(--accent-red); margin-left: 2px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; background: var(--bg-secondary); color: var(--text-primary);
+  border: 1px solid var(--border); padding: 9px 12px; border-radius: 6px;
+  font-size: 14px; outline: none; font-family: inherit; transition: all 0.2s;
+}
+.form-group input:hover, .form-group select:hover, .form-group textarea:hover { border-color: rgba(59,130,246,0.4); }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.form-group input::placeholder, .form-group textarea::placeholder { color: #6b7280; }
+.form-group select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+.form-group textarea { min-height: 70px; resize: vertical; }
+
+.form-group.half { flex: 0 0 calc(50% - 8px); }
+.form-group.third { flex: 0 0 calc(33.333% - 10.6px); }
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 20px; border-top: 1px solid var(--border);
+}
+.modal-btn {
+  padding: 9px 18px; border-radius: 6px; font-size: 14px; cursor: pointer; border: none; font-weight: 500; transition: all 0.3s;
+}
+.modal-btn-cancel { background: transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+.modal-btn-cancel:hover { border-color: var(--text-primary); color: var(--text-primary); }
+.modal-btn-primary { background: var(--accent-blue); color: white; }
+.modal-btn-primary:hover { background: #2563eb; }
+
+/* 动画 */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.kpi-card, .toolbar, .footer-bar { animation: fadeIn 0.4s ease forwards; }
+
+/* Toast */
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 300; display: flex; flex-direction: column; gap: 10px; }
+.toast {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 18px; font-size: 14px; color: var(--text-primary);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 10px;
+  animation: slideIn 0.3s ease;
+}
+.toast.success { border-left: 3px solid var(--accent-green); }
+.toast.error { border-left: 3px solid var(--accent-red); }
+.toast.info { border-left: 3px solid var(--accent-blue); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* 中标项目模块 */
+.won-section { margin-top: 22px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.won-header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.won-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.won-legend { font-size: 12px; color: var(--text-secondary); }
+.won-legend span { color: var(--accent-green); font-weight: 600; }
+
+/* 中标项目合计汇总行 */
+.won-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; margin-top: 12px; padding: 12px 16px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; }
+.won-summary .ws-item { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.won-summary .ws-label { color: var(--text-secondary); }
+.won-summary .ws-value { color: var(--text-primary); font-weight: 700; }
+.won-summary .ws-total { margin-right: auto; font-size: 14px; font-weight: 700; color: var(--accent-green); }
+.won-summary .ws-value.accent { color: var(--accent-cyan); }
+
+/* 响应式 */
+@media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .toolbar { flex-direction: column; align-items: stretch; } .toolbar-group { width: 100%; } }
+</style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="logo">
+    <div class="logo-icon">🎯</div>
+    <span>投标数据管理系统</span>
+  </div>
+  <div class="nav-right">
+  </div>
+</nav>
+
+<div class="main-content">
+
+  <!-- KPI 卡片 -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-green clickable" id="kpi-won-card" title="点击筛选：仅看已中标项目（再次点击取消筛选）" onclick="filterByStatus('已中标')">
+      <div class="kpi-label">已中标 <span class="kpi-filter-hint">🔍</span></div>
+      <div class="kpi-value" id="kpi-won">--</div>
+      <div class="kpi-progress"><div class="kpi-progress-fill" style="width:42%"></div></div>
+    </div>
+    <div class="kpi-card kpi-purple">
+      <div class="kpi-label">中标金额（万元）</div>
+      <div class="kpi-value" id="kpi-won-amount">--</div>
+      <div class="kpi-progress"><div class="kpi-progress-fill" style="width:34%"></div></div>
+    </div>
+    <div class="kpi-card kpi-cyan">
+      <div class="kpi-label">自施额（万元）</div>
+      <div class="kpi-value" id="kpi-self-amount">--</div>
+      <div class="kpi-progress"><div class="kpi-progress-fill" style="width:45%"></div></div>
+    </div>
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-label">投标项目总数</div>
+      <div class="kpi-value" id="kpi-total">--</div>
+      <div class="kpi-progress"><div class="kpi-progress-fill" style="width:78%"></div></div>
+    </div>
+    <div class="kpi-card kpi-orange">
+      <div class="kpi-label">中标率</div>
+      <div class="kpi-value" id="kpi-rate">--</div>
+      <div class="kpi-progress"><div class="kpi-progress-fill" style="width:33%"></div></div>
+    </div>
+    <div class="kpi-card kpi-red">
+      <div class="kpi-label">投标中</div>
+      <div class="kpi-value" id="kpi-bidding">--</div>
+      <div class="kpi-progress"><div class="kpi-progress-fill" style="width:55%"></div></div>
+    </div>
+  </div>
+
+  <!-- 类型统计 + 招标单位分组（一行紧凑） -->
+  <div class="quick-filter-row">
+    <!-- 类型卡片 -->
+    <div class="qf-card qf-type" onclick="filterByType('房屋建筑')" title="按类型筛选：房屋建筑（再次点击取消）">
+      <span class="qf-icon">🏗️</span><span class="qf-label">房屋建筑</span><span class="qf-value" id="type-building">--</span>
+    </div>
+    <div class="qf-card qf-type" onclick="filterByType('基础设施')" title="按类型筛选：基础设施（再次点击取消）">
+      <span class="qf-icon">🛤️</span><span class="qf-label">基础设施</span><span class="qf-value" id="type-infra">--</span>
+    </div>
+    <div class="qf-card qf-type" onclick="filterByType('专业工程')" title="按类型筛选：专业工程（再次点击取消）">
+      <span class="qf-icon">⚙️</span><span class="qf-label">专业工程</span><span class="qf-value" id="type-prof">--</span>
+    </div>
+    <!-- 分组卡片 -->
+    <div class="qf-card qf-client" id="cg-工务署" title="点击筛选：深圳市工务署下属单位（再次点击取消）" onclick="filterByClientGroup('工务署')">
+      <span class="qf-label">深圳市工务署</span><span class="qf-value" id="cg-count-工务署">--</span>
+    </div>
+    <div class="qf-card qf-client" id="cg-龙岗区工务署" title="点击筛选：龙岗区工务署及利源水务（再次点击取消）" onclick="filterByClientGroup('龙岗区工务署')">
+      <span class="qf-label">龙岗区工务署</span><span class="qf-value" id="cg-count-龙岗区工务署">--</span>
+    </div>
+    <div class="qf-card qf-client" id="cg-机场集团" title="点击筛选：深圳市机场（集团）有限公司（再次点击取消）" onclick="filterByClientGroup('机场集团')">
+      <span class="qf-label">机场集团</span><span class="qf-value" id="cg-count-机场集团">--</span>
+    </div>
+    <div class="qf-card qf-client" id="cg-其他" title="点击筛选：不属于上述任一分组的项目（再次点击取消）" onclick="filterByClientGroup('其他')">
+      <span class="qf-label">其他</span><span class="qf-value" id="cg-count-其他">--</span>
+    </div>
+  </div>
+
+  <!-- 工具栏 -->
+  <div class="toolbar">
+    <div class="toolbar-group">
+      <span class="toolbar-label">搜索</span>
+      <input class="toolbar-input" id="quickFilter" placeholder="搜索项目名称、招标单位、负责人...">
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-group">
+      <span class="toolbar-label">状态</span>
+      <select class="toolbar-select" id="statusFilter">
+        <option value="">全部</option>
+        <option value="未中标">未中标</option>
+        <option value="投标中">投标中</option>
+        <option value="已中标">已中标</option>
+      </select>
+    </div>
+    <div class="toolbar-group">
+      <span class="toolbar-label">类型</span>
+      <select class="toolbar-select" id="typeFilter">
+        <option value="">全部</option>
+        <option value="房屋建筑">房屋建筑</option>
+        <option value="基础设施">基础设施</option>
+        <option value="专业工程">专业工程</option>
+      </select>
+    </div>
+    <div class="toolbar-group">
+      <span class="toolbar-label">区域</span>
+      <select class="toolbar-select" id="regionFilter">
+        <option value="">全部</option>
+        <option value="深圳">深圳</option>
+        <option value="广州">广州</option>
+        <option value="珠海">珠海</option>
+        <option value="东莞">东莞</option>
+        <option value="其他">其他</option>
+      </select>
+    </div>
+    <div class="toolbar-group">
+      <button class="toolbar-btn primary" onclick="applyFilters()">🔍 确认筛选</button>
+      <button class="toolbar-btn" onclick="resetFilters()">🔄 重置</button>
+    </div>
+    <div class="toolbar-divider"></div>
+    <div class="toolbar-group" style="margin-left:auto;">
+      <button class="toolbar-btn primary" onclick="openModal()">➕ 新增</button>
+      <button class="toolbar-btn" style="background:#10b981; color:white; border-color:#10b981;" onclick="openImportModal()">📥 导入 Excel</button>
+      <button class="toolbar-btn" onclick="deleteSelected()">🗑️ 删除选中</button>
+      <button class="toolbar-btn" onclick="exportExcel()">📥 导出 Excel</button>
+    </div>
+  </div>
+
+  <!-- 表格 -->
+  <div id="bidGrid" class="ag-theme-quartz" style="height: 520px; width: 100%; border-radius: 10px; border: 1px solid var(--border); overflow: hidden;"></div>
+
+  <!-- 标前收益率曲线 -->
+  <div class="chart-section">
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">📈 标前收益率曲线（A值 %） <span id="profitAvgBadge" class="avg-badge">均值 --</span></div>
+        <div class="chart-legend">仅统计有标前成本且收益率非 0 的项目 · 按截标时间排序 · 均值=（Σ自施额−Σ标前成本）÷Σ自施额</div>
+      </div>
+      <div id="profitChart" class="chart-box"></div>
+    </div>
+  </div>
+
+  <!-- 中标项目独立模块 -->
+  <div class="won-section">
+    <div class="won-header">
+      <div class="won-title">🏆 中标项目</div>
+      <div class="won-legend">仅展示「已中标」项目 · 共 <span id="wonCount">0</span> 个</div>
+    </div>
+    <div id="wonGrid" class="ag-theme-quartz" style="height: 420px; width: 100%; border-radius: 10px; border: 1px solid var(--border); overflow: hidden;"></div>
+    <div class="won-summary" id="wonSummary"></div>
+  </div>
+
+  <!-- 底部 -->
+  <div class="footer-bar">
+    <div class="footer-left">
+      <span id="recordCount">共 0 条记录</span>
+      <span id="selectedCount">选中 0 条</span>
+      <span id="filterStatus"></span>
+    </div>
+    <div class="footer-right">
+      <span>数据自动保存到本地</span>
+      <span id="lastSync">上次同步：刚刚</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- 新增/编辑模态框 -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">新增投标项目</div>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <form id="bidForm">
+        <input type="hidden" id="editId">
+        
+        <div class="form-section">
+          <div class="form-section-title"><span class="icon">📋</span> 基本信息</div>
+          <div class="form-row">
+            <div class="form-group" style="flex: 2;">
+              <label>项目名称 <span class="required">*</span></label>
+              <input type="text" id="formName" placeholder="输入项目名称" required>
+            </div>
+            <div class="form-group" style="flex: 2;">
+              <label>招标单位 <span class="required">*</span></label>
+              <input type="text" id="formClient" placeholder="输入招标单位名称" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>类型</label>
+              <select id="formType">
+                <option value="房屋建筑">房屋建筑</option>
+                <option value="基础设施">基础设施</option>
+                <option value="专业工程">专业工程</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>区域</label>
+              <select id="formRegion">
+                <option value="深圳">深圳</option>
+                <option value="广州">广州</option>
+                <option value="珠海">珠海</option>
+                <option value="东莞">东莞</option>
+                <option value="其他">其他</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>状态</label>
+              <select id="formStatus">
+                <option value="未中标">未中标</option>
+                <option value="投标中">投标中</option>
+                <option value="已中标">已中标</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <div class="form-section-title"><span class="icon">💰</span> 招标信息</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>招标控制价（元）</label>
+              <input type="number" id="formAmount" placeholder="如 4800000" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>暂列金额/暂估价（万）</label>
+              <input type="number" id="formProvisional" placeholder="如 50" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>截标时间</label>
+              <input type="date" id="formDeadline">
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <div class="form-section-title"><span class="icon">📊</span> 成本与审核</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>投标总价（万）</label>
+              <input type="number" id="formBidTotal" placeholder="如 450" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>投标自施额（万）</label>
+              <input type="number" id="formSelfAmount" placeholder="如 380" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>投标下浮率</label>
+              <input type="number" id="formBidRate" placeholder="如 5.2" min="0" step="0.01">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>标前成本（万）</label>
+              <input type="number" id="formPreCost" placeholder="如 420" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>标前收益率A值</label>
+              <input type="number" id="formPreProfit" placeholder="如 7.5" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label>纳入标前收益率曲线统计</label>
+              <select id="formInCurve">
+                <option value="是">是</option>
+                <option value="否">否</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>投标团队</label>
+              <input type="text" id="formBidTeam" placeholder="如 A组">
+            </div>
+            <div class="form-group">
+              <label>成本负责人</label>
+              <input type="text" id="formCostOwner" placeholder="输入姓名">
+            </div>
+            <div class="form-group" style="flex: 2;"></div>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <div class="form-section-title"><span class="icon">📝</span> 备注</div>
+          <div class="form-group">
+            <textarea id="formNote" placeholder="填写项目备注信息..."></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-cancel" onclick="closeModal()">取消</button>
+      <button class="modal-btn modal-btn-primary" onclick="saveBid()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- 导入 Excel 模态框 -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal" style="max-width: 900px;">
+    <div class="modal-header">
+      <div class="modal-title">📥 导入 Excel</div>
+      <button class="modal-close" onclick="closeImportModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom: 20px;">
+        <div style="border: 2px dashed var(--border); border-radius: 10px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.3s;" id="dropZone" ondragover="event.preventDefault(); this.style.borderColor='var(--accent-blue)';" ondragleave="this.style.borderColor='var(--border)';" ondrop="handleDrop(event)" onclick="document.getElementById('excelFile').click()">
+          <div style="font-size: 40px; margin-bottom: 10px;">📁</div>
+          <div style="font-size: 15px; color: var(--text-primary); margin-bottom: 6px; font-weight: 500;">点击或拖拽 Excel 文件到此处</div>
+          <div style="font-size: 13px; color: var(--text-secondary);">支持 .xlsx / .xls 格式</div>
+        </div>
+        <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;" onchange="handleFileSelect(event)">
+      </div>
+      
+      <div id="importPreviewSection" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="font-size: 14px; font-weight: 600;">识别结果预览</div>
+          <div id="importStats" style="font-size: 13px; color: var(--text-secondary);"></div>
+        </div>
+        <div style="background: var(--bg-secondary); border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12px; color: var(--text-secondary); line-height: 1.8;">
+          <strong style="color: var(--text-primary);">Excel 列名自动映射规则：</strong><br>
+          编号/ID → 编号 | 项目名称/项目名 → 项目名称 | 招标单位/招标方 → 招标单位<br>
+          类型/项目类型 → 类型 | 区域/地区 → 区域<br>
+          招标控制价/控制价/金额 → 招标控制价（元） | 截止时间/截标时间 → 截止时间<br>
+          投标团队/团队 → 投标团队 | 成本负责人 → 成本负责人 | 组价 → 组价<br>
+          清单工程量复核/工程量复核 → 清单工程量复核 | 投标下浮率/下浮率 → 投标下浮率<br>
+          投标总价/总价 → 投标总价 | 投标自施额/自施额 → 投标自施额<br>
+          暂列金额/暂估价 → 暂列金额/暂估价 | 标前成本 → 标前成本 | 标前收益率/收益率 → 标前收益率A值<br>
+          状态/项目状态 → 状态
+        </div>
+        <div id="importPreviewTable" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead id="previewHead" style="background: var(--bg-secondary); position: sticky; top: 0; z-index: 10;"></thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+        <div id="importErrors" style="margin-top: 12px; color: var(--accent-red); font-size: 13px; display: none;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-cancel" onclick="closeImportModal()">取消</button>
+      <button class="modal-btn modal-btn-primary" id="importConfirmBtn" onclick="confirmImport()" style="display: none;">确认导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 中标项目信息模态框 -->
+<div class="modal-overlay" id="awardModal">
+  <div class="modal" style="max-width: 700px;">
+    <div class="modal-header">
+      <div class="modal-title">🏆 中标项目信息</div>
+      <button class="modal-close" onclick="closeAwardModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="awardEditId">
+      <div class="form-row">
+        <div class="form-group" style="flex: 1;">
+          <label>项目名称</label>
+          <input type="text" id="awardProjectName" readonly style="background: var(--bg-secondary); color: var(--text-secondary);">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>中标金额（元，关联投标金额）</label>
+          <input type="number" id="awardAmount" placeholder="如 4550000" min="0" step="0.01" oninput="document.getElementById('contractAmount').value=this.value">
+        </div>
+        <div class="form-group">
+          <label>合同金额（元，=中标金额）</label>
+          <input type="number" id="contractAmount" placeholder="自动等于中标金额" min="0" step="0.01" readonly style="background: var(--bg-secondary); color: var(--text-secondary);">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>自施金额（元）</label>
+          <input type="number" id="selfAmount" placeholder="如 4000000" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>暂列金额（元）</label>
+          <input type="number" id="provisionalAmount" placeholder="如 300000" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>土建金额（元）</label>
+          <input type="number" id="civilAmount" placeholder="如 2000000" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>机电金额（元）</label>
+          <input type="number" id="mechAmount" placeholder="如 800000" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>土建收益率（%）</label>
+          <input type="number" id="civilRate" placeholder="如 8.0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>机电收益率（%）</label>
+          <input type="number" id="mechRate" placeholder="如 6.5" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>综合收益率（%）</label>
+          <input type="number" id="combinedProfit" placeholder="如 9.5" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>目标成本（元）</label>
+          <input type="number" id="targetCost" placeholder="如 3000000" min="0" step="0.01">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-btn modal-btn-cancel" onclick="closeAwardModal()">取消</button>
+      <button class="modal-btn modal-btn-primary" onclick="saveAwardInfo()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== 数据层 ==========
+
+// 初始演示数据
+const initialData = [
+  {"id":35,"name":"南湖31号工程《417（安全隐患整治）项目工程总承包（EPC）》","client":"深圳市建筑工务署工程管理中心","type":"房屋建筑","region":"深圳","amount":42619611.49,"deadline":"2026-07-01","bidTeam":"华南分公司","costOwner":"","bidRate":5.5,"bidTotal":40423688.88,"selfAmount":38629732.49,"provisional":1793956.39,"preCost":39513606.08,"preProfit":-2.29,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"已中标","note":""},
+  {"id":34,"name":"深圳实验学校坂田小学部安全隐患整治工程项目设计采购施工总承包（EPC）","client":"深圳市建筑工务署教育工程管理中心","type":"房屋建筑","region":"深圳","amount":8207499.55,"deadline":"2026-06-30","bidTeam":"华南分公司","costOwner":"","bidRate":6,"bidTotal":7752559.8,"selfAmount":7398610.68,"provisional":353949.12,"preCost":7568595.84,"preProfit":-2.3,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":33,"name":"深圳中学泥岗校区改扩建工程项目设计施工总承包(EPC)","client":"深圳市建筑工务署工程管理中心","type":"房屋建筑","region":"深圳","amount":157564143.7,"deadline":"2026-06-20","bidTeam":"华南分公司","costOwner":"","bidRate":12,"bidTotal":139995872.2,"selfAmount":132729228.8,"provisional":7266643.35,"preCost":132746549.9,"preProfit":-0.01,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":32,"name":"曼恩斯特总部产业园项目土石方、基坑支护及桩基工程","client":"曼恩斯特","type":"专业工程","region":"深圳","amount":0,"deadline":"2026-06-08","bidTeam":"华南分公司","costOwner":"","bidRate":0,"bidTotal":34506666,"selfAmount":34506666,"provisional":0,"preCost":40374639.4,"preProfit":-17.01,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":31,"name":"深圳市第四十高级中学项目设计采购施工总承包（EPC）","client":"深圳市建筑工务署教育工程管理中心","type":"房屋建筑","region":"深圳","amount":358317265.1,"deadline":"2026-05-30","bidTeam":"华南分公司","costOwner":"","bidRate":15.97,"bidTotal":309486666.6,"selfAmount":266802566.6,"provisional":42684100,"preCost":272931559,"preProfit":-2.3,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"已中标","note":""},
+  {"id":30,"name":"T1航站楼地块土地整备项目拆除工程","client":"深圳市机场（集团）有限公司","type":"专业工程","region":"深圳","amount":26240500.31,"deadline":"2026-05-29","bidTeam":"张建锋团队","costOwner":"","bidRate":35,"bidTotal":19430428.14,"selfAmount":16105990,"provisional":3324438.14,"preCost":16010478.61,"preProfit":0.59,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"已中标","note":""},
+  {"id":29,"name":"深圳宝安国际机场T2航站区及配套设施工程航站区工程施工总承包2标段","client":"深圳市机场（集团）有限公司","type":"房屋建筑","region":"深圳","amount":1674436668,"deadline":"2026-05-26","bidTeam":"华南分公司","costOwner":"","bidRate":18.0398,"bidTotal":1423378080,"selfAmount":1182932305,"provisional":240445775.4,"preCost":1185967418,"preProfit":-0.26,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":28,"name":"深圳市药品检验研究院光明分院建设项目精装修工程","client":"深圳市建筑工务署工程管理中心","type":"专业工程","region":"深圳","amount":44653314.36,"deadline":"2026-05-22","bidTeam":"蒋达团队","costOwner":"","bidRate":18.88,"bidTotal":36912787.26,"selfAmount":34328747.77,"provisional":2584039.49,"preCost":35262937.09,"preProfit":-2.72,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":27,"name":"龙岗区优质饮用水入户工程（增补）（坂田、吉华街道）","client":"深圳市龙岗区建筑工务署","type":"基础设施","region":"深圳","amount":177549187.1,"deadline":"2026-05-08","bidTeam":"华南分公司","costOwner":"","bidRate":11,"bidTotal":159287810.5,"selfAmount":151559885.9,"provisional":7727924.64,"preCost":0,"preProfit":0,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":26,"name":"龙岗区优质饮用水入户工程（增补）（龙城、龙岗、宝龙、坪地街道）","client":"深圳市龙岗区建筑工务署","type":"基础设施","region":"深圳","amount":133433156.6,"deadline":"2026-05-08","bidTeam":"华南分公司","costOwner":"","bidRate":11,"bidTotal":120977645.4,"selfAmount":115175558.1,"provisional":5802087.31,"preCost":0,"preProfit":0,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":25,"name":"龙岗区观澜河流域排水管网系统完善工程EPC","client":"深圳市龙岗区建筑工务署","type":"基础设施","region":"深圳","amount":204693990,"deadline":"2026-05-03","bidTeam":"华南分公司","costOwner":"","bidRate":12,"bidTotal":183156538.1,"selfAmount":173723868.4,"provisional":9432669.72,"preCost":155840870.3,"preProfit":10.29,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":24,"name":"龙岗区龙岗河流域排水管网系统完善工程（横岗街道、园山街道、龙城街道）EPC","client":"深圳市龙岗区建筑工务署","type":"基础设施","region":"深圳","amount":190815983.8,"deadline":"2026-05-03","bidTeam":"华南分公司","costOwner":"","bidRate":12,"bidTotal":169781235.2,"selfAmount":160961235.2,"provisional":8820000,"preCost":145888393.7,"preProfit":9.36,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"已中标","note":""},
+  {"id":23,"name":"龙岗区龙岗河流域排水管网系统完善工程（坪地街道、宝龙街道、龙岗街道）EPC","client":"深圳市龙岗区建筑工务署","type":"基础设施","region":"深圳","amount":410710973.1,"deadline":"2026-05-03","bidTeam":"华南分公司","costOwner":"","bidRate":12,"bidTotal":366356622.3,"selfAmount":339966822.3,"provisional":26389800,"preCost":299015027.6,"preProfit":12.05,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":22,"name":"20#大卷纸车间建筑工程","client":"贵港理文纸业有限公司","type":"房屋建筑","region":"深圳","amount":0,"deadline":"2026-05-03","bidTeam":"厂二团队","costOwner":"","bidRate":0,"bidTotal":49898888.88,"selfAmount":49898888.88,"provisional":0,"preCost":48877615.94,"preProfit":2.05,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":21,"name":"龙岗区优质饮用水入户工程（查漏补缺）-深水龙岗水务集团供水片区项目（施工）（龙城、横岗、园山街道）","client":"深圳市利源水务设计咨询有限公司","type":"基础设施","region":"深圳","amount":196732972.2,"deadline":"2026-04-26","bidTeam":"华南分公司","costOwner":"","bidRate":11.88,"bidTotal":175509481.9,"selfAmount":162192990.7,"provisional":13316491.15,"preCost":159153896.3,"preProfit":1.87,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":20,"name":"龙岗区二次供水设施提标改造工程（增补）","client":"深圳市龙岗区建筑工务署","type":"基础设施","region":"深圳","amount":84415631.47,"deadline":"2026-04-11","bidTeam":"华南分公司","costOwner":"","bidRate":13.98,"bidTotal":73348214.37,"selfAmount":69664934.52,"provisional":3683279.85,"preCost":68917344.71,"preProfit":1.07,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"已中标","note":"","award":{"awardAmount":73348214.37,"contractAmount":73348214.37},"civil":0,"mech":0,"combinedProfit":6,"civilRate":6,"mechRate":0},
+  {"id":19,"name":"东莞市步步高实验学校新增项目16号游泳馆总承包工程","client":"广东步步高教育发展有限公司","type":"房屋建筑","region":"东莞","amount":0,"deadline":"2026-04-11","bidTeam":"薛仁宗团队","costOwner":"","bidRate":0,"bidTotal":48800000,"selfAmount":48800000,"provisional":0,"preCost":58507072.47,"preProfit":-19.89,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"已中标","note":""},
+  {"id":18,"name":"A113-0080宗地项目地基与基础工程","client":"深圳市前海深湾云仓国际智慧物流港有限责任公司","type":"专业工程","region":"深圳","amount":38343485.72,"deadline":"2026-04-09","bidTeam":"卞昆团队","costOwner":"","bidRate":20.58,"bidTotal":30921066.88,"selfAmount":29461472.69,"provisional":1459594.19,"preCost":35024923.85,"preProfit":-18.88,"civilCheck":6.06,"mechCheck":0,"compCheck":6.06,"status":"已中标","note":"","award":{"awardAmount":30921066.88,"contractAmount":30921066.88},"civil":29461472.69,"mech":0,"combinedProfit":6.06,"civilRate":6.06,"mechRate":0},
+  {"id":17,"name":"深圳外事综合楼安全隐患整治工程项目设计采购施工总承包（EPC）","client":"深圳市建筑工务署工程管理中心","type":"房屋建筑","region":"深圳","amount":28003302.45,"deadline":"2026-03-30","bidTeam":"华南分公司","costOwner":"","bidRate":10.01,"bidTotal":25396313.93,"selfAmount":0,"provisional":1198806.32,"preCost":0,"preProfit":0,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":16,"name":"科学城启动区基础设施配套工程（第一批）项目施工总承包","client":"深圳市建筑工务署教育工程管理中心","type":"基础设施","region":"深圳","amount":36109353.6,"deadline":"2026-03-24","bidTeam":"林志松团队","costOwner":"","bidRate":13.79,"bidTotal":31656787.49,"selfAmount":29996787.49,"provisional":1660000,"preCost":32167081.52,"preProfit":-7.24,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":15,"name":"嘉湖路改造完善工程（EPC）","client":"深圳市龙岗区建筑工务署","type":"基础设施","region":"深圳","amount":415103815.6,"deadline":"2026-03-23","bidTeam":"基础设施部","costOwner":"","bidRate":18.5,"bidTotal":348241761.1,"selfAmount":314767679.6,"provisional":33474081.54,"preCost":308324080.1,"preProfit":2.05,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":14,"name":"深圳大学总医院二期建设项目施工总承包工程","client":"深圳市建筑工务署工程管理中心","type":"房屋建筑","region":"深圳","amount":760640281.6,"deadline":"2026-03-22","bidTeam":"华南分公司","costOwner":"","bidRate":20.92,"bidTotal":613006888.9,"selfAmount":577490188.6,"provisional":35516700.26,"preCost":610291951.5,"preProfit":-5.68,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":13,"name":"深圳宝安国际机场T2航站区及配套设施工程综合服务用房项目施工总承包","client":"深圳市机场（集团）有限公司","type":"房屋建筑","region":"深圳","amount":101721965.7,"deadline":"2026-03-22","bidTeam":"华南分公司","costOwner":"","bidRate":19.88,"bidTotal":83725668.88,"selfAmount":75284054.09,"provisional":8441614.79,"preCost":84913485.72,"preProfit":-12.79,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":12,"name":"粤港澳大湾区东莞松山湖科学城先进激光器研发基地项目","client":"东莞松山湖高新技术产业开发区管理委员会","type":"房屋建筑","region":"东莞","amount":196712276.9,"deadline":"2026-03-15","bidTeam":"胡文俊团队","costOwner":"","bidRate":6.91,"bidTotal":183503191.6,"selfAmount":183503191.6,"provisional":0,"preCost":194232901.7,"preProfit":-5.85,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":11,"name":"深圳宝安国际机场T2航站区及配套设施工程-新建2号雨水提升泵站工程施工总承包","client":"深圳市机场（集团）有限公司","type":"基础设施","region":"深圳","amount":246535655.2,"deadline":"2026-03-14","bidTeam":"薛仁宗团队","costOwner":"","bidRate":18,"bidTotal":207357656,"selfAmount":185355868,"provisional":22001787.98,"preCost":203527774.9,"preProfit":-9.8,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":10,"name":"深圳市公安局机场训练基地项目装修装饰尾工工程","client":"深圳市建筑工务署文体和水务工程管理中心","type":"专业工程","region":"深圳","amount":3607783.75,"deadline":"2026-03-14","bidTeam":"华南分公司","costOwner":"","bidRate":10.01,"bidTotal":3271312.71,"selfAmount":3113698.74,"provisional":157613.97,"preCost":0,"preProfit":0,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":9,"name":"深圳市建筑工务署教育工程管理中心307-309等办公室维修改造工程","client":"深圳市建筑工务署教育工程管理中心","type":"专业工程","region":"深圳","amount":364302.76,"deadline":"2026-03-13","bidTeam":"华南分公司","costOwner":"","bidRate":7.91,"bidTotal":337434.97,"selfAmount":321519.6,"provisional":15915.37,"preCost":0,"preProfit":0,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":8,"name":"中国医学科学院肿瘤医院深圳医院肿瘤临床医学研究中心项目施工总承包工程","client":"深圳市建筑工务署工程管理中心","type":"房屋建筑","region":"深圳","amount":431042174.4,"deadline":"2026-01-18","bidTeam":"华南分公司","costOwner":"","bidRate":18.52,"bidTotal":356881300,"selfAmount":336621300,"provisional":20260000,"preCost":364180172.2,"preProfit":-8.19,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":7,"name":"深圳机场南区新国际货站二期（B4货站）项目施工总承包","client":"深圳市机场（集团）有限公司","type":"房屋建筑","region":"深圳","amount":159631129.3,"deadline":"2026-01-17","bidTeam":"华南分公司","costOwner":"","bidRate":22.89,"bidTotal":126970666.7,"selfAmount":114346160.37,"provisional":12624506.29,"preCost":134928317.5,"preProfit":-18,"civilCheck":5,"mechCheck":7,"compCheck":5.51,"status":"已中标","note":"","award":{"awardAmount":126970666.7,"contractAmount":126970666.7},"civil":85089994.28,"mech":29256166.09,"combinedProfit":5.51,"civilRate":5,"mechRate":7},
+  {"id":6,"name":"前海深港广场项目（一期）交易广场段、景兴激浪段施工总承包","client":"深圳市前海建设投资控股集团有限公司","type":"房屋建筑","region":"深圳","amount":439710524.2,"deadline":"2026-01-16","bidTeam":"卞昆团队","costOwner":"","bidRate":19.88,"bidTotal":358969123.5,"selfAmount":336979123.5,"provisional":21990000,"preCost":346502557.1,"preProfit":-2.83,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":5,"name":"广州香港马会马匹运动训练场A1闸口改造工程","client":"广州香港马会赛马训练有限公司","type":"房屋建筑","region":"深圳","amount":0,"deadline":"2026-01-10","bidTeam":"华南分公司","costOwner":"","bidRate":0,"bidTotal":4950666,"selfAmount":4950666,"provisional":0,"preCost":4100574.02,"preProfit":17.17,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":4,"name":"抖音深圳二期项目土护降及桩基工程","client":"深圳今日头条信息技术有限公司/脸萌技术（深圳）有限公司","type":"专业工程","region":"深圳","amount":0,"deadline":"2026-01-10","bidTeam":"杨帆团队","costOwner":"","bidRate":0,"bidTotal":185980000,"selfAmount":183428998.86,"provisional":2551001.14,"preCost":207000536.8,"preProfit":-12.85,"civilCheck":6.06,"mechCheck":0,"compCheck":6.06,"status":"已中标","note":"","award":{"awardAmount":185980000,"contractAmount":185980000},"civil":183428998.86,"mech":0,"combinedProfit":6.06,"civilRate":6.06,"mechRate":0},
+  {"id":3,"name":"创维创客工业园一期二标段项目施工总承包工程","client":"深圳创维创客发展有限公司","type":"房屋建筑","region":"深圳","amount":0,"deadline":"2026-01-10","bidTeam":"华南分公司","costOwner":"","bidRate":0,"bidTotal":615165666,"selfAmount":411165666,"provisional":204000000,"preCost":454856335.7,"preProfit":-10.63,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":2,"name":"汕尾市智慧物流园项目","client":"汕尾市智慧物流投资有限公司","type":"房屋建筑","region":"其他","amount":287187575.5,"deadline":"2026-01-02","bidTeam":"华南分公司","costOwner":"","bidRate":0.142,"bidTotal":286800555,"selfAmount":286285355,"provisional":515200,"preCost":0,"preProfit":0,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""},
+  {"id":1,"name":"深圳市未成年人救助保护中心修缮和功能提升工程项目设计采购施工总承包（EPC）","client":"深圳市建筑工务署工程管理中心","type":"房屋建筑","region":"深圳","amount":19675741.04,"deadline":"2026-01-01","bidTeam":"华南分公司","costOwner":"","bidRate":10.1,"bidTotal":17820324.22,"selfAmount":16900324.22,"provisional":920000,"preCost":20116869.39,"preProfit":-19.03,"civilCheck":0,"mechCheck":0,"compCheck":0,"status":"未中标","note":""}
+];
+
+// 从 localStorage 读取或初始化
+let bidData = JSON.parse(localStorage.getItem('bidData_v2')) || initialData;
+// 归一化：标前成本无数据 → 否；其余缺省默认 是
+bidData.forEach(d => {
+  const noCost = !(Number(d.preCost) > 0);
+  d.inCurve = noCost ? '否' : (d.inCurve === '否' ? '否' : '是');
+  if (d.targetCost === undefined) d.targetCost = 0;
+});
+// 按截止时间（升序，无日期置末）计算顺序编号 seq，用于「编号」列展示
+function reindexByDeadline() {
+  const sorted = [...bidData].sort((a, b) => {
+    const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+    const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+    return da - db;
+  });
+  sorted.forEach((d, i) => { d.seq = i + 1; });
+}
+reindexByDeadline();
+let nextId = Math.max(...bidData.map(d => d.id), 0) + 1; // starts at 21
+
+function saveToLocal() {
+  localStorage.setItem('bidData_v2', JSON.stringify(bidData));
+  document.getElementById('lastSync').textContent = '上次同步：' + new Date().toLocaleTimeString('zh-CN');
+  updateKPIs();
+  renderProfitChart();
+  renderWonGrid();
+}
+
+// ========== Ag-Grid 配置 ==========
+
+const statusCellRenderer = params => {
+  const map = {
+    '投标中': 'status-orange',
+    '未中标': 'status-red',
+    '已中标': 'status-green'
+  };
+  const cls = map[params.value] || map['未中标'];
+  return `<div class="status-cell ${cls}"><div class="status-dot"></div><span class="status-text">${params.value}</span></div>`;
+};
+
+const amountCellRenderer = params => {
+  if (!params.value) return '--';
+  return `<span class="amount-cell">¥${Number(params.value).toLocaleString('zh-CN')}</span>`;
+};
+
+const deadlineCellRenderer = params => {
+  if (!params.value) return '--';
+  return params.value;
+};
+
+const percentCellRenderer = params => {
+  if (params.value === null || params.value === undefined || params.value === '') return '--';
+  const val = Number(params.value);
+  if (isNaN(val)) return '--';
+  return `<span style="color:var(--accent-cyan);font-weight:600;">${val.toFixed(2)}%</span>`;
+};
+
+// 投标下浮率：为 0 时视为「无下浮」，显示 --
+const bidRateCellRenderer = params => {
+  const v = params.value;
+  if (v === null || v === undefined || v === '' || Number(v) === 0) return '--';
+  const val = Number(v);
+  if (isNaN(val)) return '--';
+  return `<span style="color:var(--accent-cyan);font-weight:600;">${val.toFixed(2)}%</span>`;
+};
+
+const actionCellRenderer = params => {
+  return `
+    <button onclick="editBid(${params.data.id})" style="background:transparent;border:none;color:var(--accent-blue);cursor:pointer;font-size:13px;margin-right:8px;" title="编辑">✏️</button>
+    <button onclick="deleteBid(${params.data.id})" style="background:transparent;border:none;color:var(--accent-red);cursor:pointer;font-size:13px;" title="删除">🗑️</button>
+  `;
+};
+
+// 中标项目模块操作列：仅保留「中标信息编辑」入口
+const wonActionCellRenderer = params => {
+  return `<button onclick="openAwardModal(${params.data.id})" style="background:transparent;border:none;color:var(--accent-green);cursor:pointer;font-size:15px;" title="中标信息编辑">🏆</button>`;
+};
+
+const columnDefs = [
+  { headerCheckboxSelection: true, checkboxSelection: true, width: 40, pinned: 'left', sortable: false, filter: false },
+  { headerName: '编号', width: 70, sortable: false, filter: false, pinned: 'left', valueGetter: p => (p.data ? (p.data.seq !== undefined ? p.data.seq : '') : '') },
+  { field: 'name', headerName: '项目名称', width: 200, sortable: true, filter: 'agTextColumnFilter', pinned: 'left', cellClass: 'name-cell' },
+  { field: 'client', headerName: '招标单位', width: 160, sortable: true, filter: 'agTextColumnFilter' },
+  { field: 'type', headerName: '类型', width: 90, sortable: true, filter: 'agTextColumnFilter', filterParams: { filterOptions: ['equals'] } },
+  { field: 'region', headerName: '区域', width: 80, sortable: true, filter: 'agTextColumnFilter', filterParams: { filterOptions: ['equals'] } },
+  { field: 'status', headerName: '状态', width: 100, sortable: true, filter: 'agTextColumnFilter', filterParams: { filterOptions: ['equals'] }, cellRenderer: statusCellRenderer },
+  { field: 'deadline', headerName: '截止时间', width: 120, sortable: true, filter: 'agDateColumnFilter', cellRenderer: deadlineCellRenderer },
+  { field: 'bidTeam', headerName: '投标团队', width: 100, sortable: true, filter: 'agTextColumnFilter' },
+  { field: 'bidRate', headerName: '投标下浮率', width: 100, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: bidRateCellRenderer },
+  { field: 'amount', headerName: '招标控制价（元）', width: 140, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'bidTotal', headerName: '投标总价', width: 100, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'selfAmount', headerName: '投标自施额', width: 100, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'provisional', headerName: '暂列金额/暂估价', width: 120, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'preCost', headerName: '标前成本', width: 100, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'preProfit', headerName: '标前收益率A值', width: 120, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: percentCellRenderer },
+  { field: 'inCurve', headerName: '纳入曲线统计', width: 120, sortable: true, filter: 'agTextColumnFilter', filterParams: { filterOptions: ['equals'] }, cellRenderer: inCurveCellRenderer },
+  { headerName: '操作', width: 110, sortable: false, filter: false, cellRenderer: actionCellRenderer, pinned: 'right' }
+];
+
+// 是否纳入标前收益率曲线统计：是（绿）/ 否（灰）
+function inCurveCellRenderer(params) {
+  const v = params.value === '否' ? '否' : '是';
+  return `<span style="color:${v === '是' ? 'var(--accent-green)' : 'var(--text-secondary)'};font-weight:600;">${v}</span>`;
+}
+
+// 中标项目独立模块列定义
+const wonColumnDefs = [
+  { headerName: '编号', width: 70, sortable: false, filter: false, pinned: 'left', valueGetter: p => (p.data ? (p.data.seq !== undefined ? p.data.seq : '') : '') },
+  { field: 'name', headerName: '项目名称', width: 220, sortable: true, filter: 'agTextColumnFilter', pinned: 'left', cellClass: 'name-cell' },
+  { field: 'client', headerName: '招标单位', width: 160, sortable: true, filter: 'agTextColumnFilter' },
+  { field: 'type', headerName: '类型', width: 90, sortable: true, filter: 'agTextColumnFilter' },
+  { field: 'region', headerName: '区域', width: 80, sortable: true, filter: 'agTextColumnFilter' },
+  { field: 'bidRate', headerName: '投标下浮率', width: 110, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: bidRateCellRenderer },
+  { field: 'bidTotal', headerName: '中标金额', width: 110, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'selfAmount', headerName: '自施额', width: 110, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'civil', headerName: '土建自施', width: 100, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'mech', headerName: '机电自施', width: 100, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'provisional', headerName: '暂列金额/暂估价', width: 130, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'preCost', headerName: '标前成本', width: 110, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { field: 'targetCost', headerName: '目标成本', width: 110, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: amountCellRenderer },
+  { headerName: '标前收益率', width: 120, sortable: true, filter: 'agNumberColumnFilter',
+    valueGetter: p => { const r = p.data || {}; const s = Number(r.selfAmount) || 0; return s === 0 ? null : (1 - (Number(r.preCost) || 0) / s) * 100; },
+    cellRenderer: percentCellRenderer },
+  { headerName: '承接收益率', width: 120, sortable: true, filter: 'agNumberColumnFilter',
+    valueGetter: p => { const r = p.data || {}; const s = Number(r.selfAmount) || 0; return s === 0 ? null : (1 - (Number(r.targetCost) || 0) / s) * 100; },
+    cellRenderer: percentCellRenderer },
+  { field: 'combinedProfit', headerName: '核定收益率', width: 130, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: percentCellRenderer },
+  { field: 'civilRate', headerName: '土建收益率', width: 110, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: percentCellRenderer },
+  { field: 'mechRate', headerName: '机电收益率', width: 110, sortable: true, filter: 'agNumberColumnFilter', cellRenderer: percentCellRenderer },
+  { headerName: '操作', width: 120, sortable: false, filter: false, cellRenderer: wonActionCellRenderer, pinned: 'right' }
+];
+
+let wonGridApi = null;
+
+function initWonGrid() {
+  const el = document.getElementById('wonGrid');
+  if (!el || wonGridApi) return;
+  wonGridApi = agGrid.createGrid(el, {
+    columnDefs: wonColumnDefs,
+    rowData: bidData.filter(d => d.status === '已中标'),
+    defaultColDef: { resizable: true, sortable: true, filter: true, suppressMenu: true, cellStyle: { color: 'var(--text-primary)' } },
+    rowHeight: 46,
+    headerHeight: 42,
+    animateRows: true,
+    localeText: { noRowsToShow: '暂无已中标项目' }
+  });
+  updateWonCount();
+}
+
+function renderWonGrid() {
+  if (wonGridApi) {
+    wonGridApi.setGridOption('rowData', bidData.filter(d => d.status === '已中标'));
+  }
+  updateWonCount();
+}
+
+function updateWonCount() {
+  const el = document.getElementById('wonCount');
+  if (el) el.textContent = bidData.filter(d => d.status === '已中标').length;
+  updateWonSummary();
+}
+
+// 中标项目合计汇总行
+function updateWonSummary() {
+  const el = document.getElementById('wonSummary');
+  if (!el) return;
+  const rows = bidData.filter(d => d.status === '已中标');
+  const n = rows.length;
+
+  const sum = (k) => rows.reduce((s, d) => s + (Number(d[k]) || 0), 0);
+  const bidTotal = sum('bidTotal');
+  const selfAmount = sum('selfAmount');
+  const civil = sum('civil');
+  const mech = sum('mech');
+  const provisional = sum('provisional');
+  const preCost = sum('preCost');
+
+  // 标前收益率 = (自施额合计 - 标前成本合计) / 自施额合计
+  const preProfitAvg = selfAmount === 0 ? '--' : ((selfAmount - preCost) / selfAmount * 100).toFixed(2) + '%';
+
+  const wan = (v) => (v / 10000).toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+  const item = (label, value, accent) =>
+    `<div class="ws-item"><span class="ws-label">${label}</span><span class="ws-value${accent ? ' accent' : ''}">${value}</span></div>`;
+
+  el.innerHTML =
+    `<div class="ws-total">合计（已中标 ${n} 项）</div>` +
+    item('中标金额(万)', wan(bidTotal), true) +
+    item('自施额(万)', wan(selfAmount), true) +
+    item('土建自施(万)', wan(civil)) +
+    item('机电自施(万)', wan(mech)) +
+    item('暂列/暂估(万)', wan(provisional)) +
+    item('标前成本(万)', wan(preCost)) +
+    item('标前收益率', preProfitAvg);
+}
+
+const defaultColDef = {
+  resizable: true,
+  suppressMenu: true
+};
+
+let gridApi = null;
+
+function initGrid() {
+  const gridDiv = document.getElementById('bidGrid');
+  const gridOptions = {
+    columnDefs: columnDefs,
+    defaultColDef: defaultColDef,
+    rowData: bidData,
+    rowSelection: 'multiple',
+    suppressRowClickSelection: false,
+    animateRows: true,
+    enableCellTextSelection: true,
+    ensureDomOrder: true,
+    isExternalFilterPresent: () => clientGroupFilter !== null,
+    doesExternalFilterPass: node => clientGroupMatches(node.data),
+    onRowSelected: updateSelectedCount,
+    onFilterChanged: event => {
+      const rows = [];
+      event.api.forEachNodeAfterFilter(node => {
+        if (node.data) rows.push(node.data);
+      });
+      updateKPIs(rows);
+      updateRecordCount();
+      renderProfitChart();
+    },
+    onGridReady: event => {
+      gridApi = event.api;
+      gridApi.applyColumnState({
+        state: [{ colId: 'deadline', sort: 'asc' }],
+        defaultState: { sort: null }
+      });
+      updateRecordCount();
+      updateKPIs(bidData);
+    },
+    components: {
+      statusCellRenderer: statusCellRenderer,
+      amountCellRenderer: amountCellRenderer,
+      deadlineCellRenderer: deadlineCellRenderer,
+      percentCellRenderer: percentCellRenderer,
+      bidRateCellRenderer: bidRateCellRenderer,
+      actionCellRenderer: actionCellRenderer
+    }
+  };
+  agGrid.createGrid(gridDiv, gridOptions);
+}
+
+// ========== 筛选功能 ==========
+
+// 招标单位分组（点击筛选对应的一组招标单位）
+const CLIENT_GROUPS = {
+  '工务署': ['深圳市建筑工务署工程管理中心', '深圳市建筑工务署教育工程管理中心', '深圳市建筑工务署文体和水务工程管理中心'],
+  '龙岗区工务署': ['深圳市龙岗区建筑工务署', '深圳市利源水务设计咨询有限公司'],
+  '机场集团': ['深圳市机场（集团）有限公司']
+};
+// 所有分组包含的招标单位合集（用于「其他」取反）
+const ALL_GROUP_CLIENTS = [].concat(...Object.values(CLIENT_GROUPS));
+let clientGroupFilter = null; // 当前激活的分组 key（含特殊值 '其他'）
+
+function clientGroupMatches(row) {
+  if (!clientGroupFilter) return true;
+  if (clientGroupFilter === '其他') {
+    return !ALL_GROUP_CLIENTS.includes(row.client);
+  }
+  const list = CLIENT_GROUPS[clientGroupFilter] || [];
+  return list.includes(row.client);
+}
+
+// 点击分组卡片筛选；再次点击同一分组则取消
+function filterByClientGroup(key) {
+  if (clientGroupFilter === key) {
+    clientGroupFilter = null;
+  } else {
+    clientGroupFilter = key;
+  }
+  updateClientGroupCardState();
+  if (gridApi) {
+    gridApi.onFilterChanged();
+    showToast(clientGroupFilter ? ('已按「' + document.getElementById('cg-' + clientGroupFilter).querySelector('.qf-label').textContent + '」筛选') : '已取消分组筛选', 'info');
+  }
+}
+
+// 更新分组卡片激活高亮
+function updateClientGroupCardState() {
+  ['工务署', '龙岗区工务署', '机场集团', '其他'].forEach(k => {
+    const el = document.getElementById('cg-' + k);
+    if (!el) return;
+    if (clientGroupFilter === k) el.classList.add('active-filter');
+    else el.classList.remove('active-filter');
+  });
+}
+
+// 统计各分组项目数量（基于全量数据），并显示在卡片上
+function updateClientGroupCounts() {
+  Object.keys(CLIENT_GROUPS).forEach(k => {
+    const el = document.getElementById('cg-count-' + k);
+    if (!el) return;
+    const n = bidData.filter(d => (CLIENT_GROUPS[k] || []).includes(d.client)).length;
+    el.textContent = n;
+  });
+  // 其他：不属于上述任何分组的项目
+  const otherEl = document.getElementById('cg-count-其他');
+  if (otherEl) {
+    otherEl.textContent = bidData.filter(d => !ALL_GROUP_CLIENTS.includes(d.client)).length;
+  }
+}
+
+
+function applyFilters() {
+  const statusVal = document.getElementById('statusFilter').value;
+  const typeVal = document.getElementById('typeFilter').value;
+  const regionVal = document.getElementById('regionFilter').value;
+  const textVal = document.getElementById('quickFilter').value;
+
+  const filter = {};
+  if (statusVal) filter.status = { filterType: 'text', filter: statusVal, type: 'equals' };
+  if (typeVal) filter.type = { filterType: 'text', filter: typeVal, type: 'equals' };
+  if (regionVal) filter.region = { filterType: 'text', filter: regionVal, type: 'equals' };
+
+  gridApi.setFilterModel(filter);
+  gridApi.setGridOption('quickFilterText', textVal);
+  
+  // 延迟获取过滤后的数据，确保 Ag-Grid 完成 filter 更新
+  setTimeout(() => {
+    const rows = [];
+    gridApi.forEachNodeAfterFilter(node => {
+      if (node.data) rows.push(node.data);
+    });
+    updateKPIs(rows);
+    updateRecordCount();
+    renderProfitChart();
+  }, 50);
+  
+  updateFilterStatus();
+  updateFilterCardState();
+  showToast('筛选已应用', 'info');
+}
+
+function resetFilters() {
+  document.getElementById('quickFilter').value = '';
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('typeFilter').value = '';
+  document.getElementById('regionFilter').value = '';
+  gridApi.setGridOption('quickFilterText', '');
+  gridApi.setFilterModel({});
+  clientGroupFilter = null;
+  updateClientGroupCardState();
+  
+  setTimeout(() => {
+    updateKPIs(bidData);
+    updateRecordCount();
+    renderProfitChart();
+  }, 50);
+  
+  updateFilterStatus();
+  updateFilterCardState();
+  showToast('筛选已重置', 'info');
+}
+
+function filterByType(typeVal) {
+  document.getElementById('typeFilter').value = typeVal;
+  applyFilters();
+  showToast('已按类型筛选：' + typeVal, 'info');
+}
+
+// 点击 KPI 卡片（如「已中标」）自动按状态筛选；再次点击取消
+function filterByStatus(statusVal) {
+  const statusEl = document.getElementById('statusFilter');
+  if (statusEl.value === statusVal) {
+    resetFilters();
+    return;
+  }
+  statusEl.value = statusVal;
+  applyFilters();
+}
+
+// 根据当前状态筛选项，高亮对应的 KPI 卡片
+function updateFilterCardState() {
+  const statusEl = document.getElementById('statusFilter');
+  const card = document.getElementById('kpi-won-card');
+  if (!card) return;
+  if (statusEl.value === '已中标') card.classList.add('active-filter');
+  else card.classList.remove('active-filter');
+}
+
+// ========== 数据统计 ==========
+
+function updateKPIs(data = bidData) {
+  const totalAll = bidData.length;
+  const wonAll = bidData.filter(d => d.status === '已中标').length;
+  const rateAll = totalAll > 0 ? ((wonAll / totalAll) * 100).toFixed(1) : '0';
+
+  const won = data.filter(d => d.status === '已中标').length;
+  const wonAmount = data.filter(d => d.status === '已中标').reduce((s, d) => s + (Number(d.bidTotal) || 0), 0);
+  const selfAmount = data.filter(d => d.status === '已中标').reduce((s, d) => s + (Number(d.selfAmount) || 0), 0);
+  const bidding = data.filter(d => d.status === '投标中').length;
+
+  document.getElementById('kpi-won').textContent = won;
+  document.getElementById('kpi-won-amount').innerHTML = (wonAmount / 10000).toLocaleString('zh-CN', {maximumFractionDigits: 2}) + '<span style="font-size:14px;color:var(--text-secondary)">万</span>';
+  document.getElementById('kpi-self-amount').innerHTML = (selfAmount / 10000).toLocaleString('zh-CN', {maximumFractionDigits: 2}) + '<span style="font-size:14px;color:var(--text-secondary)">万</span>';
+  document.getElementById('kpi-total').textContent = totalAll;
+  document.getElementById('kpi-rate').textContent = rateAll + '%';
+  document.getElementById('kpi-bidding').textContent = bidding;
+
+  // 类型统计（使用全部数据）
+  const building = bidData.filter(d => d.type === '房屋建筑').length;
+  const infra = bidData.filter(d => d.type === '基础设施').length;
+  const prof = bidData.filter(d => d.type === '专业工程').length;
+  const maxType = Math.max(building, infra, prof, 1);
+
+  document.getElementById('type-building').textContent = building;
+  document.getElementById('type-infra').textContent = infra;
+  document.getElementById('type-prof').textContent = prof;
+
+  // 刷新招标单位分组卡片数量
+  updateClientGroupCounts();
+}
+
+// ========== 标前收益率曲线图 ==========
+// 取主表当前筛选后的行；grid 未就绪时回退到全部数据
+function getFilteredRows() {
+  if (!gridApi) return bidData;
+  const rows = [];
+  gridApi.forEachNodeAfterFilter(node => { if (node.data) rows.push(node.data); });
+  return rows;
+}
+
+function renderProfitChart() {
+  const el = document.getElementById('profitChart');
+  if (!el || typeof echarts === 'undefined') return;
+  if (!window._profitChart) window._profitChart = echarts.init(el, null, { renderer: 'canvas' });
+  const chart = window._profitChart;
+
+  // 基于主表当前筛选后的项目（无 grid 时回退全部数据），再取「标前成本有数据 且 标前收益率非 0 且 纳入曲线统计」的项目
+  const base = getFilteredRows();
+  const rows = base.filter(d => Number(d.preCost) > 0 && Number(d.preProfit) !== 0 && d.inCurve === '是');
+
+  if (!rows.length) {
+    chart.clear();
+    chart.setOption({
+      title: { text: '暂无标前成本数据', left: 'center', top: 'center', textStyle: { color: '#9ca3af', fontSize: 14, fontWeight: 'normal' } },
+      xAxis: { show: false, type: 'category', data: [] },
+      yAxis: { show: false, type: 'value' },
+      series: []
+    }, true);
+    const badge0 = document.getElementById('profitAvgBadge');
+    if (badge0) badge0.textContent = '均值 --';
+    return;
+  }
+
+  // 按截标时间升序（无日期排最后），形成时间曲线
+  rows.sort((a, b) => {
+    const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+    const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+    return da - db;
+  });
+
+  const names = rows.map(r => {
+    const n = r.name || '未命名';
+    return n.length > 10 ? n.slice(0, 10) + '…' : n;
+  });
+  const values = rows.map(r => Number(r.preProfit) || 0);
+  // 均值改为按聚合口径：均值 = (Σ投标自施额 - Σ标前成本) ÷ Σ投标自施额（以 % 表示）
+  const totalSelf = rows.reduce((s, r) => s + (Number(r.selfAmount) || 0), 0);
+  const totalPreCost = rows.reduce((s, r) => s + (Number(r.preCost) || 0), 0);
+  const avg = totalSelf > 0 ? (totalSelf - totalPreCost) / totalSelf * 100 : 0;
+
+  chart.setOption({
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#1f2937', borderColor: '#374151', textStyle: { color: '#f9fafb' },
+      formatter: function (p) {
+        const i = p[0].dataIndex;
+        return (rows[i].name || '未命名') + '<br/>标前收益率：<b>' + values[i] + '%</b>';
+      }
+    },
+    grid: { left: 52, right: 28, top: 30, bottom: 70 },
+    xAxis: {
+      type: 'category', data: names, boundaryGap: false,
+      axisLine: { lineStyle: { color: '#374151' } },
+      axisLabel: { color: '#9ca3af', rotate: names.length > 6 ? 35 : 0, fontSize: 11 },
+      axisTick: { show: false }
+    },
+    yAxis: {
+      type: 'value', name: '收益率 %', nameTextStyle: { color: '#9ca3af' },
+      axisLabel: { color: '#9ca3af', formatter: '{value}%' },
+      splitLine: { lineStyle: { color: 'rgba(55,65,81,0.5)' } },
+      axisLine: { show: false }
+    },
+    series: [{
+      name: '标前收益率',
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 8,
+      data: values,
+      lineStyle: { width: 3, color: '#10b981' },
+      itemStyle: { color: '#10b981', borderColor: '#0b1120', borderWidth: 2 },
+      label: { show: true, position: 'top', color: '#f9fafb', fontSize: 11, formatter: '{c}%' },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(16,185,129,0.35)' },
+          { offset: 1, color: 'rgba(16,185,129,0.02)' }
+        ])
+      },
+      markLine: {
+        silent: true, symbol: 'none',
+        lineStyle: { color: '#f59e0b', type: 'dashed', width: 2 },
+        data: [{ yAxis: +avg.toFixed(2), name: '平均' }],
+        label: {
+          position: 'insideStartTop',
+          color: '#0b1120', backgroundColor: '#f59e0b',
+          padding: [2, 6], borderRadius: 4, fontSize: 12, fontWeight: 'bold',
+          formatter: '均值 ' + avg.toFixed(2) + '%'
+        }
+      }
+    }]
+  }, true);
+
+  // 头部均值徽标同步
+  const badge = document.getElementById('profitAvgBadge');
+  if (badge) badge.textContent = '均值 ' + avg.toFixed(2) + '%';
+}
+
+function updateRecordCount() {
+  const count = gridApi ? gridApi.getDisplayedRowCount() : 0;
+  document.getElementById('recordCount').textContent = `共 ${count} 条记录`;
+}
+
+function updateSelectedCount() {
+  const selected = gridApi ? gridApi.getSelectedRows().length : 0;
+  document.getElementById('selectedCount').textContent = `选中 ${selected} 条`;
+}
+
+function updateFilterStatus() {
+  const hasFilter = gridApi && gridApi.getFilterModel && Object.keys(gridApi.getFilterModel() || {}).length > 0;
+  const hasQuick = document.getElementById('quickFilter').value !== '';
+  document.getElementById('filterStatus').textContent = (hasFilter || hasQuick) ? '（已筛选）' : '';
+}
+
+// ========== 增删改 ==========
+
+function openModal(isEdit = false) {
+  document.getElementById('modal').classList.add('active');
+  document.getElementById('modalTitle').textContent = isEdit ? '编辑投标项目' : '新增投标项目';
+  if (!isEdit) {
+    document.getElementById('bidForm').reset();
+    document.getElementById('editId').value = '';
+    document.getElementById('formDeadline').value = '';
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+}
+
+function saveBid() {
+  const id = document.getElementById('editId').value;
+  const name = document.getElementById('formName').value.trim();
+  const client = document.getElementById('formClient').value.trim();
+  const type = document.getElementById('formType').value;
+  const region = document.getElementById('formRegion').value;
+  const amount = parseFloat(document.getElementById('formAmount').value) || 0;
+  const deadline = document.getElementById('formDeadline').value;
+  const bidTeam = document.getElementById('formBidTeam').value.trim();
+  const costOwner = document.getElementById('formCostOwner').value.trim();
+  const bidRate = parseFloat(document.getElementById('formBidRate').value) || 0;
+  const bidTotal = parseFloat(document.getElementById('formBidTotal').value) || 0;
+  const selfAmount = parseFloat(document.getElementById('formSelfAmount').value) || 0;
+  const provisional = parseFloat(document.getElementById('formProvisional').value) || 0;
+  const preCost = parseFloat(document.getElementById('formPreCost').value) || 0;
+  const preProfit = parseFloat(document.getElementById('formPreProfit').value) || 0;
+  // 标前成本无数据 → 自动归为「否」
+  const inCurve = Number(preCost) > 0 ? document.getElementById('formInCurve').value : '否';
+  const status = document.getElementById('formStatus').value;
+  const note = document.getElementById('formNote').value.trim();
+
+  if (!name || !client) {
+    showToast('请填写项目名称和招标单位', 'error');
+    return;
+  }
+
+  if (id) {
+    const idx = bidData.findIndex(d => d.id == id);
+    if (idx >= 0) {
+      bidData[idx] = { ...bidData[idx], name, client, type, region, amount, deadline, bidTeam, costOwner, bidRate, bidTotal, selfAmount, provisional, preCost, preProfit, inCurve, status, note };
+      showToast('项目已更新', 'success');
+    }
+  } else {
+    bidData.unshift({ id: nextId++, name, client, type, region, amount, deadline, bidTeam, costOwner, bidRate, bidTotal, selfAmount, provisional, preCost, preProfit, inCurve, status, note });
+    showToast('项目已新增', 'success');
+  }
+
+  reindexByDeadline();
+  gridApi.setGridOption('rowData', [...bidData]);
+  saveToLocal();
+  closeModal();
+}
+
+function editBid(id) {
+  const row = bidData.find(d => d.id == id);
+  if (!row) return;
+  document.getElementById('editId').value = row.id;
+  document.getElementById('formName').value = row.name;
+  document.getElementById('formClient').value = row.client;
+  document.getElementById('formType').value = row.type;
+  document.getElementById('formRegion').value = row.region;
+  document.getElementById('formStatus').value = row.status;
+  document.getElementById('formAmount').value = row.amount || '';
+  document.getElementById('formDeadline').value = row.deadline || '';
+  document.getElementById('formBidTeam').value = row.bidTeam || '';
+  document.getElementById('formCostOwner').value = row.costOwner || '';
+  document.getElementById('formBidRate').value = row.bidRate || '';
+  document.getElementById('formBidTotal').value = row.bidTotal || '';
+  document.getElementById('formSelfAmount').value = row.selfAmount || '';
+  document.getElementById('formProvisional').value = row.provisional || '';
+  document.getElementById('formPreCost').value = row.preCost || '';
+  document.getElementById('formPreProfit').value = row.preProfit || '';
+  document.getElementById('formInCurve').value = row.inCurve === '否' ? '否' : '是';
+  document.getElementById('formStatus').value = row.status;
+  document.getElementById('formNote').value = row.note || '';
+  openModal(true);
+}
+
+function deleteBid(id) {
+  bidData = bidData.filter(d => d.id != id);
+  reindexByDeadline();
+  gridApi.setGridOption('rowData', [...bidData]);
+  saveToLocal();
+  showToast('记录已删除', 'success');
+}
+
+function deleteSelected() {
+  const selected = gridApi.getSelectedRows();
+  if (selected.length === 0) {
+    showToast('请先勾选要删除的记录', 'error');
+    return;
+  }
+  const ids = selected.map(r => r.id);
+  bidData = bidData.filter(d => !ids.includes(d.id));
+  reindexByDeadline();
+  gridApi.setGridOption('rowData', [...bidData]);
+  saveToLocal();
+  showToast(`已删除 ${selected.length} 条记录`, 'success');
+}
+
+// ========== 导出 ==========
+
+function exportExcel() {
+  if (!bidData || !bidData.length) { showToast('暂无可导出的数据', 'info'); return; }
+
+  // 列定义（与表格一致，跳过选择框与操作列），金额为原始「元」，便于 Excel 计算
+  const cols = [
+    { key: 'id', name: '编号', wch: 8 },
+    { key: 'name', name: '项目名称', wch: 42 },
+    { key: 'client', name: '招标单位', wch: 30 },
+    { key: 'type', name: '类型', wch: 12 },
+    { key: 'region', name: '区域', wch: 10 },
+    { key: 'status', name: '状态', wch: 10 },
+    { key: 'deadline', name: '截止时间', wch: 14 },
+    { key: 'bidTeam', name: '投标团队', wch: 14 },
+    { key: 'bidRate', name: '投标下浮率(%)', wch: 14 },
+    { key: 'amount', name: '招标控制价（元）', wch: 20 },
+    { key: 'bidTotal', name: '投标总价（元）', wch: 18 },
+    { key: 'selfAmount', name: '投标自施额（元）', wch: 18 },
+    { key: 'provisional', name: '暂列金额/暂估价（元）', wch: 20 },
+    { key: 'preCost', name: '标前成本（元）', wch: 16 },
+    { key: 'targetCost', name: '目标成本（元）', wch: 16 },
+    { key: 'preProfit', name: '标前收益率A值(%)', wch: 16 },
+    { key: 'undertakeRate', name: '承接收益率(%)', wch: 14 },
+    { key: 'inCurve', name: '纳入标前收益率曲线统计', wch: 18 },
+    { key: 'note', name: '备注', wch: 18 }
+  ];
+
+  const header = cols.map(c => c.name);
+  const rows = bidData.map((d, i) => cols.map(c => {
+    if (c.key === 'id') return d.seq !== undefined ? d.seq : (i + 1); // 编号：按截止时间顺序，与内部 id 解耦
+    if (c.key === 'undertakeRate') { // 承接收益率 = (1 - 目标成本/自施额) × 100%
+      const s = Number(d.selfAmount) || 0;
+      return s === 0 ? '--' : ((1 - (Number(d.targetCost) || 0) / s) * 100).toFixed(2) + '%';
+    }
+    const v = d[c.key];
+    return (v === undefined || v === null) ? '' : v;
+  }));
+  const aoa = [header, ...rows];
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = cols.map(c => ({ wch: c.wch }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '投标数据');
+
+  const filename = `投标数据_${new Date().toISOString().slice(0,10)}.xlsx`;
+  const MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+  // 真实浏览器：直接下载带 .xlsx 后缀的文件，WPS / Excel 均可直接打开
+  if (window.self === window.top) {
+    XLSX.writeFile(wb, filename);
+    showToast('Excel 导出成功', 'success');
+    return;
+  }
+
+  // 内嵌预览（沙箱 iframe）禁止脚本下载：用带 download 属性的 data URL 锚点，
+  // 强制保存文件名带上 .xlsx 后缀，确保 WPS 能识别并打开
+  try {
+    const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+    const a = document.createElement('a');
+    a.href = 'data:' + MIME + ';base64,' + b64;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showToast('已触发下载：' + filename + '（WPS 可直接打开）', 'success');
+  } catch (e) {
+    // 极端情况下仍退回新标签页，用户再「另存为」并手动补 .xlsx 后缀
+    try {
+      const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+      const w = window.open('data:' + MIME + ';base64,' + b64, '_blank');
+      if (!w) showToast('弹窗被拦截，请允许弹出窗口后重试', 'error');
+      else showToast('已在新标签页打开，请「另存为」并命名为 .xlsx', 'info');
+    } catch (err) {
+      showToast('导出失败：' + (err && err.message ? err.message : err), 'error');
+    }
+  }
+}
+
+// ========== Toast ==========
+
+function showToast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const emoji = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  toast.innerHTML = `${emoji} ${msg}`;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ========== 导入 Excel ==========
+
+let pendingImportData = [];
+
+const columnMapping = {
+  '编号': 'id', 'id': 'id', 'ID': 'id', '序号': 'id',
+  '项目名称': 'name', '项目名': 'name', '名称': 'name', '项目': 'name',
+  '招标单位': 'client', '招标方': 'client', '甲方': 'client', '建设单位': 'client',
+  '类型': 'type', '项目类型': 'type',
+  '区域': 'region', '地区': 'region', '城市': 'region',
+  '招标控制价（元）': 'amount', '招标控制价': 'amount', '控制价': 'amount', '预算': 'amount', '金额': 'amount',
+  '截止时间': 'deadline', '截标时间': 'deadline', '投标截止': 'deadline', '截止日期': 'deadline',
+  '投标团队': 'bidTeam', '团队': 'bidTeam', '投标组': 'bidTeam',
+  '成本负责人': 'costOwner', '成本人': 'costOwner',
+  '投标下浮率': 'bidRate', '下浮率': 'bidRate', '降幅': 'bidRate',
+  '投标总价': 'bidTotal', '总价': 'bidTotal', '报价': 'bidTotal',
+  '投标自施额': 'selfAmount', '自施额': 'selfAmount', '自施金额': 'selfAmount',
+  '暂列金额/暂估价': 'provisional', '暂列金额': 'provisional', '暂估价': 'provisional',
+  '标前成本': 'preCost', '成本': 'preCost',
+  '目标成本': 'targetCost', '目标': 'targetCost',
+  '标前收益率A值': 'preProfit', '标前收益率': 'preProfit', '收益率': 'preProfit', '利润率': 'preProfit',
+  '纳入标前收益率曲线统计': 'inCurve', '纳入曲线统计': 'inCurve', '曲线统计': 'inCurve',
+  '核定综合收益率': 'combinedProfit', '综合收益率': 'combinedProfit',
+  '土建': 'civil', '土建额': 'civil',
+  '机电': 'mech', '机电额': 'mech',
+  '状态': 'status', '项目状态': 'status'
+};
+
+function openImportModal() {
+  document.getElementById('importModal').classList.add('active');
+  document.getElementById('importPreviewSection').style.display = 'none';
+  document.getElementById('importConfirmBtn').style.display = 'none';
+  document.getElementById('excelFile').value = '';
+  pendingImportData = [];
+}
+
+function closeImportModal() {
+  document.getElementById('importModal').classList.remove('active');
+  document.getElementById('importPreviewSection').style.display = 'none';
+  document.getElementById('importConfirmBtn').style.display = 'none';
+  document.getElementById('excelFile').value = '';
+  pendingImportData = [];
+}
+
+function handleDrop(event) {
+  event.preventDefault();
+  document.getElementById('dropZone').style.borderColor = 'var(--border)';
+  const files = event.dataTransfer.files;
+  if (files.length > 0) processExcelFile(files[0]);
+}
+
+function handleFileSelect(event) {
+  const files = event.target.files;
+  if (files.length > 0) processExcelFile(files[0]);
+}
+
+function processExcelFile(file) {
+  if (!file.name.match(/\.(xlsx|xls)$/i)) {
+    showToast('请上传 Excel 文件（.xlsx 或 .xls）', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+
+      if (jsonData.length < 2) {
+        showToast('Excel 文件数据为空或格式不正确', 'error');
+        return;
+      }
+
+      const headers = jsonData[0];
+      const rows = jsonData.slice(1);
+
+      // 自动映射列名
+      const fieldMap = {};
+      const unmatchedColumns = [];
+      headers.forEach((header, index) => {
+        const trimmedHeader = String(header).trim();
+        const field = columnMapping[trimmedHeader];
+        if (field) {
+          fieldMap[index] = field;
+        } else {
+          unmatchedColumns.push(trimmedHeader);
+        }
+      });
+
+      const mappedCount = Object.keys(fieldMap).length;
+      if (mappedCount === 0) {
+        showToast('未能识别任何列名，请检查 Excel 表头', 'error');
+        return;
+      }
+
+      pendingImportData = [];
+      const errors = [];
+
+      rows.forEach((row, rowIndex) => {
+        if (row.every(cell => cell === undefined || cell === null || String(cell).trim() === '')) return;
+
+        const item = {};
+        Object.entries(fieldMap).forEach(([colIndex, field]) => {
+          const value = row[colIndex];
+          if (value !== undefined && value !== null) {
+            item[field] = String(value).trim();
+          }
+        });
+
+        // 必填校验
+        if (!item.name) {
+          errors.push(`第 ${rowIndex + 2} 行：缺少项目名称`);
+          return;
+        }
+        if (!item.client) {
+          errors.push(`第 ${rowIndex + 2} 行：缺少招标单位`);
+          return;
+        }
+
+        // 数值字段转换
+        if (item.amount) item.amount = parseFloat(item.amount.replace(/,/g, '')) || 0;
+        if (item.bidRate) item.bidRate = parseFloat(item.bidRate.replace(/[%]/g, '')) || 0;
+        if (item.bidTotal) item.bidTotal = parseFloat(item.bidTotal.replace(/,/g, '')) || 0;
+        if (item.selfAmount) item.selfAmount = parseFloat(item.selfAmount.replace(/,/g, '')) || 0;
+        if (item.provisional) item.provisional = parseFloat(item.provisional.replace(/,/g, '')) || 0;
+        if (item.preCost) item.preCost = parseFloat(item.preCost.replace(/,/g, '')) || 0;
+        if (item.preProfit) item.preProfit = parseFloat(item.preProfit.replace(/[%]/g, '')) || 0;
+        if (item.combinedProfit) item.combinedProfit = parseFloat(item.combinedProfit.replace(/[%]/g, '')) || 0;
+        if (item.civil) item.civil = parseFloat(item.civil.replace(/,/g, '')) || 0;
+        if (item.mech) item.mech = parseFloat(item.mech.replace(/,/g, '')) || 0;
+
+        // 状态默认值
+        if (!item.status) item.status = '未中标';
+        const validStatus = ['未中标', '投标中', '已中标'];
+        if (!validStatus.includes(item.status)) item.status = '未中标';
+
+        // 日期格式处理
+        if (item.deadline) {
+          const d = new Date(item.deadline);
+          if (!isNaN(d.getTime())) {
+            item.deadline = d.toISOString().slice(0, 10);
+          }
+        }
+
+        item.note = '';
+        pendingImportData.push(item);
+      });
+
+      if (pendingImportData.length === 0) {
+        showToast('未找到有效数据，请检查 Excel 内容', 'error');
+        return;
+      }
+
+      renderImportPreview(headers, rows, fieldMap, unmatchedColumns, errors);
+      showToast(`成功解析 ${pendingImportData.length} 条记录，已匹配 ${mappedCount} 个字段`, 'success');
+
+    } catch (err) {
+      console.error(err);
+      showToast('Excel 解析失败：' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderImportPreview(headers, rows, fieldMap, unmatchedColumns, errors) {
+  const previewSection = document.getElementById('importPreviewSection');
+  const stats = document.getElementById('importStats');
+  const thead = document.getElementById('previewHead');
+  const tbody = document.getElementById('previewBody');
+  const errorDiv = document.getElementById('importErrors');
+  const confirmBtn = document.getElementById('importConfirmBtn');
+
+  previewSection.style.display = 'block';
+  confirmBtn.style.display = 'inline-block';
+
+  stats.innerHTML = `共 ${pendingImportData.length} 条有效数据` +
+    (unmatchedColumns.length > 0 ? ` | <span style="color:var(--accent-orange)">未识别列：${unmatchedColumns.join('、')}</span>` : '');
+
+  // 渲染表头
+  let headHTML = '<tr>';
+  headers.forEach((h, i) => {
+    const mapped = fieldMap[i];
+    const color = mapped ? 'var(--accent-green)' : 'var(--accent-red)';
+    const label = mapped ? `✓ ${h}` : `✗ ${h}`;
+    headHTML += `<th style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;color:${color};white-space:nowrap;">${label}</th>`;
+  });
+  headHTML += '</tr>';
+  thead.innerHTML = headHTML;
+
+  // 渲染前5行预览
+  const previewRows = rows.slice(0, 5);
+  let bodyHTML = '';
+  previewRows.forEach((row) => {
+    if (row.every(cell => cell === undefined || cell === null || String(cell).trim() === '')) return;
+    bodyHTML += '<tr>';
+    headers.forEach((_, i) => {
+      const val = row[i] !== undefined ? String(row[i]) : '';
+      bodyHTML += `<td style="padding:8px 14px;border-bottom:1px solid var(--border);color:var(--text-secondary);font-size:12px;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;">${val}</td>`;
+    });
+    bodyHTML += '</tr>';
+  });
+  if (rows.length > 5) {
+    bodyHTML += `<tr><td colspan="${headers.length}" style="padding:10px;text-align:center;color:var(--text-secondary);font-size:12px;">... 还有 ${rows.length - 5} 行数据 ...</td></tr>`;
+  }
+  tbody.innerHTML = bodyHTML;
+
+  if (errors.length > 0) {
+    errorDiv.style.display = 'block';
+    errorDiv.innerHTML = '<strong>校验警告：</strong><br>' + errors.slice(0, 10).join('<br>') + (errors.length > 10 ? `<br>... 还有 ${errors.length - 10} 条警告` : '');
+  } else {
+    errorDiv.style.display = 'none';
+  }
+}
+
+function confirmImport() {
+  if (pendingImportData.length === 0) {
+    showToast('没有待导入的数据', 'error');
+    return;
+  }
+
+  let importedCount = 0;
+  pendingImportData.forEach(item => {
+    const newItem = {
+      id: nextId++,
+      name: item.name || '',
+      client: item.client || '',
+      type: item.type || '房屋建筑',
+      region: item.region || '深圳',
+      amount: item.amount || 0,
+      deadline: item.deadline || '',
+      bidTeam: item.bidTeam || '',
+      costOwner: item.costOwner || '',
+      bidRate: item.bidRate || 0,
+      bidTotal: item.bidTotal || 0,
+      selfAmount: item.selfAmount || 0,
+      provisional: item.provisional || 0,
+      preCost: item.preCost || 0,
+      targetCost: item.targetCost || 0,
+      preProfit: item.preProfit || 0,
+      inCurve: Number(item.preCost) > 0 ? (item.inCurve === '否' ? '否' : '是') : '否',
+      combinedProfit: item.combinedProfit || 0,
+      civil: item.civil || 0,
+      mech: item.mech || 0,
+      status: item.status || '未中标',
+      note: item.note || ''
+    };
+    bidData.unshift(newItem);
+    importedCount++;
+  });
+
+  reindexByDeadline();
+  gridApi.setGridOption('rowData', [...bidData]);
+  saveToLocal();
+  closeImportModal();
+  showToast(`成功导入 ${importedCount} 条投标数据`, 'success');
+}
+
+// ========== 中标项目信息 ==========
+
+function openAwardModal(id) {
+  const row = bidData.find(d => d.id == id);
+  if (!row) return;
+  document.getElementById('awardEditId').value = row.id;
+  document.getElementById('awardProjectName').value = row.name;
+  const award = row.award || {};
+  // 中标金额关联投标金额（自动带入投标总价），合同金额始终等于中标金额
+  const awardAmount = (row.bidTotal != null && row.bidTotal !== '') ? row.bidTotal : '';
+  document.getElementById('awardAmount').value = awardAmount;
+  document.getElementById('contractAmount').value = awardAmount;
+  document.getElementById('selfAmount').value = row.selfAmount || '';
+  document.getElementById('provisionalAmount').value = row.provisional || '';
+  document.getElementById('civilAmount').value = row.civil || '';
+  document.getElementById('mechAmount').value = row.mech || '';
+  document.getElementById('combinedProfit').value = row.combinedProfit || '';
+  document.getElementById('targetCost').value = row.targetCost || '';
+  document.getElementById('civilRate').value = row.civilRate || '';
+  document.getElementById('mechRate').value = row.mechRate || '';
+  document.getElementById('awardModal').classList.add('active');
+}
+
+function closeAwardModal() {
+  document.getElementById('awardModal').classList.remove('active');
+}
+
+function saveAwardInfo() {
+  const id = document.getElementById('awardEditId').value;
+  const idx = bidData.findIndex(d => d.id == id);
+  if (idx < 0) return;
+  const awardAmount = parseFloat(document.getElementById('awardAmount').value) || 0;
+  bidData[idx].award = {
+    awardAmount: awardAmount,
+    contractAmount: awardAmount
+  };
+  bidData[idx].selfAmount = parseFloat(document.getElementById('selfAmount').value) || 0;
+  bidData[idx].provisional = parseFloat(document.getElementById('provisionalAmount').value) || 0;
+  bidData[idx].civil = parseFloat(document.getElementById('civilAmount').value) || 0;
+  bidData[idx].mech = parseFloat(document.getElementById('mechAmount').value) || 0;
+  bidData[idx].combinedProfit = parseFloat(document.getElementById('combinedProfit').value) || 0;
+  bidData[idx].targetCost = parseFloat(document.getElementById('targetCost').value) || 0;
+  bidData[idx].civilRate = parseFloat(document.getElementById('civilRate').value) || 0;
+  bidData[idx].mechRate = parseFloat(document.getElementById('mechRate').value) || 0;
+  saveToLocal();
+  closeAwardModal();
+  showToast('中标项目信息已保存', 'success');
+}
+
+// ========== 初始化 ==========
+
+window.addEventListener('DOMContentLoaded', () => {
+  initGrid();
+  renderProfitChart();
+  initWonGrid();
+  localStorage.removeItem('bidSyncConfig');
+  localStorage.removeItem('bidSyncMeta');
+});
+
+window.addEventListener('resize', () => {
+  if (window._profitChart) window._profitChart.resize();
+});
+
+// 点击模态框外部关闭
+window.addEventListener('click', e => {
+  if (e.target.id === 'modal') closeModal();
+  if (e.target.id === 'importModal') closeImportModal();
+  if (e.target.id === 'awardModal') closeAwardModal();
+});
+</script>
+
+</body>
+</html>

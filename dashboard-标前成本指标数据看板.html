@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>标前成本指标数据看板</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js?v=2"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: #eef1f5;
+    color: #333;
+    min-height: 100vh;
+  }
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0d2b4e 0%, #1a3a5c 50%, #234b73 100%);
+    padding: 28px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 400px; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(197,165,90,0.08));
+  }
+  .header h1 {
+    color: #fff;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 2px;
+  }
+  .header .subtitle {
+    color: #c5a55a;
+    font-size: 13px;
+    margin-top: 6px;
+    letter-spacing: 1px;
+  }
+  .header .meta {
+    position: absolute;
+    right: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: right;
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .header .meta span { color: #c5a55a; font-weight: 600; }
+
+  /* Container */
+  .container { max-width: 1600px; margin: 0 auto; padding: 24px 32px 60px; }
+
+  /* KPI Cards */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .kpi-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    border-top: 3px solid #1a3a5c;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    position: relative;
+  }
+  .kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(13,43,78,0.18);
+  }
+  .kpi-card::after {
+    content: '点击查看详情 ▸';
+    position: absolute;
+    bottom: 6px; right: 12px;
+    font-size: 10px;
+    color: #c5a55a;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .kpi-card:hover::after { opacity: 1; }
+  .kpi-card .label { font-size: 12px; color: #888; margin-bottom: 8px; }
+  .kpi-card .value { font-size: 28px; font-weight: 700; color: #1a3a5c; }
+  .kpi-card .unit { font-size: 13px; color: #999; font-weight: 400; margin-left: 4px; }
+  .kpi-card.gold { border-top-color: #c5a55a; }
+  .kpi-card.gold .value { color: #c5a55a; }
+
+  /* Section */
+  .section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a3a5c;
+    border-left: 4px solid #c5a55a;
+    padding-left: 12px;
+    margin-bottom: 18px;
+  }
+
+  /* Summary tables */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .table-wrap { overflow-x: auto; }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.data-table th {
+    background: #1a3a5c;
+    color: #fff;
+    padding: 10px 12px;
+    text-align: center;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  table.data-table th:first-child { border-radius: 4px 0 0 0; }
+  table.data-table th:last-child { border-radius: 0 4px 0 0; }
+  table.data-table td {
+    padding: 9px 12px;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+  }
+  table.data-table tr:nth-child(even) td { background: #f8f9fb; }
+  table.data-table tr:hover td { background: #eef2f7; }
+  table.data-table .cat-name { font-weight: 600; color: #1a3a5c; text-align: left; }
+  table.data-table .highlight { color: #c5a55a; font-weight: 600; }
+  table.data-table tr.clickable { cursor: pointer; }
+  table.data-table tr.clickable:hover td { background: #fff3da; }
+  table.data-table tr.clickable:hover .cat-name { color: #c5a55a; }
+
+  /* Chart containers */
+  .chart-box { width: 100%; height: 420px; }
+  .chart-box.tall { height: 480px; }
+  .chart-desc { font-size: 12px; color: #999; margin-top: 4px; margin-bottom: 12px; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    color: #aaa;
+    font-size: 12px;
+    padding: 20px 0;
+  }
+
+  /* Modal */
+  .modal-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(13,43,78,0.55);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-mask.active { display: flex; }
+  .modal {
+    background: #f5f7fa;
+    border-radius: 10px;
+    width: 96%;
+    max-width: 1500px;
+    max-height: 92vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .modal-header {
+    background: linear-gradient(135deg, #0d2b4e 0%, #1a3a5c 50%, #234b73 100%);
+    color: #fff;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+  .modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 300px;
+    background: linear-gradient(90deg, transparent, rgba(197,165,90,0.1));
+    pointer-events: none;
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .modal-subtitle {
+    color: #c5a55a;
+    font-size: 12px;
+    margin-top: 3px;
+    letter-spacing: 1px;
+  }
+  .modal-close {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(197,165,90,0.4);
+    color: #fff;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 28px;
+    text-align: center;
+    transition: all 0.2s;
+    z-index: 1;
+  }
+  .modal-close:hover { background: #c5a55a; color: #0d2b4e; }
+  .modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .modal-section {
+    background: #fff;
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  }
+  .modal-section:last-child { margin-bottom: 0; }
+  .modal-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a3a5c;
+    border-left: 3px solid #c5a55a;
+    padding-left: 10px;
+    margin-bottom: 12px;
+  }
+  .modal-table-wrap { max-height: 360px; overflow: auto; }
+  .modal-chart { width: 100%; height: 380px; }
+  .modal-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .modal-stat-card {
+    background: linear-gradient(135deg, #f8f9fb 0%, #eef2f7 100%);
+    border-left: 3px solid #1a3a5c;
+    border-radius: 6px;
+    padding: 12px 16px;
+  }
+  .modal-stat-card.gold { border-left-color: #c5a55a; }
+  .modal-stat-card .lbl { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .modal-stat-card .val { font-size: 20px; font-weight: 700; color: #1a3a5c; }
+  .modal-stat-card.gold .val { color: #c5a55a; }
+  .modal-stat-card .u { font-size: 11px; color: #999; font-weight: 400; margin-left: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>标前成本指标数据看板</h1>
+  <div class="subtitle">PRE-BID COST INDEX DATA DASHBOARD</div>
+  <div class="meta">
+    数据样本：<span>27个</span> 项目<br>
+    工程类别：<span>3</span> 类 &nbsp;|&nbsp; 工程业态：<span>9</span> 类
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- KPI Summary -->
+  <div class="kpi-row" id="kpiRow"></div>
+
+  <!-- Summary by Category & Business -->
+  <div class="section">
+    <div class="section-title">工程类别 &amp; 工程业态 — 平均指标汇总（点击行查看详情）</div>
+    <div class="summary-grid">
+      <div class="table-wrap">
+        <div class="chart-desc">按工程类别统计</div>
+        <table class="data-table" id="catTable"></table>
+      </div>
+      <div class="table-wrap">
+        <div class="chart-desc">按工程业态统计</div>
+        <table class="data-table" id="bizTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart 1 -->
+  <div class="section">
+    <div class="section-title">图一 · 各项目核心指标趋势（控制价/标前成本/下浮率/企管费/措施费）</div>
+    <div class="chart-desc">左轴：元/m²（控制价平米指标、标前成本平米指标、企管费指标、措施费指标） · 右轴：%（成本下浮率）</div>
+    <div class="chart-box tall" id="chart1"></div>
+  </div>
+
+  <!-- Chart 2 -->
+  <div class="section">
+    <div class="section-title">图二 · 标前成本各详细分部指标趋势（土建/措施费/企管费/机电/EPC设计费）</div>
+    <div class="chart-desc">单位：元/m² · 对应表格 Y列 ~ AC列</div>
+    <div class="chart-box tall" id="chart2"></div>
+  </div>
+
+  <!-- Chart 3 -->
+  <div class="section">
+    <div class="section-title">图三 · 土建平米指标（不含税）各细分项趋势</div>
+    <div class="chart-desc">单位：元/m² · 对应表格 AV列 ~ BM列（基坑/土方/支护/桩基/主体结构/二次结构/装配式/钢结构/装修/防水/精装/幕墙/门窗/绿化/标识/拆除/钢筋材料/周转材料）</div>
+    <div class="chart-box tall" id="chart3"></div>
+  </div>
+
+  <!-- Chart 4 -->
+  <div class="section">
+    <div class="section-title">图四 · 结构含量各详细指标趋势</div>
+    <div class="chart-desc">左轴：kg/m²（钢筋、钢结构） · 右轴：m³/m² &amp; m²/m²（混凝土、模板） · 对应表格 BO列 ~ BR列</div>
+    <div class="chart-box tall" id="chart4"></div>
+  </div>
+
+  <div class="footer">标前成本指标数据看板 · 数据来源：01_标前成本指标数据统计.xlsx</div>
+</div>
+
+<!-- Modal -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle">详情</div>
+        <div class="modal-subtitle" id="modalSubtitle">DETAIL VIEW</div>
+      </div>
+      <button class="modal-close" id="modalClose">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+// ===================== DATA =====================
+const RAW_DATA = [{"name":"中山大学附属第五医院珠澳转化医学中心及珠澳转化医学研究院建设项目","category":"房屋建筑","business":"医院","control_price":5957.951423056,"prebid_cost":5294.46,"cost_drop_rate":0.111362341842605,"civil":3252.88,"measure":230.2,"mgmt":300.04,"mep":1511.34,"epc":null,"mgmt_ratio":0.0567,"measure_ratio":0.0435,"chart3":{"基坑(土护降)":243.45,"土方":null,"支护":null,"桩基":null,"主体结构劳务":356.24,"二次结构":98.95,"装配式":30.68,"钢结构":162.42,"粗装修+屋面":196.68,"防水":null,"精装修":661.17,"幕墙+外墙":441.6,"门窗":37.25,"园建绿化":42.42,"标识":5.41,"拆除加固改造":null,"钢筋混凝土材料":573.91,"周转材料":90.32},"chart4":{"混凝土":0.55,"钢筋":103.02,"模板":1.99,"钢结构":null}},{"name":"深圳市第四人民医院二期项目施工总承包工程","category":"房屋建筑","business":"医院","control_price":6163.87792619109,"prebid_cost":4929.74,"cost_drop_rate":0.200221020106042,"civil":3016.89,"measure":214.1,"mgmt":293.72,"mep":1405.03,"epc":null,"mgmt_ratio":0.0596,"measure_ratio":0.0434,"chart3":{"基坑(土护降)":20.21,"土方":null,"支护":null,"桩基":null,"主体结构劳务":341.16,"二次结构":143.29,"装配式":63.27,"钢结构":75.63,"粗装修+屋面":196.57,"防水":null,"精装修":602.62,"幕墙+外墙":525.11,"门窗":112.64,"园建绿化":120.75,"标识":13.65,"拆除加固改造":null,"钢筋混凝土材料":453.24,"周转材料":84.3},"chart4":{"混凝土":0.57,"钢筋":87.34,"模板":2.8,"钢结构":null}},{"name":"深圳市人民医院宝安医院项目施工总承包Ⅱ标","category":"房屋建筑","business":"医院","control_price":5707.50595720897,"prebid_cost":4531.12,"cost_drop_rate":0.206112085739152,"civil":2723.05,"measure":201.99,"mgmt":267.19,"mep":1338.89,"epc":null,"mgmt_ratio":0.0576,"measure_ratio":0.042,"chart3":{"基坑(土护降)":39.25,"土方":null,"支护":null,"桩基":null,"主体结构劳务":345.73,"二次结构":174.26,"装配式":27.46,"钢结构":72.59,"粗装修+屋面":null,"防水":null,"精装修":714.57,"幕墙+外墙":399.86,"门窗":93.13,"园建绿化":84.68,"标识":29.74,"拆除加固改造":null,"钢筋混凝土材料":444.16,"周转材料":78.04},"chart4":{"混凝土":0.44,"钢筋":68.32,"模板":1.68,"钢结构":null}},{"name":"深圳市人民医院宝安医院项目施工总承包Ⅲ标","category":"房屋建筑","business":"医院","control_price":5545.63403904312,"prebid_cost":4450.09,"cost_drop_rate":0.197550727532709,"civil":2809.28,"measure":236.98,"mgmt":288.98,"mep":1114.85,"epc":null,"mgmt_ratio":0.0637,"measure_ratio":0.0488,"chart3":{"基坑(土护降)":49.94,"土方":null,"支护":null,"桩基":null,"主体结构劳务":399.13,"二次结构":133.42,"装配式":17.61,"钢结构":81.41,"粗装修+屋面":null,"防水":null,"精装修":668.85,"幕墙+外墙":481.14,"门窗":108.97,"园建绿化":56.33,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":506.99,"周转材料":80.96},"chart4":{"混凝土":0.62,"钢筋":112.08,"模板":2.33,"钢结构":null}},{"name":"深圳市第二人民医院改扩建工程（一期）项目施工总承包工程","category":"房屋建筑","business":"医院","control_price":5988.55256181475,"prebid_cost":4856.1,"cost_drop_rate":0.189102884232109,"civil":2757.28,"measure":220.16,"mgmt":292.81,"mep":1585.85,"epc":null,"mgmt_ratio":0.0603,"measure_ratio":0.0453,"chart3":{"基坑(土护降)":46.99,"土方":null,"支护":null,"桩基":null,"主体结构劳务":384.94,"二次结构":119.69,"装配式":21,"钢结构":134.6,"粗装修+屋面":207.01,"防水":null,"精装修":475.78,"幕墙+外墙":349.07,"门窗":69.45,"园建绿化":100.97,"标识":19.38,"拆除加固改造":null,"钢筋混凝土材料":504.46,"周转材料":75.79},"chart4":{"混凝土":0.62,"钢筋":100.29,"模板":2.47,"钢结构":null}},{"name":"中国医学科学院肿瘤医院深圳医院肿瘤临床医学研究中心项目施工总承包工程","category":"房屋建筑","business":"医院","control_price":7307.34100186783,"prebid_cost":6479.07,"cost_drop_rate":0.113347796641229,"civil":3544.68,"measure":362.74,"mgmt":451.1,"mep":2120.55,"epc":null,"mgmt_ratio":0.0695,"measure_ratio":0.056,"chart3":{"基坑(土护降)":589.72,"土方":null,"支护":null,"桩基":null,"主体结构劳务":404.52,"二次结构":111.61,"装配式":47.78,"钢结构":28.19,"粗装修+屋面":456.48,"防水":null,"精装修":258.42,"幕墙+外墙":337.41,"门窗":94.11,"园建绿化":221.25,"标识":12.22,"拆除加固改造":null,"钢筋混凝土材料":562.36,"周转材料":87.3},"chart4":{"混凝土":0.7,"钢筋":110.51,"模板":2.47,"钢结构":null}},{"name":"深圳大学总医院二期建设项目施工总承包工程","category":"房屋建筑","business":"医院","control_price":5641.49237843683,"prebid_cost":4748.1,"cost_drop_rate":0.158361000690455,"civil":2761.07,"measure":238.51,"mgmt":324.09,"mep":1424.43,"epc":null,"mgmt_ratio":0.0683,"measure_ratio":0.0502,"chart3":{"基坑(土护降)":55.27,"土方":31.52,"支护":23.75,"桩基":null,"主体结构劳务":359.86,"二次结构":109.39,"装配式":89.74,"钢结构":62.09,"粗装修+屋面":251.77,"防水":null,"精装修":362.21,"幕墙+外墙":376.1,"门窗":112.14,"园建绿化":110.19,"标识":16,"拆除加固改造":23.14,"钢筋混凝土材料":480.15,"周转材料":76.48},"chart4":{"混凝土":0.61,"钢筋":96.05,"模板":2.48,"钢结构":null}},{"name":"深圳市第二十九高级中学","category":"房屋建筑","business":"学校","control_price":5828.81067539682,"prebid_cost":5070.68,"cost_drop_rate":0.130066100550643,"civil":3248.94,"measure":247.89,"mgmt":510.54,"mep":1063.31,"epc":null,"mgmt_ratio":0.1007,"measure_ratio":0.0489,"chart3":{"基坑(土护降)":388.02,"土方":null,"支护":null,"桩基":null,"主体结构劳务":332.95,"二次结构":78.08,"装配式":120.11,"钢结构":6.18,"粗装修+屋面":229.92,"防水":null,"精装修":293.1,"幕墙+外墙":160.19,"门窗":256.68,"园建绿化":283.31,"标识":3.49,"拆除加固改造":null,"钢筋混凝土材料":656.85,"周转材料":113.62},"chart4":{"混凝土":0.62,"钢筋":106.45,"模板":2.51,"钢结构":null}},{"name":"东莞水乡未来学校","category":"房屋建筑","business":"学校","control_price":4432.30411588847,"prebid_cost":4299.28000000001,"cost_drop_rate":0.0300124071837975,"civil":3036.92604394434,"measure":169.913956055665,"mgmt":260.47,"mep":831.97,"epc":null,"mgmt_ratio":0.0634,"measure_ratio":0.0367,"chart3":{"基坑(土护降)":249.7,"土方":null,"支护":null,"桩基":null,"主体结构劳务":339.01,"二次结构":80.14,"装配式":119.64,"钢结构":53.79,"粗装修+屋面":318.74,"防水":null,"精装修":538.92,"幕墙+外墙":105.04,"门窗":109.95,"园建绿化":209.19,"标识":6.53,"拆除加固改造":null,"钢筋混凝土材料":470.54,"周转材料":149.44},"chart4":{"混凝土":0.59,"钢筋":84.85,"模板":2.45,"钢结构":null}},{"name":"深圳市体育运动学校职教园校区（一期）项目施工总承包","category":"房屋建筑","business":"学校","control_price":7714.77080239828,"prebid_cost":6539.11,"cost_drop_rate":0.152390891772547,"civil":4854.09,"measure":285.91,"mgmt":333.58,"mep":1065.53,"epc":null,"mgmt_ratio":0.051,"measure_ratio":0.0437,"chart3":{"基坑(土护降)":671.76,"土方":null,"支护":null,"桩基":null,"主体结构劳务":520.39,"二次结构":89.98,"装配式":343.85,"钢结构":402.51,"粗装修+屋面":107.01,"防水":null,"精装修":372.8,"幕墙+外墙":378.5,"门窗":27.54,"园建绿化":208.99,"标识":3.42,"拆除加固改造":null,"钢筋混凝土材料":1083.1,"周转材料":176.57},"chart4":{"混凝土":0.97,"钢筋":167.7,"模板":3.06,"钢结构":null}},{"name":"深圳鹏城技师学院职教园校区（一期）项目施工总承包","category":"房屋建筑","business":"学校","control_price":6145.76630507556,"prebid_cost":5082.11,"cost_drop_rate":0.173071388054103,"civil":3517.47,"measure":218.88,"mgmt":266.65,"mep":1079.11,"epc":null,"mgmt_ratio":0.0525,"measure_ratio":0.0431,"chart3":{"基坑(土护降)":617.28,"土方":null,"支护":null,"桩基":null,"主体结构劳务":371.83,"二次结构":71.08,"装配式":559.75,"钢结构":12.55,"粗装修+屋面":228.8,"防水":null,"精装修":321.96,"幕墙+外墙":266.59,"门窗":112.74,"园建绿化":80.84,"标识":8.15,"拆除加固改造":null,"钢筋混凝土材料":580.99,"周转材料":85.12},"chart4":{"混凝土":0.62,"钢筋":100.26,"模板":3.72,"钢结构":null}},{"name":"深圳市第一职业技术学校职教园校区（一期）项目施工总承包","category":"房屋建筑","business":"学校","control_price":5770.06320676177,"prebid_cost":4656.58,"cost_drop_rate":0.192975911504213,"civil":3145.34,"measure":330.33,"mgmt":285.18,"mep":895.73,"epc":null,"mgmt_ratio":0.0612,"measure_ratio":0.0709,"chart3":{"基坑(土护降)":282.3,"土方":null,"支护":null,"桩基":null,"主体结构劳务":385.14,"二次结构":103.84,"装配式":430.63,"钢结构":25.85,"粗装修+屋面":null,"防水":null,"精装修":399.58,"幕墙+外墙":242.91,"门窗":71.93,"园建绿化":229.01,"标识":8.81,"拆除加固改造":null,"钢筋混凝土材料":543.54,"周转材料":135.96},"chart4":{"混凝土":0.71,"钢筋":106.46,"模板":2.48,"钢结构":null}},{"name":"深圳市职教园公共配套设施（一期）项目施工总承包Ⅲ标","category":"房屋建筑","business":"学校","control_price":6969.11405164331,"prebid_cost":5918.81,"cost_drop_rate":0.150708403372399,"civil":3773.19,"measure":455.41,"mgmt":367.72,"mep":1322.49,"epc":null,"mgmt_ratio":0.0621,"measure_ratio":0.0673,"chart3":{"基坑(土护降)":778.49,"土方":null,"支护":null,"桩基":null,"主体结构劳务":564.84,"二次结构":119.25,"装配式":12.45,"钢结构":5.05,"粗装修+屋面":null,"防水":null,"精装修":664.02,"幕墙+外墙":189.28,"门窗":76.6,"园建绿化":267.07,"标识":22.89,"拆除加固改造":null,"钢筋混凝土材料":626.54,"周转材料":105.55},"chart4":{"混凝土":0.85,"钢筋":124.72,"模板":3.5,"钢结构":null}},{"name":"清华大学深圳国际研究生院（二期）项目EPC工程总承包","category":"房屋建筑","business":"学校","control_price":7033.63043487725,"prebid_cost":5864.74,"cost_drop_rate":0.166185932812327,"civil":4008.91,"measure":321.86,"mgmt":324.93,"mep":1209.04,"epc":null,"mgmt_ratio":0.0554,"measure_ratio":0.0549,"chart3":{"基坑(土护降)":"/","土方":null,"支护":null,"桩基":null,"主体结构劳务":"/","二次结构":"/","装配式":"/","钢结构":"/","粗装修+屋面":"/","防水":null,"精装修":"/","幕墙+外墙":"/","门窗":"/","园建绿化":"/","标识":"/","拆除加固改造":null,"钢筋混凝土材料":"/","周转材料":"/"},"chart4":{"混凝土":"/","钢筋":"/","模板":"/","钢结构":null}},{"name":"深圳湾超级总部基地片区市政交通基础设施项目2标（施工总承包）","category":"基础设施","business":"市政道路","control_price":3586.56033698619,"prebid_cost":2994.61,"cost_drop_rate":0.165046808464852,"civil":1792.59,"measure":165.7,"mgmt":176.27,"mep":860.05,"epc":null,"mgmt_ratio":0.0627,"measure_ratio":0.0486,"chart3":{"基坑(土护降)":null,"土方":null,"支护":null,"桩基":null,"主体结构劳务":null,"二次结构":null,"装配式":null,"钢结构":null,"粗装修+屋面":null,"防水":null,"精装修":null,"幕墙+外墙":null,"门窗":null,"园建绿化":null,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":null,"周转材料":null},"chart4":{"混凝土":null,"钢筋":null,"模板":null,"钢结构":null}},{"name":"深圳湾超级总部基地片区市政交通基础设施项目3标（施工总承包）","category":"基础设施","business":"市政道路","control_price":8057.79758668257,"prebid_cost":6471.45,"cost_drop_rate":0.196871113926265,"civil":4550.76,"measure":279.24,"mgmt":325.93,"mep":1315.52,"epc":null,"mgmt_ratio":0.0534,"measure_ratio":0.0401,"chart3":{"基坑(土护降)":null,"土方":null,"支护":null,"桩基":null,"主体结构劳务":null,"二次结构":null,"装配式":null,"钢结构":null,"粗装修+屋面":null,"防水":null,"精装修":null,"幕墙+外墙":null,"门窗":null,"园建绿化":null,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":null,"周转材料":null},"chart4":{"混凝土":null,"钢筋":null,"模板":null,"钢结构":null}},{"name":"深国际华南02-20-04地块项目土石方、基坑支护及桩基础工程","category":"专业工程","business":"基坑","control_price":5106.33627623536,"prebid_cost":4123.74,"cost_drop_rate":0.1924268640137,"civil":3575.75,"measure":261.98,"mgmt":286.01,"mep":null,"epc":null,"mgmt_ratio":0.0694,"measure_ratio":0.0635,"chart3":{"基坑(土护降)":null,"土方":null,"支护":null,"桩基":null,"主体结构劳务":null,"二次结构":null,"装配式":null,"钢结构":null,"粗装修+屋面":null,"防水":null,"精装修":null,"幕墙+外墙":null,"门窗":null,"园建绿化":null,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":null,"周转材料":null},"chart4":{"混凝土":null,"钢筋":null,"模板":null,"钢结构":null}},{"name":"国际协同创新区北区一期基坑","category":"专业工程","business":"基坑","control_price":5906.25550503417,"prebid_cost":5003.03,"cost_drop_rate":0.152926927096924,"civil":4491.01,"measure":249.4,"mgmt":262.62,"mep":null,"epc":null,"mgmt_ratio":0.0525,"measure_ratio":0.0454,"chart3":{"基坑(土护降)":null,"土方":null,"支护":null,"桩基":null,"主体结构劳务":null,"二次结构":null,"装配式":null,"钢结构":null,"粗装修+屋面":null,"防水":null,"精装修":null,"幕墙+外墙":null,"门窗":null,"园建绿化":null,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":null,"周转材料":null},"chart4":{"混凝土":null,"钢筋":null,"模板":null,"钢结构":null}},{"name":"深圳宝安国际机场T2航站区及配套设施工程航站楼基础工程","category":"专业工程","business":"基坑","control_price":7190.61750906603,"prebid_cost":5368.65,"cost_drop_rate":0.25338123002216,"civil":4787.95,"measure":316.58,"mgmt":264.12,"mep":null,"epc":null,"mgmt_ratio":0.0492,"measure_ratio":0.0559,"chart3":{"基坑(土护降)":null,"土方":null,"支护":null,"桩基":null,"主体结构劳务":null,"二次结构":null,"装配式":null,"钢结构":null,"粗装修+屋面":null,"防水":null,"精装修":null,"幕墙+外墙":null,"门窗":null,"园建绿化":null,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":null,"周转材料":null},"chart4":{"混凝土":null,"钢筋":null,"模板":null,"钢结构":null}},{"name":"深圳市第二实验学校高中部宿舍拆建、综合楼加固工程项目施工","category":"房屋建筑","business":"更新改造","control_price":6770.17686360657,"prebid_cost":5532.12,"cost_drop_rate":0.182869205420882,"civil":3438.17,"measure":336.83,"mgmt":349.25,"mep":1407.87,"epc":null,"mgmt_ratio":0.067,"measure_ratio":0.057,"chart3":{"基坑(土护降)":511.73,"土方":null,"支护":null,"桩基":null,"主体结构劳务":352.42,"二次结构":102.05,"装配式":121.97,"钢结构":null,"粗装修+屋面":628.07,"防水":null,"精装修":null,"幕墙+外墙":55.54,"门窗":145.03,"园建绿化":174.73,"标识":12.9,"拆除加固改造":947.72,"钢筋混凝土材料":480.22,"周转材料":87.72},"chart4":{"混凝土":0.63,"钢筋":85.18,"模板":3.01,"钢结构":null}},{"name":"深圳大学后海校区北区旧校舍修缮项目三标段","category":"房屋建筑","business":"更新改造","control_price":5350.84166026277,"prebid_cost":4605.4,"cost_drop_rate":0.139312973097051,"civil":2037.69,"measure":325.57,"mgmt":315.18,"mep":1926.96,"epc":null,"mgmt_ratio":0.0684,"measure_ratio":0.0707,"chart3":{"基坑(土护降)":11.96,"土方":null,"支护":null,"桩基":null,"主体结构劳务":null,"二次结构":121.45,"装配式":null,"钢结构":null,"粗装修+屋面":737,"防水":null,"精装修":null,"幕墙+外墙":3.89,"门窗":174.06,"园建绿化":null,"标识":null,"拆除加固改造":483.55,"钢筋混凝土材料":271.6,"周转材料":11.67},"chart4":{"混凝土":"/","钢筋":"/","模板":"/","钢结构":null}},{"name":"深港智汇风华产业园项目一期工程II标段设计采购施工总承包（EPC）","category":"房屋建筑","business":"超高层","control_price":3004.25919119403,"prebid_cost":2416.62902959229,"cost_drop_rate":0.19559902265563,"civil":1416.37,"measure":125.22,"mgmt":201.15,"mep":639.71,"epc":34.1790295922862,"mgmt_ratio":0.0832,"measure_ratio":0.0518,"chart3":{"基坑(土护降)":64.6533593703416,"土方":null,"支护":null,"桩基":null,"主体结构劳务":344.27,"二次结构":90.6332232686221,"装配式":null,"钢结构":260.843635431661,"粗装修+屋面":211.63968261106,"防水":50.74,"精装修":null,"幕墙+外墙":null,"门窗":20.03,"园建绿化":6.05470485460817,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":435.246714999437,"周转材料":93.7},"chart4":{"混凝土":0.43,"钢筋":78.52,"模板":2.48,"钢结构":23.4456344957902}},{"name":"T102-0438宗地(前湾片区09-04-01地块)项目-中集","category":"房屋建筑","business":"超高层","control_price":4705.67490229535,"prebid_cost":3814.07,"cost_drop_rate":0.189474394387177,"civil":2679.75,"measure":398.36,"mgmt":347.29,"mep":388.67,"epc":null,"mgmt_ratio":0.0911,"measure_ratio":0.1044,"chart3":{"基坑(土护降)":59.95,"土方":null,"支护":null,"桩基":null,"主体结构劳务":287.63,"二次结构":68.71,"装配式":16.43,"钢结构":1286.18,"粗装修+屋面":168.33,"防水":null,"精装修":null,"幕墙+外墙":null,"门窗":32.14,"园建绿化":null,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":395.05,"周转材料":67.28},"chart4":{"混凝土":0.45,"钢筋":70.47,"模板":1.86,"钢结构":135.75}},{"name":"深圳红树林湿地博物馆项目施工总承包","category":"房屋建筑","business":"场馆","control_price":13061.6805259434,"prebid_cost":11337.91,"cost_drop_rate":0.13197157306976,"civil":8496.12,"measure":489.21,"mgmt":615.34,"mep":1737.24,"epc":null,"mgmt_ratio":0.0543,"measure_ratio":0.0431,"chart3":{"基坑(土护降)":553.53,"土方":null,"支护":null,"桩基":null,"主体结构劳务":333.04,"二次结构":43.31,"装配式":258.8,"钢结构":2233.13,"粗装修+屋面":null,"防水":null,"精装修":710.93,"幕墙+外墙":2337.23,"门窗":10.47,"园建绿化":709.59,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":467.76,"周转材料":112.85},"chart4":{"混凝土":0.61,"钢筋":89.67,"模板":2.97,"钢结构":224.52}},{"name":"创维创客工业园一期二标段项目施工总承包工程","category":"房屋建筑","business":"厂房","control_price":0,"prebid_cost":2055.05,"cost_drop_rate":null,"civil":1540.29,"measure":135.62,"mgmt":178.19,"mep":200.95,"epc":null,"mgmt_ratio":0.0862,"measure_ratio":0.0662,"chart3":{"基坑(土护降)":208.58,"土方":null,"支护":null,"桩基":null,"主体结构劳务":316.45,"二次结构":38.24,"装配式":null,"钢结构":null,"粗装修+屋面":176.79,"防水":null,"精装修":null,"幕墙+外墙":null,"门窗":44.5,"园建绿化":null,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":410.52,"周转材料":78.96},"chart4":{"混凝土":0.51,"钢筋":72.93,"模板":2.09,"钢结构":"/"}},{"name":"深圳机场南区新国际货站二期（B4货站）","category":"房屋建筑","business":"厂房","control_price":4701.20316501439,"prebid_cost":4441.97,"cost_drop_rate":0.055141876646294,"civil":2998.34,"measure":187.52,"mgmt":257.56,"mep":998.55,"epc":null,"mgmt_ratio":0.0583,"measure_ratio":0.0428,"chart3":{"基坑(土护降)":237.25,"土方":36.88,"支护":null,"桩基":220.37,"主体结构劳务":406.75,"二次结构":28.97,"装配式":null,"钢结构":799.98,"粗装修+屋面":547.29,"防水":null,"精装修":323.37,"幕墙+外墙":151.68,"门窗":null,"园建绿化":207.33,"标识":null,"拆除加固改造":null,"钢筋混凝土材料":263.1,"周转材料":17.53},"chart4":{"混凝土":0.33,"钢筋":51.18,"模板":0.42,"钢结构":60.84}},{"name":"粤港澳大湾区东莞松山湖科学城先进激光器研发基地项目","category":"房屋建筑","business":"科研","control_price":5257.54838473444,"prebid_cost":5191.28,"cost_drop_rate":0.0126044269848009,"civil":3436.91,"measure":277.27,"mgmt":291.68,"mep":1185.42,"epc":null,"mgmt_ratio":0.0595,"measure_ratio":0.0565,"chart3":{"基坑(土护降)":712.06,"土方":null,"支护":null,"桩基":null,"主体结构劳务":368.43,"二次结构":224.89,"装配式":null,"钢结构":null,"粗装修+屋面":436.11,"防水":null,"精装修":276.06,"幕墙+外墙":109.28,"门窗":211.97,"园建绿化":184.62,"标识":3.05,"拆除加固改造":null,"钢筋混凝土材料":451.96,"周转材料":101.33},"chart4":{"混凝土":0.509252683890398,"钢筋":82.84,"模板":2.38,"钢结构":"/"}}];
+
+// ===================== UTILS =====================
+function isNum(v) { return typeof v === 'number' && !isNaN(v); }
+function toNum(v) {
+  if (v === null || v === undefined || v === '/' || v === '') return null;
+  let n = Number(v);
+  return isNaN(n) ? null : n;
+}
+function avg(arr) {
+  let vals = arr.filter(isNum);
+  if (vals.length === 0) return null;
+  return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+function fmt(n, dec = 0) {
+  if (n === null || n === undefined) return '—';
+  return Number(n).toLocaleString('zh-CN', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function fmtPct(n, dec = 1) {
+  if (n === null || n === undefined) return '—';
+  return (n * 100).toFixed(dec) + '%';
+}
+// Safely format any value (number or numeric-string) with N decimals; non-numeric → '—'
+function fmtNum(v, dec = 2) {
+  if (v === null || v === undefined) return '—';
+  const n = typeof v === 'number' ? v : Number(v);
+  if (!isFinite(n)) return '—';
+  return n.toFixed(dec);
+}
+function shortName(name) {
+  if (!name) return '';
+  if (name.length <= 12) return name;
+  return name.substring(0, 11) + '…';
+}
+
+// Project metadata
+const PROJECT_NAMES = RAW_DATA.map(d => shortName(d.name));
+const FULL_NAMES = RAW_DATA.map(d => d.name);
+
+// Color palette
+const COLOR_PALETTE = ['#1a3a5c', '#c5a55a', '#2d7d8c', '#d4654a', '#7b9ea8', '#a8405a', '#5b8a72', '#8b6f47'];
+
+// ===================== KPI Cards =====================
+function renderKPI() {
+  const all = RAW_DATA;
+  const avgCost = avg(all.map(d => toNum(d.prebid_cost)));
+  const avgCtrl = avg(all.map(d => toNum(d.control_price)).filter(v => v !== null && v > 0));
+  const avgDrop = avg(all.map(d => toNum(d.cost_drop_rate)));
+  const avgMgmt = avg(all.map(d => toNum(d.mgmt_ratio)));
+  const avgMeasure = avg(all.map(d => toNum(d.measure_ratio)));
+
+  const cards = [
+    { id: 'kpi-total', label: '项目总数', value: all.length, unit: '个', gold: false, type: 'total' },
+    { id: 'kpi-cost', label: '平均标前成本平米指标', value: fmt(avgCost, 0), unit: '元/m²', gold: true, type: 'cost' },
+    { id: 'kpi-ctrl', label: '平均控制价平米指标', value: fmt(avgCtrl, 0), unit: '元/m²', gold: false, type: 'ctrl' },
+    { id: 'kpi-mgmt', label: '平均企管费指标', value: fmtPct(avgMgmt, 2), unit: '', gold: true, type: 'mgmt' },
+    { id: 'kpi-measure', label: '平均措施费指标', value: fmtPct(avgMeasure, 2), unit: '', gold: true, type: 'measure' },
+  ];
+  document.getElementById('kpiRow').innerHTML = cards.map(c => `
+    <div class="kpi-card ${c.gold ? 'gold' : ''}" data-kpi="${c.type}">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}<span class="unit">${c.unit}</span></div>
+    </div>
+  `).join('');
+
+}
+
+// ===================== Summary Tables =====================
+function renderTables() {
+  // By category
+  const catMap = {};
+  RAW_DATA.forEach(d => {
+    if (!catMap[d.category]) catMap[d.category] = [];
+    catMap[d.category].push(d);
+  });
+  const catRows = Object.keys(catMap).map(cat => {
+    const items = catMap[cat];
+    return {
+      name: cat,
+      count: items.length,
+      avgCost: avg(items.map(d => toNum(d.prebid_cost))),
+      avgMgmt: avg(items.map(d => toNum(d.mgmt_ratio))),
+      avgMeasure: avg(items.map(d => toNum(d.measure_ratio))),
+    };
+  });
+
+  const catHTML = `
+    <thead><tr>
+      <th>工程类别</th><th>项目数</th><th>平均标前成本<br>平米指标(元/m²)</th>
+      <th>平均企管费指标</th><th>平均措施费指标</th>
+    </tr></thead>
+    <tbody>
+      ${catRows.map(r => `
+        <tr class="clickable" data-cat="${r.name}">
+          <td class="cat-name">${r.name}</td>
+          <td>${r.count}</td>
+          <td class="highlight">${fmt(r.avgCost, 0)}</td>
+          <td class="highlight">${fmtPct(r.avgMgmt, 2)}</td>
+          <td class="highlight">${fmtPct(r.avgMeasure, 2)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+  document.getElementById('catTable').innerHTML = catHTML;
+
+  // By business
+  const bizMap = {};
+  RAW_DATA.forEach(d => {
+    if (!bizMap[d.business]) bizMap[d.business] = [];
+    bizMap[d.business].push(d);
+  });
+  const bizRows = Object.keys(bizMap).map(biz => {
+    const items = bizMap[biz];
+    return {
+      name: biz,
+      count: items.length,
+      avgCost: avg(items.map(d => toNum(d.prebid_cost))),
+      avgMgmt: avg(items.map(d => toNum(d.mgmt_ratio))),
+      avgMeasure: avg(items.map(d => toNum(d.measure_ratio))),
+    };
+  });
+
+  const bizHTML = `
+    <thead><tr>
+      <th>工程业态</th><th>项目数</th><th>平均标前成本<br>平米指标(元/m²)</th>
+      <th>平均企管费指标</th><th>平均措施费指标</th>
+    </tr></thead>
+    <tbody>
+      ${bizRows.map(r => `
+        <tr class="clickable" data-biz="${r.name}">
+          <td class="cat-name">${r.name}</td>
+          <td>${r.count}</td>
+          <td class="highlight">${fmt(r.avgCost, 0)}</td>
+          <td class="highlight">${fmtPct(r.avgMgmt, 2)}</td>
+          <td class="highlight">${fmtPct(r.avgMeasure, 2)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+  document.getElementById('bizTable').innerHTML = bizHTML;
+}
+
+// ===================== ECharts Common =====================
+function baseOption(extra = {}, names = PROJECT_NAMES, fulls = FULL_NAMES) {
+  return Object.assign({
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(13,43,78,0.92)',
+      borderColor: '#c5a55a',
+      borderWidth: 1,
+      textStyle: { color: '#fff', fontSize: 12 },
+      formatter: function(params) {
+        let idx = params[0].dataIndex;
+        let html = '<div style="font-weight:600;margin-bottom:6px;max-width:300px;word-break:break-all;">' + fulls[idx] + '</div>';
+        params.forEach(p => {
+          if (p.value !== null && p.value !== undefined && p.value !== '-' && !isNaN(p.value)) {
+            let val = p.seriesName.includes('率') || p.seriesName.includes('指标') && (p.seriesName.includes('企管') || p.seriesName.includes('措施'))
+              ? (p.value * 100).toFixed(2) + '%'
+              : (p.seriesName.includes('混凝土') || p.seriesName.includes('模板'))
+                ? Number(p.value).toFixed(2)
+                : fmt(p.value, 1);
+            html += p.marker + p.seriesName + ': ' + val + '<br/>';
+          }
+        });
+        return html;
+      }
+    },
+    legend: {
+      top: 6,
+      textStyle: { fontSize: 12, color: '#555' },
+      itemWidth: 14,
+      itemHeight: 8,
+    },
+    grid: { left: 70, right: 70, bottom: 90, top: 50 },
+    xAxis: {
+      type: 'category',
+      data: names,
+      axisLabel: {
+        rotate: 40,
+        fontSize: 10,
+        color: '#666',
+        interval: 0,
+      },
+      axisLine: { lineStyle: { color: '#ccc' } },
+    },
+    yAxis: { type: 'value', axisLabel: { color: '#666' }, splitLine: { lineStyle: { color: '#eee' } } },
+  }, extra);
+}
+
+// ===================== Main Page Charts =====================
+let charts = [];
+
+function renderChart1() {
+  const chart = echarts.init(document.getElementById('chart1'));
+  const ctrlPrice = RAW_DATA.map(d => { let v = toNum(d.control_price); return (v !== null && v > 0) ? v : null; });
+  const prebidCost = RAW_DATA.map(d => toNum(d.prebid_cost));
+  const dropRate = RAW_DATA.map(d => toNum(d.cost_drop_rate));
+  const mgmtRatio = RAW_DATA.map(d => toNum(d.mgmt_ratio));
+  const measureRatio = RAW_DATA.map(d => toNum(d.measure_ratio));
+  const dropPct = dropRate.map(v => v !== null ? v * 100 : null);
+  const mgmtPct = mgmtRatio.map(v => v !== null ? v * 100 : null);
+  const measurePct = measureRatio.map(v => v !== null ? v * 100 : null);
+
+  chart.setOption(baseOption({
+    grid: { left: 70, right: 70, bottom: 90, top: 50 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(13,43,78,0.92)',
+      borderColor: '#c5a55a',
+      borderWidth: 1,
+      textStyle: { color: '#fff', fontSize: 12 },
+      formatter: function(params) {
+        let idx = params[0].dataIndex;
+        let html = '<div style="font-weight:600;margin-bottom:6px;max-width:320px;word-break:break-all;">' + FULL_NAMES[idx] + '</div>';
+        params.forEach(p => {
+          if (p.value !== null && p.value !== undefined && !isNaN(p.value)) {
+            let val;
+            if (p.seriesName === '成本下浮率' || p.seriesName === '企管费指标' || p.seriesName === '措施费指标') {
+              val = p.value.toFixed(2) + '%';
+            } else {
+              val = fmt(p.value, 1) + ' 元/m²';
+            }
+            html += p.marker + p.seriesName + ': ' + val + '<br/>';
+          }
+        });
+        return html;
+      }
+    },
+    yAxis: [
+      { type: 'value', name: '元/m²', nameTextStyle: { color: '#888', fontSize: 11 },
+        axisLabel: { color: '#666' }, splitLine: { lineStyle: { color: '#eee' } } },
+      { type: 'value', name: '%', nameTextStyle: { color: '#888', fontSize: 11 },
+        axisLabel: { color: '#666', formatter: '{value}%' }, splitLine: { show: false } }
+    ],
+    series: [
+      { name: '控制价平米指标', type: 'line', data: ctrlPrice, smooth: true, yAxisIndex: 0,
+        lineStyle: { width: 2, color: '#1a3a5c' }, itemStyle: { color: '#1a3a5c' }, symbolSize: 6 },
+      { name: '标前成本平米指标', type: 'line', data: prebidCost, smooth: true, yAxisIndex: 0,
+        lineStyle: { width: 2, color: '#c5a55a' }, itemStyle: { color: '#c5a55a' }, symbolSize: 6 },
+      { name: '成本下浮率', type: 'line', data: dropPct, smooth: true, yAxisIndex: 1,
+        lineStyle: { width: 2, color: '#d4654a' }, itemStyle: { color: '#d4654a' }, symbolSize: 6 },
+      { name: '企管费指标', type: 'line', data: mgmtPct, smooth: true, yAxisIndex: 1,
+        lineStyle: { width: 2, color: '#2d7d8c' }, itemStyle: { color: '#2d7d8c' }, symbolSize: 6 },
+      { name: '措施费指标', type: 'line', data: measurePct, smooth: true, yAxisIndex: 1,
+        lineStyle: { width: 2, color: '#5b8a72' }, itemStyle: { color: '#5b8a72' }, symbolSize: 6 },
+    ]
+  }));
+  return chart;
+}
+
+function renderChart2() {
+  const chart = echarts.init(document.getElementById('chart2'));
+  const series = [
+    { name: '土建分部', key: 'civil', color: '#1a3a5c' },
+    { name: '措施费', key: 'measure', color: '#c5a55a' },
+    { name: '企管费', key: 'mgmt', color: '#2d7d8c' },
+    { name: '机电分部', key: 'mep', color: '#d4654a' },
+    { name: 'EPC设计费', key: 'epc', color: '#7b9ea8' },
+  ];
+  chart.setOption(baseOption({
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(13,43,78,0.92)',
+      borderColor: '#c5a55a',
+      borderWidth: 1,
+      textStyle: { color: '#fff', fontSize: 12 },
+      formatter: function(params) {
+        let idx = params[0].dataIndex;
+        let html = '<div style="font-weight:600;margin-bottom:6px;max-width:320px;word-break:break-all;">' + FULL_NAMES[idx] + '</div>';
+        params.forEach(p => {
+          if (p.value !== null && p.value !== undefined && !isNaN(p.value)) {
+            html += p.marker + p.seriesName + ': ' + fmt(p.value, 1) + ' 元/m²<br/>';
+          }
+        });
+        return html;
+      }
+    },
+    yAxis: { type: 'value', name: '元/m²', nameTextStyle: { color: '#888', fontSize: 11 },
+             axisLabel: { color: '#666' }, splitLine: { lineStyle: { color: '#eee' } } },
+    series: series.map(s => ({
+      name: s.name, type: 'line', smooth: true,
+      data: RAW_DATA.map(d => toNum(d[s.key])),
+      lineStyle: { width: 2, color: s.color },
+      itemStyle: { color: s.color },
+      symbolSize: 6,
+      connectNulls: true,
+    }))
+  }));
+  return chart;
+}
+
+function renderChart3() {
+  const chart = echarts.init(document.getElementById('chart3'));
+  const labels = ['基坑(土护降)','土方','支护','桩基','主体结构劳务','二次结构','装配式','钢结构',
+    '粗装修+屋面','防水','精装修','幕墙+外墙','门窗','园建绿化','标识','拆除加固改造',
+    '钢筋混凝土材料','周转材料'];
+  const colors = ['#1a3a5c','#c5a55a','#2d7d8c','#d4654a','#7b9ea8','#a8405a','#5b8a72','#8b6f47',
+    '#3a6b8c','#b8941f','#4a9a8e','#c2604a','#6b8eb0','#9a7b9e','#7a9b5e','#b5705e',
+    '#4a7a8e','#8c7a5b'];
+
+  chart.setOption(baseOption({
+    legend: { top: 0, textStyle: { fontSize: 10, color: '#555' }, itemWidth: 12, itemHeight: 8,
+      type: 'scroll', pageTextStyle: { color: '#888' } },
+    grid: { left: 60, right: 30, bottom: 90, top: 70 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(13,43,78,0.92)',
+      borderColor: '#c5a55a',
+      borderWidth: 1,
+      textStyle: { color: '#fff', fontSize: 12 },
+      formatter: function(params) {
+        let idx = params[0].dataIndex;
+        let html = '<div style="font-weight:600;margin-bottom:6px;max-width:320px;word-break:break-all;">' + FULL_NAMES[idx] + '</div>';
+        params.forEach(p => {
+          if (p.value !== null && p.value !== undefined && !isNaN(p.value)) {
+            html += p.marker + p.seriesName + ': ' + fmt(p.value, 1) + ' 元/m²<br/>';
+          }
+        });
+        return html;
+      }
+    },
+    yAxis: { type: 'value', name: '元/m²', nameTextStyle: { color: '#888', fontSize: 11 },
+             axisLabel: { color: '#666' }, splitLine: { lineStyle: { color: '#eee' } } },
+    series: labels.map((label, i) => ({
+      name: label, type: 'line', smooth: true,
+      data: RAW_DATA.map(d => toNum(d.chart3[label])),
+      lineStyle: { width: 1.8, color: colors[i] },
+      itemStyle: { color: colors[i] },
+      symbolSize: 5,
+      connectNulls: true,
+    }))
+  }));
+  return chart;
+}
+
+function renderChart4() {
+  const chart = echarts.init(document.getElementById('chart4'));
+  const items = [
+    { name: '混凝土(m³/m²)', key: '混凝土', color: '#1a3a5c', yAxisIndex: 1, decimals: 2 },
+    { name: '钢筋(kg/m²)', key: '钢筋', color: '#c5a55a', yAxisIndex: 0, decimals: 1 },
+    { name: '模板(m²/m²)', key: '模板', color: '#2d7d8c', yAxisIndex: 1, decimals: 2 },
+    { name: '钢结构(kg/m²)', key: '钢结构', color: '#d4654a', yAxisIndex: 0, decimals: 1 },
+  ];
+
+  chart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(13,43,78,0.92)',
+      borderColor: '#c5a55a',
+      borderWidth: 1,
+      textStyle: { color: '#fff', fontSize: 12 },
+      formatter: function(params) {
+        let idx = params[0].dataIndex;
+        let html = '<div style="font-weight:600;margin-bottom:6px;max-width:320px;word-break:break-all;">' + FULL_NAMES[idx] + '</div>';
+        params.forEach(p => {
+          if (p.value !== null && p.value !== undefined && !isNaN(p.value)) {
+            let unit = p.seriesName.includes('混凝土') ? ' m³/m²' : (p.seriesName.includes('模板') ? ' m²/m²' : ' kg/m²');
+            html += p.marker + p.seriesName + ': ' + Number(p.value).toFixed(p.seriesName.includes('混凝土') || p.seriesName.includes('模板') ? 2 : 1) + unit + '<br/>';
+          }
+        });
+        return html;
+      }
+    },
+    legend: { top: 6, textStyle: { fontSize: 12, color: '#555' }, itemWidth: 14, itemHeight: 8 },
+    grid: { left: 70, right: 70, bottom: 90, top: 50 },
+    xAxis: {
+      type: 'category',
+      data: PROJECT_NAMES,
+      axisLabel: { rotate: 40, fontSize: 10, color: '#666', interval: 0 },
+      axisLine: { lineStyle: { color: '#ccc' } },
+    },
+    yAxis: [
+      { type: 'value', name: 'kg/m²', nameTextStyle: { color: '#888', fontSize: 11 },
+        axisLabel: { color: '#666' }, splitLine: { lineStyle: { color: '#eee' } } },
+      { type: 'value', name: 'm³/m² & m²/m²', nameTextStyle: { color: '#888', fontSize: 11 },
+        axisLabel: { color: '#666' }, splitLine: { show: false } }
+    ],
+    series: items.map(s => ({
+      name: s.name, type: 'line', smooth: true,
+      yAxisIndex: s.yAxisIndex,
+      data: RAW_DATA.map(d => toNum(d.chart4[s.key])),
+      lineStyle: { width: 2, color: s.color },
+      itemStyle: { color: s.color },
+      symbolSize: 6,
+      connectNulls: true,
+    }))
+  });
+  return chart;
+}
+
+// ===================== MODAL CONTENT BUILDERS =====================
+let modalCharts = [];
+
+// Build a project-detail table for given dataset
+function buildProjectTable(items) {
+  const chart3Labels = ['基坑(土护降)','土方','支护','桩基','主体结构劳务','二次结构','装配式','钢结构',
+    '粗装修+屋面','防水','精装修','幕墙+外墙','门窗','园建绿化','标识','拆除加固改造',
+    '钢筋混凝土材料','周转材料'];
+  const headers = `
+    <th style="min-width:220px;">项目名称</th>
+    <th style="min-width:80px;">工程类别</th>
+    <th style="min-width:80px;">工程业态</th>
+    <th>控制价<br>平米指标</th>
+    <th>标前成本<br>平米指标</th>
+    <th>成本<br>下浮率</th>
+    <th>企管费<br>指标</th>
+    <th>措施费<br>指标</th>
+    <th>土建分部</th>
+    <th>措施费</th>
+    <th>企管费</th>
+    <th>机电分部</th>
+    <th>混凝土<br>(m³/m²)</th>
+    <th>钢筋<br>(kg/m²)</th>
+    <th>模板<br>(m²/m²)</th>
+  `;
+  const rows = items.map(d => `
+    <tr>
+      <td class="cat-name" style="text-align:left;max-width:320px;word-break:break-all;">${d.name}</td>
+      <td>${d.category || '—'}</td>
+      <td>${d.business || '—'}</td>
+      <td>${d.control_price && d.control_price > 0 ? fmt(d.control_price, 0) : '—'}</td>
+      <td class="highlight">${fmt(d.prebid_cost, 0)}</td>
+      <td>${fmtPct(d.cost_drop_rate, 2)}</td>
+      <td>${fmtPct(d.mgmt_ratio, 2)}</td>
+      <td>${fmtPct(d.measure_ratio, 2)}</td>
+      <td>${fmt(d.civil, 0)}</td>
+      <td>${fmt(d.measure, 0)}</td>
+      <td>${fmt(d.mgmt, 0)}</td>
+      <td>${fmt(d.mep, 0)}</td>
+      <td>${fmtNum(d.chart4 && d.chart4['混凝土'], 2)}</td>
+      <td>${fmtNum(d.chart4 && d.chart4['钢筋'], 1)}</td>
+      <td>${fmtNum(d.chart4 && d.chart4['模板'], 2)}</td>
+    </tr>
+  `).join('');
+  return `<div class="modal-table-wrap"><table class="data-table" style="font-size:12px;">
+    <thead><tr>${headers}</tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+// Build a summary-stat row for given dataset
+function buildStats(items, label) {
+  const avgCost = avg(items.map(d => toNum(d.prebid_cost)));
+  const avgCtrl = avg(items.map(d => toNum(d.control_price)).filter(v => v !== null && v > 0));
+  const avgDrop = avg(items.map(d => toNum(d.cost_drop_rate)));
+  const avgMgmt = avg(items.map(d => toNum(d.mgmt_ratio)));
+  const avgMeasure = avg(items.map(d => toNum(d.measure_ratio)));
+  return `
+    <div class="modal-stats">
+      <div class="modal-stat-card">
+        <div class="lbl">${label} · 项目数</div>
+        <div class="val">${items.length}<span class="u">个</span></div>
+      </div>
+      <div class="modal-stat-card gold">
+        <div class="lbl">平均标前成本平米指标</div>
+        <div class="val">${fmt(avgCost, 0)}<span class="u">元/m²</span></div>
+      </div>
+      <div class="modal-stat-card">
+        <div class="lbl">平均控制价平米指标</div>
+        <div class="val">${fmt(avgCtrl, 0)}<span class="u">元/m²</span></div>
+      </div>
+      <div class="modal-stat-card gold">
+        <div class="lbl">平均企管费 / 措施费</div>
+        <div class="val">${fmtPct(avgMgmt, 2)} <span style="font-size:14px;color:#888;">/</span> ${fmtPct(avgMeasure, 2)}</div>
+      </div>
+    </div>`;
+}
+
+// Build a detail-line chart for given dataset and items config
+function buildDetailChart(items, config, containerId) {
+  const names = items.map(d => shortName(d.name));
+  const fulls = items.map(d => d.name);
+  const chart = echarts.init(document.getElementById(containerId));
+
+  let option;
+  if (config.type === 'cost') {
+    // 标前成本平米指标 - 单Y轴
+    option = baseOption({
+      grid: { left: 60, right: 30, bottom: 90, top: 50 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(13,43,78,0.92)',
+        borderColor: '#c5a55a',
+        textStyle: { color: '#fff', fontSize: 12 },
+        formatter: function(params) {
+          let idx = params[0].dataIndex;
+          let html = '<div style="font-weight:600;margin-bottom:6px;max-width:300px;">' + fulls[idx] + '</div>';
+          params.forEach(p => { if (p.value != null) html += p.marker + p.seriesName + ': ' + fmt(p.value, 0) + ' 元/m²<br/>'; });
+          return html;
+        }
+      },
+      yAxis: { type: 'value', name: '元/m²', nameTextStyle: { color: '#888', fontSize: 11 },
+               axisLabel: { color: '#666' }, splitLine: { lineStyle: { color: '#eee' } } },
+      series: [{
+        name: '标前成本平米指标', type: 'line', smooth: true,
+        data: items.map(d => toNum(d.prebid_cost)),
+        lineStyle: { width: 3, color: '#c5a55a' },
+        itemStyle: { color: '#c5a55a' },
+        symbolSize: 8,
+        areaStyle: { color: 'rgba(197,165,90,0.12)' },
+      }]
+    }, names, fulls);
+  } else if (config.type === 'ctrl') {
+    option = baseOption({
+      grid: { left: 60, right: 30, bottom: 90, top: 50 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(13,43,78,0.92)',
+        borderColor: '#c5a55a',
+        textStyle: { color: '#fff', fontSize: 12 },
+        formatter: function(params) {
+          let idx = params[0].dataIndex;
+          let html = '<div style="font-weight:600;margin-bottom:6px;max-width:300px;">' + fulls[idx] + '</div>';
+          params.forEach(p => { if (p.value != null) html += p.marker + p.seriesName + ': ' + fmt(p.value, 0) + ' 元/m²<br/>'; });
+          return html;
+        }
+      },
+      yAxis: { type: 'value', name: '元/m²', nameTextStyle: { color: '#888', fontSize: 11 },
+               axisLabel: { color: '#666' }, splitLine: { lineStyle: { color: '#eee' } } },
+      series: [{
+        name: '控制价平米指标', type: 'line', smooth: true,
+        data: items.map(d => { let v = toNum(d.control_price); return (v !== null && v > 0) ? v : null; }),
+        lineStyle: { width: 3, color: '#1a3a5c' },
+        itemStyle: { color: '#1a3a5c' },
+        symbolSize: 8,
+        areaStyle: { color: 'rgba(26,58,92,0.12)' },
+      }]
+    }, names, fulls);
+  } else if (config.type === 'mgmt') {
+    option = baseOption({
+      grid: { left: 60, right: 30, bottom: 90, top: 50 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(13,43,78,0.92)',
+        borderColor: '#c5a55a',
+        textStyle: { color: '#fff', fontSize: 12 },
+        formatter: function(params) {
+          let idx = params[0].dataIndex;
+          let html = '<div style="font-weight:600;margin-bottom:6px;max-width:300px;">' + fulls[idx] + '</div>';
+          params.forEach(p => { if (p.value != null) html += p.marker + p.seriesName + ': ' + (p.value * 100).toFixed(2) + '%<br/>'; });
+          return html;
+        }
+      },
+      yAxis: { type: 'value', name: '%', nameTextStyle: { color: '#888', fontSize: 11 },
+               axisLabel: { color: '#666', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#eee' } } },
+      series: [{
+        name: '企管费指标', type: 'line', smooth: true,
+        data: items.map(d => toNum(d.mgmt_ratio) !== null ? toNum(d.mgmt_ratio) * 100 : null),
+        lineStyle: { width: 3, color: '#2d7d8c' },
+        itemStyle: { color: '#2d7d8c' },
+        symbolSize: 8,
+        areaStyle: { color: 'rgba(45,125,140,0.12)' },
+      }]
+    }, names, fulls);
+  } else if (config.type === 'measure') {
+    option = baseOption({
+      grid: { left: 60, right: 30, bottom: 90, top: 50 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(13,43,78,0.92)',
+        borderColor: '#c5a55a',
+        textStyle: { color: '#fff', fontSize: 12 },
+        formatter: function(params) {
+          let idx = params[0].dataIndex;
+          let html = '<div style="font-weight:600;margin-bottom:6px;max-width:300px;">' + fulls[idx] + '</div>';
+          params.forEach(p => { if (p.value != null) html += p.marker + p.seriesName + ': ' + (p.value * 100).toFixed(2) + '%<br/>'; });
+          return html;
+        }
+      },
+      yAxis: { type: 'value', name: '%', nameTextStyle: { color: '#888', fontSize: 11 },
+               axisLabel: { color: '#666', formatter: '{value}%' }, splitLine: { lineStyle: { color: '#eee' } } },
+      series: [{
+        name: '措施费指标', type: 'line', smooth: true,
+        data: items.map(d => toNum(d.measure_ratio) !== null ? toNum(d.measure_ratio) * 100 : null),
+        lineStyle: { width: 3, color: '#5b8a72' },
+        itemStyle: { color: '#5b8a72' },
+        symbolSize: 8,
+        areaStyle: { color: 'rgba(91,138,114,0.12)' },
+      }]
+    }, names, fulls);
+  } else if (config.type === 'multi') {
+    // 完整的 5 指标折线图
+    const ctrl = items.map(d => { let v = toNum(d.control_price); return (v !== null && v > 0) ? v : null; });
+    const cost = items.map(d => toNum(d.prebid_cost));
+    const drop = items.map(d => toNum(d.cost_drop_rate) !== null ? toNum(d.cost_drop_rate) * 100 : null);
+    const mgmt = items.map(d => toNum(d.mgmt_ratio) !== null ? toNum(d.mgmt_ratio) * 100 : null);
+    const meas = items.map(d => toNum(d.measure_ratio) !== null ? toNum(d.measure_ratio) * 100 : null);
+    option = baseOption({
+      grid: { left: 60, right: 60, bottom: 90, top: 50 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: 'rgba(13,43,78,0.92)',
+        borderColor: '#c5a55a',
+        textStyle: { color: '#fff', fontSize: 12 },
+        formatter: function(params) {
+          let idx = params[0].dataIndex;
+          let html = '<div style="font-weight:600;margin-bottom:6px;max-width:300px;">' + fulls[idx] + '</div>';
+          params.forEach(p => {
+            if (p.value == null) return;
+            let val = (p.seriesName === '成本下浮率' || p.seriesName === '企管费指标' || p.seriesName === '措施费指标')
+              ? p.value.toFixed(2) + '%' : fmt(p.value, 0) + ' 元/m²';
+            html += p.marker + p.seriesName + ': ' + val + '<br/>';
+          });
+          return html;
+        }
+      },
+      yAxis: [
+        { type: 'value', name: '元/m²', nameTextStyle: { color: '#888', fontSize: 11 },
+          axisLabel: { color: '#666' }, splitLine: { lineStyle: { color: '#eee' } } },
+        { type: 'value', name: '%', nameTextStyle: { color: '#888', fontSize: 11 },
+          axisLabel: { color: '#666', formatter: '{value}%' }, splitLine: { show: false } }
+      ],
+      series: [
+        { name: '控制价平米指标', type: 'line', data: ctrl, smooth: true, yAxisIndex: 0,
+          lineStyle: { width: 2, color: '#1a3a5c' }, itemStyle: { color: '#1a3a5c' }, symbolSize: 6, connectNulls: true },
+        { name: '标前成本平米指标', type: 'line', data: cost, smooth: true, yAxisIndex: 0,
+          lineStyle: { width: 2, color: '#c5a55a' }, itemStyle: { color: '#c5a55a' }, symbolSize: 6, connectNulls: true },
+        { name: '成本下浮率', type: 'line', data: drop, smooth: true, yAxisIndex: 1,
+          lineStyle: { width: 2, color: '#d4654a' }, itemStyle: { color: '#d4654a' }, symbolSize: 6, connectNulls: true },
+        { name: '企管费指标', type: 'line', data: mgmt, smooth: true, yAxisIndex: 1,
+          lineStyle: { width: 2, color: '#2d7d8c' }, itemStyle: { color: '#2d7d8c' }, symbolSize: 6, connectNulls: true },
+        { name: '措施费指标', type: 'line', data: meas, smooth: true, yAxisIndex: 1,
+          lineStyle: { width: 2, color: '#5b8a72' }, itemStyle: { color: '#5b8a72' }, symbolSize: 6, connectNulls: true },
+      ]
+    }, names, fulls);
+  }
+
+  chart.setOption(option);
+  return chart;
+}
+
+// ===================== MODAL OPENERS =====================
+function disposeModalCharts() {
+  modalCharts.forEach(c => c && c.dispose());
+  modalCharts = [];
+}
+
+function openModal(title, subtitle, bodyHTML, onRender) {
+  disposeModalCharts();
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalSubtitle').textContent = subtitle;
+  document.getElementById('modalBody').innerHTML = bodyHTML;
+  document.getElementById('modalMask').classList.add('active');
+  if (onRender) {
+    // Wait a frame for DOM
+    setTimeout(onRender, 50);
+  }
+}
+
+function closeModal() {
+  disposeModalCharts();
+  document.getElementById('modalMask').classList.remove('active');
+}
+
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalMask').addEventListener('click', (e) => {
+  if (e.target.id === 'modalMask') closeModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+// KPI click handler
+function openKPIModal(type) {
+  const items = RAW_DATA;
+  const typeMap = {
+    total: { title: '项目总数 · 详情', sub: 'ALL PROJECTS DETAIL' },
+    cost:  { title: '标前成本平米指标 · 详情', sub: 'PRE-BID COST INDEX DETAIL' },
+    ctrl:  { title: '控制价平米指标 · 详情', sub: 'CONTROL PRICE INDEX DETAIL' },
+    mgmt:  { title: '企管费指标 · 详情', sub: 'MGMT FEE RATIO DETAIL' },
+    measure: { title: '措施费指标 · 详情', sub: 'MEASURE FEE RATIO DETAIL' },
+  };
+  const configMap = {
+    total: { type: 'multi' },
+    cost:  { type: 'cost' },
+    ctrl:  { type: 'ctrl' },
+    mgmt:  { type: 'mgmt' },
+    measure: { type: 'measure' },
+  };
+  const m = typeMap[type];
+  const cfg = configMap[type];
+
+  const html = `
+    ${buildStats(items, '全部项目')}
+    <div class="modal-section">
+      <div class="modal-section-title">各项目 ${m.title.includes('企管') ? '企管费指标' : m.title.includes('措施') ? '措施费指标' : m.title.includes('控制价') ? '控制价平米指标' : m.title.includes('标前') ? '标前成本平米指标' : '核心指标'} 折线图</div>
+      <div class="modal-chart" id="modalChartMain"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">各项目详细数据</div>
+      ${buildProjectTable(items)}
+    </div>
+  `;
+  openModal(m.title, m.sub, html, () => {
+    const chart = buildDetailChart(items, cfg, 'modalChartMain');
+    modalCharts.push(chart);
+  });
+}
+
+// Category click handler
+function openCategoryModal(catName) {
+  const items = RAW_DATA.filter(d => d.category === catName);
+  const html = `
+    ${buildStats(items, '工程类别：' + catName)}
+    <div class="modal-section">
+      <div class="modal-section-title">「${catName}」各项目核心指标趋势</div>
+      <div class="modal-chart" id="modalChartMain"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">各项目详细数据</div>
+      ${buildProjectTable(items)}
+    </div>
+  `;
+  openModal('工程类别：' + catName, 'CATEGORY DETAIL', html, () => {
+    const chart = buildDetailChart(items, { type: 'multi' }, 'modalChartMain');
+    modalCharts.push(chart);
+  });
+}
+
+// Business click handler
+function openBusinessModal(bizName) {
+  const items = RAW_DATA.filter(d => d.business === bizName);
+  const html = `
+    ${buildStats(items, '工程业态：' + bizName)}
+    <div class="modal-section">
+      <div class="modal-section-title">「${bizName}」各项目核心指标趋势</div>
+      <div class="modal-chart" id="modalChartMain"></div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-title">各项目详细数据</div>
+      ${buildProjectTable(items)}
+    </div>
+  `;
+  openModal('工程业态：' + bizName, 'BUSINESS TYPE DETAIL', html, () => {
+    const chart = buildDetailChart(items, { type: 'multi' }, 'modalChartMain');
+    modalCharts.push(chart);
+  });
+}
+
+// ===================== EVENT DELEGATION (robust, works with dynamic content) =====================
+function setupEventDelegation() {
+  // Use document-level delegation so it works regardless of which elements are rendered
+  document.addEventListener('click', function(e) {
+    // 1) KPI card click
+    var card = e.target.closest('.kpi-card');
+    if (card && document.getElementById('kpiRow').contains(card)) {
+      var type = card.getAttribute('data-kpi');
+      if (type) { openKPIModal(type); return; }
+    }
+    // 2) Category table row click
+    var row = e.target.closest('[data-cat]');
+    if (row && document.getElementById('catTable').contains(row)) {
+      openCategoryModal(row.getAttribute('data-cat')); return;
+    }
+    // 3) Business table row click
+    row = e.target.closest('[data-biz]');
+    if (row && document.getElementById('bizTable').contains(row)) {
+      openBusinessModal(row.getAttribute('data-biz')); return;
+    }
+  });
+}
+
+// ===================== INIT =====================
+function init() {
+  setupEventDelegation();
+  renderKPI();
+  renderTables();
+  charts.push(renderChart1());
+  charts.push(renderChart2());
+  charts.push(renderChart3());
+  charts.push(renderChart4());
+  window.addEventListener('resize', () => {
+    charts.forEach(c => c && c.resize());
+    modalCharts.forEach(c => c && c.resize());
+  });
+}
+init();
+</script>
+</body>
+</html>
