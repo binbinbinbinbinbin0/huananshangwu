@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>华南分公司商务工作看板</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="./echarts.min.js"></script>
+<script>if (typeof echarts === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><\/script>');</script>
 <style>
 :root {
   --bg: #0f172a;
@@ -88,8 +91,6 @@ body {
   color: var(--text-muted);
 }
 .tab.active .badge { background: var(--accent); color: #fff; }
-.tab.reserved { color: var(--text-muted); font-style: italic; }
-.tab.reserved .badge { background: #451a1a; color: #fca5a5; }
 
 /* Content */
 .content {
@@ -100,6 +101,7 @@ body {
   position: absolute;
   inset: 0;
   display: none;
+  overflow-y: auto;
 }
 .panel.active { display: block; }
 .panel iframe {
@@ -107,53 +109,189 @@ body {
   background: var(--bg);
 }
 
-/* Placeholder for reserved tabs */
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 20px;
-  color: var(--text-muted);
+/* Upload & Data View */
+.upload-page {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
-.placeholder-icon {
-  font-size: 64px;
-  opacity: 0.3;
-}
-.placeholder h2 {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--text);
-}
-.placeholder p {
-  font-size: 14px;
-  max-width: 400px;
+.upload-area {
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  padding: 48px 24px;
   text-align: center;
-  line-height: 1.7;
+  background: var(--bg-card);
+  transition: all 0.2s;
+  cursor: pointer;
 }
-.placeholder .tag-list {
+.upload-area:hover, .upload-area.dragover {
+  border-color: var(--accent);
+  background: rgba(59,130,246,0.05);
+}
+.upload-area .icon { font-size: 48px; margin-bottom: 12px; }
+.upload-area h3 { font-size: 18px; margin-bottom: 8px; }
+.upload-area p { color: var(--text-muted); font-size: 14px; }
+.upload-area input[type="file"] { display: none; }
+.upload-area .hint {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.03);
+  padding: 10px 16px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+/* KPI Cards */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin: 20px 0;
+}
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: linear-gradient(var(--accent), var(--accent-teal));
+}
+.kpi-card.gold::before { background: linear-gradient(var(--accent-gold), var(--accent-red)); }
+.kpi-card.green::before { background: linear-gradient(var(--accent-green), var(--accent-teal)); }
+.kpi-card.purple::before { background: linear-gradient(var(--accent-purple), var(--accent)); }
+.kpi-card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.kpi-card .value { font-size: 26px; font-weight: 700; }
+
+/* Section Title */
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 24px 0 14px;
+  padding-left: 12px;
+  border-left: 4px solid var(--accent);
+}
+
+/* Table */
+.data-table-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.data-table-wrap .table-scroll {
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+}
+.data-table-wrap .table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.data-table-wrap .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+table.data-table th {
+  background: #0f172a;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+table.data-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(51,65,85,0.4);
+  white-space: nowrap;
+}
+table.data-table tr:hover td { background: rgba(59,130,246,0.05); }
+table.data-table tr:nth-child(even) td { background: rgba(255,255,255,0.01); }
+table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Chart container */
+.chart-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  height: 360px;
+}
+
+/* Toolbar */
+.toolbar {
   display: flex;
   gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
   flex-wrap: wrap;
-  justify-content: center;
-  margin-top: 10px;
 }
-.placeholder .tag {
-  padding: 6px 14px;
+.toolbar input, .toolbar select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+}
+.toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
+.toolbar .btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
-  background: var(--bg-card);
+  cursor: pointer;
+}
+.toolbar .btn:hover { opacity: 0.9; }
+.toolbar .btn.ghost {
+  background: transparent;
   border: 1px solid var(--border);
   color: var(--text-muted);
 }
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 60px 24px;
+  color: var(--text-muted);
+}
+.empty-state .icon { font-size: 56px; opacity: 0.4; margin-bottom: 16px; }
+.empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 8px; }
+
+/* Status badge */
+.badge-status {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-status.done { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+.badge-status.pending { background: rgba(245,158,11,0.15); color: var(--accent-gold); }
+.badge-status.risk { background: rgba(239,68,68,0.15); color: var(--accent-red); }
 
 /* Responsive */
 @media (max-width: 768px) {
   .header { flex-direction: column; align-items: flex-start; gap: 8px; }
   .header h1 { font-size: 16px; }
   .tab { padding: 10px 14px; font-size: 13px; }
+  .upload-page { padding: 16px; }
 }
 </style>
 </head>
@@ -167,7 +305,7 @@ body {
       <div class="sub">投标 · 成本 · 结算 · 一体化数据平台</div>
     </div>
   </div>
-  <div class="header-right">数据更新：2026-07</div>
+  <div class="header-right">数据更新：2026-07-30</div>
 </div>
 
 <div class="tabs-container" id="tabs">
@@ -183,54 +321,89 @@ body {
   <div class="tab" data-target="tab-settle" onclick="switchTab(this)">
     💰 结算数据 <span class="badge">已接入</span>
   </div>
-  <div class="tab reserved" data-target="tab-upstream" onclick="switchTab(this)">
-    🔗 上游结算数据 <span class="badge">预留</span>
+  <div class="tab" data-target="tab-upstream" onclick="switchTab(this)">
+    🔗 上游结算数据 <span class="badge">已接入</span>
   </div>
-  <div class="tab reserved" data-target="tab-cost" onclick="switchTab(this)">
-    🏗️ 成本数据 <span class="badge">预留</span>
+  <div class="tab" data-target="tab-cost" onclick="switchTab(this)">
+    🏗️ 成本数据 <span class="badge">可上传</span>
   </div>
 </div>
 
 <div class="content">
+  <!-- 投标数据 -->
   <div class="panel active" id="tab-bid">
     <iframe src="./投标数据看板.html" title="投标数据"></iframe>
   </div>
+  <!-- 标前成本指标 -->
   <div class="panel" id="tab-cost-index">
     <iframe src="./dashboard-标前成本指标数据看板.html" title="标前成本指标数据"></iframe>
   </div>
+  <!-- 标前成本A值偏差率 -->
   <div class="panel" id="tab-deviation">
     <iframe src="./标前成本A值偏差率-V1(1).html" title="标前成本A值偏差率"></iframe>
   </div>
+  <!-- 结算数据 -->
   <div class="panel" id="tab-settle">
     <iframe src="./结算数据看板.html" title="结算数据"></iframe>
   </div>
+
+  <!-- ========== 上游结算数据 ========== -->
   <div class="panel" id="tab-upstream">
-    <div class="placeholder">
-      <div class="placeholder-icon">🔗</div>
-      <h2>上游结算数据</h2>
-      <p>该模块为预留接口，待上游结算数据接入后自动展示。<br>预计包含：甲方结算进度、结算金额、结算率等核心指标。</p>
-      <div class="tag-list">
-        <span class="tag">📋 甲方结算台账</span>
-        <span class="tag">💹 结算金额统计</span>
-        <span class="tag">📊 结算率分析</span>
-      </div>
-    </div>
+    <iframe src="./上游结算数据看板.html" title="上游结算数据"></iframe>
   </div>
+
+  <!-- ========== 成本数据（Excel上传解析） ========== -->
   <div class="panel" id="tab-cost">
-    <div class="placeholder">
-      <div class="placeholder-icon">🏗️</div>
-      <h2>成本数据</h2>
-      <p>该模块为预留接口，待成本数据接入后自动展示。<br>预计包含：实际成本、预算对比、成本偏差分析等核心指标。</p>
-      <div class="tag-list">
-        <span class="tag">📈 实际成本趋势</span>
-        <span class="tag">⚖️ 预算vs实际</span>
-        <span class="tag">🔍 成本偏差分析</span>
+    <div class="upload-page">
+      <!-- 上传区域 -->
+      <div id="co-upload-zone" class="upload-area" onclick="document.getElementById('co-file').click()">
+        <div class="icon">📤</div>
+        <h3>点击或拖拽上传 Excel 文件</h3>
+        <p>支持 .xlsx / .xls / .csv 格式，自动解析并展示数据</p>
+        <div class="hint">💡 建议列名：项目名称 | 成本科目 | 预算金额 | 实际金额 | 偏差金额 | 偏差率 | 月份</div>
+        <input type="file" id="co-file" accept=".xlsx,.xls,.csv" onchange="handleUpload(this, 'cost')">
+      </div>
+
+      <!-- 数据展示区 -->
+      <div id="co-data-area" style="display:none">
+        <div class="toolbar">
+          <span style="font-size:14px;font-weight:600">🏗️ 成本数据</span>
+          <input type="text" id="co-search" placeholder="搜索项目名称 / 成本科目…" oninput="filterTable('co')">
+          <select id="co-filter-type" onchange="filterTable('co')"><option value="">全部类型</option></select>
+          <button class="btn ghost" onclick="clearData('co')">清除数据</button>
+          <button class="btn" onclick="document.getElementById('co-file').click()">重新上传</button>
+        </div>
+
+        <div class="kpi-row" id="co-kpis"></div>
+
+        <div class="section-title">📊 预算 vs 实际</div>
+        <div class="chart-box" id="co-chart-compare"></div>
+
+        <div class="section-title">📈 成本偏差趋势</div>
+        <div class="chart-box" id="co-chart-trend"></div>
+
+        <div class="section-title">📋 数据明细</div>
+        <div class="data-table-wrap">
+          <div class="table-scroll">
+            <table class="data-table" id="co-table">
+              <thead><tr></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
+// ===================== 全局状态 =====================
+const DATA_STORE = {
+  up: { raw: [], filtered: [], headers: [] },
+  co: { raw: [], filtered: [], headers: [] }
+};
+
+// ===================== Tab 切换 =====================
 function switchTab(el) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -239,15 +412,318 @@ function switchTab(el) {
   if (target) target.classList.add('active');
 }
 
-// Handle keyboard navigation
 document.addEventListener('keydown', function(e) {
   const tabs = Array.from(document.querySelectorAll('.tab'));
   const activeIdx = tabs.findIndex(t => t.classList.contains('active'));
-  if (e.key === 'ArrowRight' && activeIdx < tabs.length - 1) {
-    switchTab(tabs[activeIdx + 1]);
-  } else if (e.key === 'ArrowLeft' && activeIdx > 0) {
-    switchTab(tabs[activeIdx - 1]);
+  if (e.key === 'ArrowRight' && activeIdx < tabs.length - 1) switchTab(tabs[activeIdx + 1]);
+  else if (e.key === 'ArrowLeft' && activeIdx > 0) switchTab(tabs[activeIdx - 1]);
+});
+
+// ===================== 拖拽上传 =====================
+['up', 'co'].forEach(prefix => {
+  const zone = document.getElementById(prefix + '-upload-zone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const input = document.getElementById(prefix + '-file');
+      const dt = new DataTransfer();
+      dt.items.add(files[0]);
+      input.files = dt.files;
+      handleUpload(input, prefix === 'up' ? 'upstream' : 'cost');
+    }
+  });
+});
+
+// ===================== Excel 解析 =====================
+function handleUpload(input, type) {
+  const file = input.files[0];
+  if (!file) return;
+  const prefix = type === 'upstream' ? 'up' : 'co';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+
+      if (jsonData.length < 2) {
+        alert('文件数据为空或格式不正确');
+        return;
+      }
+
+      const headers = jsonData[0].map(h => String(h).trim());
+      const rows = jsonData.slice(1).map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? row[i] : ''; });
+        return obj;
+      }).filter(r => Object.values(r).some(v => v !== ''));
+
+      DATA_STORE[prefix].raw = rows;
+      DATA_STORE[prefix].filtered = rows;
+      DATA_STORE[prefix].headers = headers;
+
+      // 显示数据区，隐藏上传区
+      document.getElementById(prefix + '-upload-zone').style.display = 'none';
+      document.getElementById(prefix + '-data-area').style.display = 'block';
+
+      // 更新下拉选项
+      updateFilterOptions(prefix);
+
+      // 渲染
+      renderAll(prefix);
+    } catch (err) {
+      alert('解析失败：' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearData(prefix) {
+  DATA_STORE[prefix].raw = [];
+  DATA_STORE[prefix].filtered = [];
+  DATA_STORE[prefix].headers = [];
+  document.getElementById(prefix + '-upload-zone').style.display = 'block';
+  document.getElementById(prefix + '-data-area').style.display = 'none';
+  document.getElementById(prefix + '-file').value = '';
+}
+
+function updateFilterOptions(prefix) {
+  if (prefix === 'co') {
+    const sel = document.getElementById('co-filter-type');
+    const types = [...new Set(DATA_STORE.co.raw.map(r => r['成本科目'] || r['科目'] || '').filter(Boolean))];
+    sel.innerHTML = '<option value="">全部类型</option>' + types.map(t => `<option>${t}</option>`).join('');
   }
+}
+
+// ===================== 筛选 =====================
+function filterTable(prefix) {
+  const store = DATA_STORE[prefix];
+  let rows = store.raw;
+
+  if (prefix === 'up') {
+    const kw = document.getElementById('up-search').value.trim().toLowerCase();
+    const st = document.getElementById('up-filter-status').value;
+    if (kw) rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(kw)));
+    if (st) rows = rows.filter(r => String(r['状态'] || '').includes(st));
+  } else {
+    const kw = document.getElementById('co-search').value.trim().toLowerCase();
+    const tp = document.getElementById('co-filter-type').value;
+    if (kw) rows = rows.filter(r => Object.values(r).some(v => String(v).toLowerCase().includes(kw)));
+    if (tp) rows = rows.filter(r => (r['成本科目'] || r['科目'] || '') === tp);
+  }
+
+  store.filtered = rows;
+  renderAll(prefix);
+}
+
+// ===================== 渲染 =====================
+function renderAll(prefix) {
+  const store = DATA_STORE[prefix];
+  renderKPIs(prefix);
+  renderTable(prefix);
+  renderCharts(prefix);
+}
+
+// ---------- KPI ----------
+function renderKPIs(prefix) {
+  const rows = DATA_STORE[prefix].filtered;
+  if (rows.length === 0) { document.getElementById(prefix + '-kpis').innerHTML = ''; return; }
+
+  if (prefix === 'up') {
+    const totalAmt = sum(rows, r => num(r['合同金额']));
+    const settledAmt = sum(rows, r => num(r['已结算金额']));
+    const count = rows.length;
+    const settledCount = rows.filter(r => String(r['状态'] || '').includes('已结算')).length;
+    const rate = totalAmt > 0 ? (settledAmt / totalAmt * 100).toFixed(1) : 0;
+
+    document.getElementById('up-kpis').innerHTML = `
+      <div class="kpi-card purple"><div class="label">项目总数</div><div class="value">${count} 个</div></div>
+      <div class="kpi-card"><div class="label">合同总金额</div><div class="value">${fmtWan(totalAmt)}</div></div>
+      <div class="kpi-card green"><div class="label">已结算金额</div><div class="value">${fmtWan(settledAmt)}</div></div>
+      <div class="kpi-card gold"><div class="label">整体结算率</div><div class="value">${rate}%</div></div>
+      <div class="kpi-card"><div class="label">已结算项目</div><div class="value">${settledCount} / ${count}</div></div>
+    `;
+  } else {
+    const budget = sum(rows, r => num(r['预算金额']));
+    const actual = sum(rows, r => num(r['实际金额']));
+    const diff = actual - budget;
+    const diffRate = budget > 0 ? (diff / budget * 100).toFixed(1) : 0;
+    const count = rows.length;
+
+    document.getElementById('co-kpis').innerHTML = `
+      <div class="kpi-card purple"><div class="label">记录数</div><div class="value">${count} 条</div></div>
+      <div class="kpi-card"><div class="label">预算合计</div><div class="value">${fmtWan(budget)}</div></div>
+      <div class="kpi-card green"><div class="label">实际合计</div><div class="value">${fmtWan(actual)}</div></div>
+      <div class="kpi-card ${diff >= 0 ? 'gold' : ''}"><div class="label">偏差金额</div><div class="value">${diff >= 0 ? '+' : ''}${fmtWan(diff)}</div></div>
+      <div class="kpi-card ${diff >= 0 ? 'gold' : 'green'}"><div class="label">偏差率</div><div class="value">${diff >= 0 ? '+' : ''}${diffRate}%</div></div>
+    `;
+  }
+}
+
+// ---------- Table ----------
+function renderTable(prefix) {
+  const store = DATA_STORE[prefix];
+  const thead = document.querySelector('#' + prefix + '-table thead tr');
+  const tbody = document.querySelector('#' + prefix + '-table tbody');
+
+  if (store.headers.length === 0) { thead.innerHTML = ''; tbody.innerHTML = ''; return; }
+
+  thead.innerHTML = store.headers.map(h => `<th>${h}</th>`).join('');
+
+  tbody.innerHTML = store.filtered.map(row => {
+    return '<tr>' + store.headers.map(h => {
+      let v = row[h];
+      // 自动识别状态列加badge
+      if (h === '状态') {
+        const s = String(v);
+        let cls = 'pending';
+        if (s.includes('已结算') || s.includes('完成')) cls = 'done';
+        else if (s.includes('风险') || s.includes('异常')) cls = 'risk';
+        return `<td><span class="badge-status ${cls}">${v}</span></td>`;
+      }
+      // 数值右对齐
+      if (typeof v === 'number' || (typeof v === 'string' && !isNaN(parseFloat(v)) && String(v).match(/^-?\d+(\.\d+)?$/))) {
+        return `<td class="num">${fmtNum(v)}</td>`;
+      }
+      return `<td>${v === null || v === undefined ? '—' : v}</td>`;
+    }).join('') + '</tr>';
+  }).join('');
+}
+
+// ---------- Charts ----------
+let charts = {};
+function renderCharts(prefix) {
+  const rows = DATA_STORE[prefix].filtered;
+  if (rows.length === 0) return;
+
+  if (prefix === 'up') {
+    // 概览：按状态分组饼图
+    const byStatus = {};
+    rows.forEach(r => {
+      const s = String(r['状态'] || '未分类').trim();
+      byStatus[s] = (byStatus[s] || 0) + 1;
+    });
+    renderChart(prefix + '-chart-overview', {
+      title: { text: '按状态分布', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+      tooltip: { trigger: 'item' },
+      legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+      series: [{
+        type: 'pie', radius: ['40%', '70%'],
+        data: Object.entries(byStatus).map(([k, v]) => ({ name: k, value: v })),
+        label: { color: '#f1f5f9' },
+        itemStyle: { borderRadius: 6, borderColor: '#1e293b', borderWidth: 2 }
+      }]
+    }, ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6']);
+
+    // 结算率分布柱状图
+    const bins = { '<30%': 0, '30-60%': 0, '60-90%': 0, '≥90%': 0 };
+    rows.forEach(r => {
+      const rate = num(r['结算率']);
+      if (rate < 30) bins['<30%']++;
+      else if (rate < 60) bins['30-60%']++;
+      else if (rate < 90) bins['60-90%']++;
+      else bins['≥90%']++;
+    });
+    renderChart(prefix + '-chart-dist', {
+      title: { text: '结算率区间分布', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+      tooltip: { trigger: 'axis' },
+      grid: { left: 50, right: 20, top: 40, bottom: 30 },
+      xAxis: { type: 'category', data: Object.keys(bins), axisLabel: { color: '#94a3b8' } },
+      yAxis: { type: 'value', axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#334155' } } },
+      series: [{
+        type: 'bar', data: Object.values(bins),
+        itemStyle: { borderRadius: [4, 4, 0, 0], color: '#3b82f6' },
+        label: { show: true, position: 'top', color: '#f1f5f9' }
+      }]
+    });
+  } else {
+    // 预算 vs 实际：按项目分组
+    const byProj = {};
+    rows.forEach(r => {
+      const p = r['项目名称'] || '未分类';
+      if (!byProj[p]) byProj[p] = { budget: 0, actual: 0 };
+      byProj[p].budget += num(r['预算金额']);
+      byProj[p].actual += num(r['实际金额']);
+    });
+    const projs = Object.keys(byProj);
+    renderChart(prefix + '-chart-compare', {
+      title: { text: '预算 vs 实际（按项目）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+      grid: { left: 50, right: 20, top: 40, bottom: 50 },
+      xAxis: { type: 'category', data: projs, axisLabel: { color: '#94a3b8', rotate: 30 } },
+      yAxis: { type: 'value', axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#334155' } } },
+      series: [
+        { name: '预算', type: 'bar', data: projs.map(p => byProj[p].budget), itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] } },
+        { name: '实际', type: 'bar', data: projs.map(p => byProj[p].actual), itemStyle: { color: '#10b981', borderRadius: [4, 4, 0, 0] } }
+      ]
+    });
+
+    // 偏差趋势：按月份
+    const byMonth = {};
+    rows.forEach(r => {
+      const m = r['月份'] || r['日期'] || '未分类';
+      if (!byMonth[m]) byMonth[m] = { diff: 0, count: 0 };
+      byMonth[m].diff += num(r['偏差金额'] || (num(r['实际金额']) - num(r['预算金额'])));
+      byMonth[m].count++;
+    });
+    const months = Object.keys(byMonth).sort();
+    renderChart(prefix + '-chart-trend', {
+      title: { text: '成本偏差趋势（按月份）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+      tooltip: { trigger: 'axis' },
+      grid: { left: 50, right: 20, top: 40, bottom: 30 },
+      xAxis: { type: 'category', data: months, axisLabel: { color: '#94a3b8' } },
+      yAxis: { type: 'value', axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#334155' } } },
+      series: [{
+        type: 'line', data: months.map(m => byMonth[m].diff),
+        smooth: true, symbolSize: 8,
+        lineStyle: { width: 3, color: '#f59e0b' },
+        itemStyle: { color: '#f59e0b' },
+        areaStyle: { color: 'rgba(245,158,11,0.15)' }
+      }]
+    });
+  }
+}
+
+function renderChart(id, option, colors) {
+  if (colors) option.color = colors;
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (charts[id]) charts[id].dispose();
+  charts[id] = echarts.init(el, 'dark');
+  charts[id].setOption(option);
+}
+
+// ===================== 工具函数 =====================
+function num(v) {
+  if (v === null || v === undefined || v === '') return 0;
+  const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/,/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+function sum(arr, fn) { return arr.reduce((a, b) => a + fn(b), 0); }
+function fmtWan(v) {
+  const n = Math.abs(num(v));
+  if (n >= 1e8) return (v < 0 ? '-' : '') + (n / 1e8).toFixed(2) + ' 亿';
+  if (n >= 1e4) return (v < 0 ? '-' : '') + (n / 1e4).toFixed(2) + ' 万';
+  return (v < 0 ? '-' : '') + n.toLocaleString('zh-CN');
+}
+function fmtNum(v) {
+  const n = num(v);
+  if (n === 0 && (v === '' || v === null || v === undefined)) return '—';
+  return n.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+}
+
+// 窗口 resize 时重绘图表
+window.addEventListener('resize', () => {
+  Object.values(charts).forEach(c => c && c.resize());
 });
 </script>
 
