@@ -325,7 +325,7 @@ table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
     🔗 上游结算数据 <span class="badge">已接入</span>
   </div>
   <div class="tab" data-target="tab-cost" onclick="switchTab(this)">
-    🏗️ 成本数据 <span class="badge">可上传</span>
+    🏗️ 成本数据 <span class="badge">已接入</span>
   </div>
 </div>
 
@@ -352,47 +352,9 @@ table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
     <iframe src="./上游结算数据看板.html" title="上游结算数据"></iframe>
   </div>
 
-  <!-- ========== 成本数据（Excel上传解析） ========== -->
+  <!-- ========== 成本数据 ========== -->
   <div class="panel" id="tab-cost">
-    <div class="upload-page">
-      <!-- 上传区域 -->
-      <div id="co-upload-zone" class="upload-area" onclick="document.getElementById('co-file').click()">
-        <div class="icon">📤</div>
-        <h3>点击或拖拽上传 Excel 文件</h3>
-        <p>支持 .xlsx / .xls / .csv 格式，自动解析并展示数据</p>
-        <div class="hint">💡 建议列名：项目名称 | 成本科目 | 预算金额 | 实际金额 | 偏差金额 | 偏差率 | 月份</div>
-        <input type="file" id="co-file" accept=".xlsx,.xls,.csv" onchange="handleUpload(this, 'cost')">
-      </div>
-
-      <!-- 数据展示区 -->
-      <div id="co-data-area" style="display:none">
-        <div class="toolbar">
-          <span style="font-size:14px;font-weight:600">🏗️ 成本数据</span>
-          <input type="text" id="co-search" placeholder="搜索项目名称 / 成本科目…" oninput="filterTable('co')">
-          <select id="co-filter-type" onchange="filterTable('co')"><option value="">全部类型</option></select>
-          <button class="btn ghost" onclick="clearData('co')">清除数据</button>
-          <button class="btn" onclick="document.getElementById('co-file').click()">重新上传</button>
-        </div>
-
-        <div class="kpi-row" id="co-kpis"></div>
-
-        <div class="section-title">📊 预算 vs 实际</div>
-        <div class="chart-box" id="co-chart-compare"></div>
-
-        <div class="section-title">📈 成本偏差趋势</div>
-        <div class="chart-box" id="co-chart-trend"></div>
-
-        <div class="section-title">📋 数据明细</div>
-        <div class="data-table-wrap">
-          <div class="table-scroll">
-            <table class="data-table" id="co-table">
-              <thead><tr></tr></thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
+    <iframe src="./成本数据看板.html" title="成本数据"></iframe>
   </div>
 </div>
 

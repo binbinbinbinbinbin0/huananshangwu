@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成本数据看板 · 华南分公司在施项目</title>
+<script src="./echarts.min.js"></script>
+<script>if (typeof echarts === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><\/script>');</script>
+<style>
+:root {
+  --bg: #0f172a; --bg-card: #1e293b; --border: #334155;
+  --text: #f1f5f9; --text-muted: #94a3b8;
+  --accent: #3b82f6; --gold: #f59e0b; --green: #10b981;
+  --purple: #8b5cf6; --teal: #14b8a6; --red: #ef4444;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+}
+.page { max-width: 1440px; margin: 0 auto; padding: 20px 24px 48px; }
+
+.topbar {
+  background: linear-gradient(135deg, #7c2d12 0%, #9a3412 50%, #b45309 100%);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 18px 22px; display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px;
+}
+.topbar h1 { font-size: 20px; letter-spacing: 1px; }
+.topbar .sub { font-size: 12px; opacity: .75; margin-top: 4px; }
+.topbar .meta { font-size: 12px; color: #ffedd5; text-align: right; line-height: 1.7; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 18px 0; }
+.kpi-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; position: relative; overflow: hidden;
+}
+.kpi-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(var(--accent), var(--teal)); }
+.kpi-card.gold::before { background: linear-gradient(var(--gold), var(--red)); }
+.kpi-card.green::before { background: linear-gradient(var(--green), var(--teal)); }
+.kpi-card.purple::before { background: linear-gradient(var(--purple), var(--accent)); }
+.kpi-card.red::before { background: linear-gradient(var(--red), var(--gold)); }
+.kpi-card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.kpi-card .value { font-size: 24px; font-weight: 700; }
+.kpi-card .foot { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.kpi-card .foot .bad { color: var(--red); font-weight: 600; }
+.kpi-card .foot .good { color: var(--green); font-weight: 600; }
+
+.section-title { font-size: 16px; font-weight: 600; margin: 26px 0 14px; padding-left: 12px; border-left: 4px solid var(--gold); }
+.section-title small { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
+
+.insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.insight { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.insight .head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.insight ul { list-style: none; }
+.insight li { font-size: 13px; color: #cbd5e1; line-height: 1.8; padding-left: 14px; position: relative; }
+.insight li::before { content: "•"; position: absolute; left: 0; color: var(--gold); }
+.insight li b { color: var(--text); }
+.insight li .neg { color: var(--red); font-weight: 600; }
+.insight li .pos { color: var(--green); font-weight: 600; }
+.tag { font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+.tag.risk { background: rgba(239,68,68,.15); color: var(--red); }
+.tag.warn { background: rgba(245,158,11,.15); color: var(--gold); }
+.tag.ok { background: rgba(16,185,129,.15); color: var(--green); }
+
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.chart-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; height: 380px; }
+.chart-box.wide { grid-column: 1 / -1; height: 430px; }
+@media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+
+.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.toolbar input[type="text"], .toolbar select {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 12px; border-radius: 8px; font-size: 13px; outline: none;
+}
+.toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
+.seg-btns { display: flex; gap: 6px; }
+.seg-btns button {
+  background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+  padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+}
+.seg-btns button.active { background: var(--gold); border-color: var(--gold); color: #0f172a; font-weight: 600; }
+.btn {
+  background: var(--accent); color: #fff; border: none; padding: 8px 16px;
+  border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn:hover { opacity: .9; }
+.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+.btn.editing { background: var(--gold); color: #0f172a; }
+.edit-hint { font-size: 12px; color: var(--gold); }
+
+.data-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.table-scroll { overflow: auto; max-height: 560px; }
+.table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.data-table th {
+  background: #0f172a; color: var(--text-muted); padding: 10px 12px; text-align: left;
+  font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap;
+  position: sticky; top: 0; z-index: 1;
+}
+table.data-table td { padding: 8px 12px; border-bottom: 1px solid rgba(51,65,85,.4); white-space: nowrap; }
+table.data-table tr:hover td { background: rgba(245,158,11,.06); }
+table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data-table .neg { color: var(--red); }
+table.data-table .pos { color: var(--green); }
+.badge-status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.badge-status.done { background: rgba(16,185,129,.15); color: var(--green); }
+.badge-status.pending { background: rgba(245,158,11,.15); color: var(--gold); }
+.badge-status.risk { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-status.na { background: rgba(148,163,184,.15); color: var(--text-muted); }
+
+.edit-input, .edit-select {
+  background: #0f172a; border: 1px solid var(--gold); color: var(--text);
+  border-radius: 6px; padding: 4px 8px; font-size: 12.5px; outline: none;
+}
+.edit-input { width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
+.edit-input.edit-text { width: 170px; text-align: left; }
+.edit-select { width: 110px; }
+.edit-input:focus, .edit-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,.25); }
+.row-del { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); cursor: pointer; padding: 3px 8px; font-size: 12px; }
+.row-del:hover { border-color: var(--red); color: var(--red); }
+td.edited-cell { position: relative; }
+td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.modified-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); margin-left: 6px; vertical-align: middle; }
+.footnote { font-size: 12px; color: var(--text-muted); margin-top: 14px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <div>
+      <h1>🏗️ 成本数据看板</h1>
+      <div class="sub">在施项目成本分析 · 盈亏 / 风险 / 目标成本偏差 / 策划创效 一体化分析</div>
+    </div>
+    <div class="meta">
+      数据来源：在施项目成本分析.xlsx<br>
+      金额单位：万元 ｜ 比率单位：%
+    </div>
+  </div>
+
+  <div class="kpi-row" id="kpis"></div>
+
+  <div class="section-title">🧭 核心分析结论 <small>基于 18 个在施项目成本数据自动生成</small></div>
+  <div class="insight-grid" id="insights"></div>
+
+  <div class="section-title">📉 盈亏与收益率分析 <small>预计收益额 / 实际收益率 vs 承接效益率 vs 核定收益率</small></div>
+  <div class="chart-grid">
+    <div class="chart-box wide" id="chart-profit"></div>
+    <div class="chart-box wide" id="chart-rate"></div>
+  </div>
+
+  <div class="section-title">💰 目标成本执行分析 <small>a值目标成本 vs 实际履约成本（纠偏后）</small></div>
+  <div class="chart-grid">
+    <div class="chart-box" id="chart-cost"></div>
+    <div class="chart-box" id="chart-plan"></div>
+  </div>
+
+  <div class="section-title">⚠️ 风险与资金分析 <small>风险等级 / 盈亏状态 / 存贷差 / 完工进度</small></div>
+  <div class="chart-grid">
+    <div class="chart-box" id="chart-risk"></div>
+    <div class="chart-box" id="chart-status"></div>
+    <div class="chart-box" id="chart-loan"></div>
+    <div class="chart-box" id="chart-progress"></div>
+  </div>
+
+  <div class="section-title">📋 项目明细 <small>开启「编辑模式」后可直接修改数据，整板实时联动</small></div>
+  <div class="toolbar">
+    <div class="seg-btns" id="seg-btns">
+      <button class="active" data-sec="全部">全部项目</button>
+      <button data-sec="差于目标">差于目标</button>
+      <button data-sec="优于目标">优于目标</button>
+    </div>
+    <input type="text" id="search" placeholder="搜索项目名称…">
+    <select id="risk-filter"><option value="">全部风险</option><option>高风险</option><option>中风险</option><option>低风险</option><option>无风险</option></select>
+    <button class="btn" id="edit-toggle">✏️ 编辑模式</button>
+    <button class="btn ghost" id="add-row" style="display:none">＋ 新增项目</button>
+    <button class="btn ghost" id="reset-data" style="display:none">↩️ 恢复默认</button>
+    <span class="edit-hint" id="edit-hint" style="display:none">编辑中：金框单元格可直接修改；偏差率与目标成本偏差额实时重算；比率列按百分数填写（如 -3.26 表示 -3.26%）</span>
+  </div>
+  <div class="data-table-wrap">
+    <div class="table-scroll">
+      <table class="data-table" id="detail-table">
+        <thead><tr></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footnote">
+    注：①偏差率 = 实际收益率（含已实现策划）− 承接效益率(A)；目标成本偏差额 = 实际履约成本（纠偏后）− 累计目标成本(a值)，随修改实时重算（与原表口径逐行核对一致）；
+    ②合计指标按项目行实时汇总；③编辑模式下可新增/删除项目行，修改保存在本浏览器（localStorage），点「恢复默认」全部还原；④比率列编辑时按百分数填写。
+  </div>
+</div>
+
+<script>
+const DATA = {"updated": "2026-08", "projects": [{"group": "差于目标", "name": "深圳电子科技大学高等研究院", "org": "华南分公司", "level": "II级", "start_date": "2024-12-28", "contract": 95264.211215, "income": 88932.211215, "approved_rate": 0.0559, "rate_a": -0.0829, "actual_rate": -0.0326, "profit": -2906.504297, "target_cost": 96307.098032, "actual_cost": 92100.425289, "plan_rate": 0.034, "plan_value": 3030.329622, "mgmt_ratio1": 0.0383, "mgmt_ratio2": 0.0381, "monthly_pc": 102.66, "staff": 40, "loan_gap": 19826.877269, "progress": 0.4841, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳机场B4货站", "org": "华南分公司", "level": "IV级", "start_date": "2026-04-03", "contract": 12697.066666, "income": 11434.616037, "approved_rate": 0.0551, "rate_a": -0.207, "actual_rate": -0.207, "profit": -2367.082739, "target_cost": 13801.796525, "actual_cost": 13801.698776, "plan_rate": 0, "plan_value": 0, "mgmt_ratio1": 0.0239, "mgmt_ratio2": 0.0411, "monthly_pc": 101.02, "staff": 17, "loan_gap": 0, "progress": 0.071, "risk": "高风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳抖音二期基坑", "org": "华南分公司", "level": "IV级", "start_date": "2026-03-25", "contract": 18598, "income": 18342.899886, "approved_rate": 0.0606, "rate_a": -0.1273, "actual_rate": -0.1138, "profit": -2134.994261, "target_cost": 20678.358808, "actual_cost": 20897.372258, "plan_rate": 0, "plan_value": 0, "mgmt_ratio1": 0.0953, "mgmt_ratio2": 0.0884, "monthly_pc": 31.49, "staff": 16, "loan_gap": 590.462709, "progress": 0.0256, "risk": "高风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳医学科学院及深圳湾实验室I标", "org": "华南分公司", "level": "II级", "start_date": "2024-09-01", "contract": 35450.8, "income": 28174.044303, "approved_rate": 0.0532, "rate_a": -0.1096, "actual_rate": -0.0597, "profit": -1704.038817, "target_cost": 31263.23671, "actual_cost": 30251.77215, "plan_rate": 0.0133, "plan_value": 378.538729, "mgmt_ratio1": 0.041, "mgmt_ratio2": 0.0656, "monthly_pc": 31.43, "staff": 35, "loan_gap": 9919.18, "progress": 0.5849, "risk": "高风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳香港中文大学医学院", "org": "华南分公司", "level": "II级", "start_date": "2024-04-01", "contract": 84465.324804, "income": 61505.932066, "approved_rate": 0.0535, "rate_a": -0.0563, "actual_rate": -0.0193, "profit": -1201.593741, "target_cost": 64971.176868, "actual_cost": 63412.431962, "plan_rate": 0.0161, "plan_value": 1001.676887, "mgmt_ratio1": 0.0414, "mgmt_ratio2": 0.0417, "monthly_pc": 48.68, "staff": 44, "loan_gap": 11841.95, "progress": 0.6757, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳深港智汇风华产业园项目一期工程II标段EPC", "org": "华南分公司", "level": "III级", "start_date": "2024-12-30", "contract": 87462.493842, "income": 56967.409753, "approved_rate": 0.056, "rate_a": -0.0208, "actual_rate": -0.0208, "profit": -1186.846258, "target_cost": 58150.266701, "actual_cost": 58154.256011, "plan_rate": 0, "plan_value": 0, "mgmt_ratio1": 0.2851, "mgmt_ratio2": 0.0889, "monthly_pc": 0, "staff": 8, "loan_gap": 0, "progress": 0.2003, "risk": "低风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳职业技术大学西丽校区修缮改造", "org": "华南分公司", "level": "IV级", "start_date": "2024-05-10", "contract": 10558.66076, "income": 7941.082054, "approved_rate": 0.0606, "rate_a": -0.1605, "actual_rate": -0.119, "profit": -953.317393, "target_cost": 9215.891898, "actual_cost": 8966.579447, "plan_rate": 0.0188, "plan_value": 150.88131, "mgmt_ratio1": 0.0615, "mgmt_ratio2": 0.065, "monthly_pc": 39.12, "staff": 13, "loan_gap": 64.213293, "progress": 0.9611, "risk": "高风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "东莞市先进阿秒激光设施", "org": "华南分公司", "level": "II级", "start_date": "2024-12-31", "contract": 28193.129373, "income": 28193.129373, "approved_rate": 0.0588, "rate_a": -0.0727, "actual_rate": -0.0322, "profit": -938.253858, "target_cost": 30107.171419, "actual_cost": 30033.48957, "plan_rate": 0.04, "plan_value": 1164.715951, "mgmt_ratio1": 0.055, "mgmt_ratio2": 0.0537, "monthly_pc": 81.63, "staff": 23, "loan_gap": 470.116656, "progress": 0.4534, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳市药品检验研究院光明分院建设", "org": "华南分公司", "level": "II级", "start_date": "2023-12-31", "contract": 30886, "income": 15818.187268, "approved_rate": 0.0523, "rate_a": -0.0703, "actual_rate": -0.0419, "profit": -695.296677, "target_cost": 16930.42649, "actual_cost": 17308.915157, "plan_rate": 0.0032, "plan_value": 53.358646, "mgmt_ratio1": 0.0842, "mgmt_ratio2": 0.1212, "monthly_pc": 7.78, "staff": 18, "loan_gap": 6974.722044, "progress": 0.5606, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳市人才研修院配电设施建设", "org": "华南分公司", "level": "I级", "start_date": "2026-03-28", "contract": 2481.593624, "income": 2351.533424, "approved_rate": 0.0755, "rate_a": -0.0558, "actual_rate": 0.0045, "profit": 10.660748, "target_cost": 2482.85876, "actual_cost": 2340.872676, "plan_rate": 0.0395, "plan_value": 92.819167, "mgmt_ratio1": 0.0086, "mgmt_ratio2": 0.0094, "monthly_pc": 58.89, "staff": 6, "loan_gap": 691.18499, "progress": 0.6854, "risk": "中风险", "pl_status": "制造成本亏损"}, {"group": "差于目标", "name": "深圳市吉华医院", "org": "华南分公司", "level": "III级", "start_date": "2022-02-25", "contract": 89839.6, "income": 79709.6, "approved_rate": 0.0604, "rate_a": -0.017, "actual_rate": 0.001, "profit": 86.691931, "target_cost": 81063.482771, "actual_cost": 82546.573577, "plan_rate": 0.0108, "plan_value": 896.265966, "mgmt_ratio1": 0.0623, "mgmt_ratio2": 0.0639, "monthly_pc": 34.33, "staff": 9, "loan_gap": -1164.9, "progress": 0.9046, "risk": "高风险", "pl_status": "制造成本亏损"}, {"group": "差于目标", "name": "东莞骏鼎达功能性保护材料生产建设", "org": "华南分公司", "level": "II级", "start_date": "2025-01-15", "contract": 12202.396642, "income": 9531.915322, "approved_rate": 0.0511, "rate_a": 0.0148, "actual_rate": 0.0167, "profit": 167.113641, "target_cost": 9389.205415, "actual_cost": 9838.833932, "plan_rate": 0.0279, "plan_value": 278.799312, "mgmt_ratio1": 0.0576, "mgmt_ratio2": 0.059, "monthly_pc": 0, "staff": 10, "loan_gap": 546.402526, "progress": 0.9035, "risk": "低风险", "pl_status": "制造成本亏损"}, {"group": "差于目标", "name": "广东工商职业技术大学国际学术交流中心、音乐厅建设", "org": "华南分公司", "level": "II级", "start_date": "2024-08-01", "contract": 50000, "income": 26000, "approved_rate": 0.058, "rate_a": 0.0151, "actual_rate": 0.0225, "profit": 585.956145, "target_cost": 25606.650786, "actual_cost": 25414.043855, "plan_rate": 0.0035, "plan_value": 91, "mgmt_ratio1": 0.0461, "mgmt_ratio2": 0.064, "monthly_pc": 45.66, "staff": 17, "loan_gap": 307.673078, "progress": 0.6511, "risk": "低风险", "pl_status": "制造成本亏损"}, {"group": "差于目标", "name": "广州从化国际赛马发展中心", "org": "华南分公司", "level": "II级", "start_date": "2024-07-16", "contract": 24582.495546, "income": 22399.495546, "approved_rate": 0.0508, "rate_a": -0.0431, "actual_rate": -0.0369, "profit": -827.825624, "target_cost": 23364.875906, "actual_cost": 23566.143394, "plan_rate": 0.044, "plan_value": 986.956269, "mgmt_ratio1": 0.0428583847321051, "mgmt_ratio2": 0.0381451062938191, "monthly_pc": 85.5428571428571, "staff": 21, "loan_gap": 112.880855, "progress": 0.6759, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳过沥路市政工程", "org": "华南分公司", "level": "II级", "start_date": "2025-12-06", "contract": 13101.262596, "income": 9275.440193, "approved_rate": 0.06, "rate_a": -0.0057, "actual_rate": 0.0454, "profit": 440.191247, "target_cost": 9327.902396, "actual_cost": 9258.58486, "plan_rate": 0.0403, "plan_value": 390.803584, "mgmt_ratio1": 0.0174041229961705, "mgmt_ratio2": 0.016171438272705, "monthly_pc": 40.2054545454545, "staff": 11, "loan_gap": -541.470774, "progress": 0.6422, "risk": "低风险", "pl_status": "制造成本亏损"}, {"group": "优于目标", "name": "东莞小天才智能科技中心一期", "org": "华南分公司", "level": "II级", "start_date": "2023-05-20", "contract": 4974.539726, "income": 4974.539726, "approved_rate": 0.054, "rate_a": 0.0546, "actual_rate": 0.0547, "profit": 271.859172, "target_cost": 4702.95746, "actual_cost": 4702.680554, "plan_rate": 0, "plan_value": 0, "mgmt_ratio1": 0.0369, "mgmt_ratio2": 0.0393, "monthly_pc": 0, "staff": null, "loan_gap": 0, "progress": 0.7099, "risk": "无风险", "pl_status": "超额成本降低"}, {"group": "优于目标", "name": "深圳龙城街道龙飞学校新建工程（二期）", "org": "华南分公司", "level": "II级", "start_date": "2023-10-20", "contract": 30460.51934, "income": 15603.55516, "approved_rate": 0.0526, "rate_a": -0.0052, "actual_rate": 0.0567, "profit": 885.141625, "target_cost": 15685.018208, "actual_cost": 14718.413535, "plan_rate": 0.0222, "plan_value": 345.7892, "mgmt_ratio1": 0.0817, "mgmt_ratio2": 0.1024, "monthly_pc": 0, "staff": 8, "loan_gap": 1301.44169, "progress": 0.8647, "risk": "无风险", "pl_status": "超额成本降低"}, {"group": "优于目标", "name": "东莞小天才滨海湾", "org": "华南分公司", "level": "II级", "start_date": "2022-11-11", "contract": 68958.779437, "income": 68958.779437, "approved_rate": 0.054, "rate_a": 0.0519, "actual_rate": 0.0564, "profit": 3906.230542, "target_cost": 65077.879694, "actual_cost": 65329.227361, "plan_rate": 0.0002, "plan_value": 12.382801, "mgmt_ratio1": 0.0469, "mgmt_ratio2": 0.053, "monthly_pc": 35.09, "staff": 13, "loan_gap": 0, "progress": 0.9428, "risk": "无风险", "pl_status": "超额成本降低"}]};
+
+// ===================== 工具 =====================
+const N = v => (typeof v === 'number' && !isNaN(v)) ? v : 0;
+const fmtWan = v => {
+  const n = Math.abs(N(v));
+  if (n >= 1e4) return (v < 0 ? '-' : '') + (n / 1e4).toFixed(2) + ' 亿';
+  return (v < 0 ? '-' : '') + n.toLocaleString('zh-CN', { maximumFractionDigits: 0 }) + ' 万';
+};
+const fmtNum = v => N(v).toLocaleString('zh-CN', { maximumFractionDigits: 1 });
+const fmtPct = v => (typeof v === 'number' ? (v * 100).toFixed(2) + '%' : '—');
+
+// ---- 派生（与原表核对一致） ----
+const deviationOf = p => (typeof p.actual_rate === 'number' && typeof p.rate_a === 'number') ? p.actual_rate - p.rate_a : null;
+const costDiffOf = p => (typeof p.actual_cost === 'number' && typeof p.target_cost === 'number') ? p.actual_cost - p.target_cost : null;
+
+// ===================== 本地修改（localStorage 持久化） =====================
+const LS_KEY = 'cost_edits_v1';
+const LS_ROWS = 'cost_rows_v1';
+const loadEdits = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch (e) { return {}; } };
+const saveEdits = o => localStorage.setItem(LS_KEY, JSON.stringify(o));
+const loadRows = () => { try { return JSON.parse(localStorage.getItem(LS_ROWS) || '{"added":[],"deleted":[]}'); } catch (e) { return { added: [], deleted: [] }; } };
+const saveRows = () => localStorage.setItem(LS_ROWS, JSON.stringify(ROWEDITS));
+let EDITS = loadEdits();
+let ROWEDITS = loadRows();
+
+const P = DATA.projects; // 全部项目（含新增，删除同步移除）
+ROWEDITS.deleted.forEach(n => {
+  const i = P.findIndex(p => p.name === n);
+  if (i >= 0) P.splice(i, 1);
+});
+ROWEDITS.added.forEach(obj => {
+  obj._custom = true;
+  if (!obj.group) obj.group = '差于目标';
+  P.push(obj);
+});
+Object.keys(EDITS).forEach(name => {
+  const p = P.find(x => x.name === name);
+  if (p) Object.assign(p, EDITS[name]);
+});
+
+// ===================== 动态合计 =====================
+function getT() {
+  const t = {};
+  ['contract', 'income', 'profit', 'target_cost', 'actual_cost', 'plan_value', 'loan_gap'].forEach(f => {
+    t[f] = P.reduce((s, p) => s + N(p[f]), 0);
+  });
+  t.cost_diff = P.reduce((s, p) => s + N(costDiffOf(p)), 0);
+  t.weighted_rate = t.income > 0 ? t.profit / t.income : 0;
+  t.count = P.length;
+  t.riskHigh = P.filter(p => p.risk === '高风险').length;
+  t.lossFull = P.filter(p => p.pl_status === '完全成本亏损').length;
+  t.lossMfg = P.filter(p => p.pl_status === '制造成本亏损').length;
+  t.overSave = P.filter(p => p.pl_status === '超额成本降低').length;
+  return t;
+}
+
+// ===================== 渲染：KPI =====================
+function renderKPIs() {
+  const T = getT();
+  const lossCnt = P.filter(p => N(p.profit) < 0).length;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi-card purple"><div class="label">在施项目 / 合同额</div><div class="value">${T.count} 个</div>
+      <div class="foot">合同额合计 <b>${fmtWan(T.contract)}</b> · 收入 ${fmtWan(T.income)}</div></div>
+    <div class="kpi-card ${T.profit < 0 ? 'red' : 'green'}"><div class="label">预计收益额合计</div><div class="value">${fmtWan(T.profit)}</div>
+      <div class="foot">加权实际收益率 <span class="${T.weighted_rate < 0 ? 'bad' : 'good'}">${(T.weighted_rate * 100).toFixed(2)}%</span> · ${lossCnt} 个亏损</div></div>
+    <div class="kpi-card ${T.cost_diff <= 0 ? 'green' : 'gold'}"><div class="label">目标成本偏差额</div><div class="value">${fmtWan(T.cost_diff)}</div>
+      <div class="foot">${T.cost_diff <= 0 ? '<span class="good">整体优于a值目标成本</span>' : '<span class="bad">整体超出a值目标成本</span>'}</div></div>
+    <div class="kpi-card green"><div class="label">策划创效（b值）</div><div class="value">${fmtWan(T.plan_value)}</div>
+      <div class="foot">已实现的策划创效合计</div></div>
+    <div class="kpi-card gold"><div class="label">风险项目</div><div class="value">${T.riskHigh} 个高风险</div>
+      <div class="foot">完全成本亏损 ${T.lossFull} · 制造成本亏损 ${T.lossMfg} · 超额降低 ${T.overSave}</div></div>
+    <div class="kpi-card"><div class="label">存贷差合计</div><div class="value">${fmtWan(T.loan_gap)}</div>
+      <div class="foot">${T.loan_gap >= 0 ? '<span class="good">资金沉淀为正</span>' : '<span class="bad">资金被占用</span>'}</div></div>
+  `;
+}
+
+// ===================== 渲染：分析结论 =====================
+function renderInsights() {
+  const T = getT();
+  const losses = P.filter(p => N(p.profit) < 0).sort((a, b) => N(a.profit) - N(b.profit));
+  const lossSum = losses.reduce((s, p) => s + N(p.profit), 0);
+  const profits = P.filter(p => N(p.profit) > 0).sort((a, b) => N(b.profit) - N(a.profit));
+  const highRisk = P.filter(p => p.risk === '高风险');
+  const costOver = P.filter(p => N(costDiffOf(p)) > 0).sort((a, b) => N(costDiffOf(b)) - N(costDiffOf(a)));
+  const costSave = P.filter(p => N(costDiffOf(p)) < 0).sort((a, b) => N(costDiffOf(a)) - N(costDiffOf(b)));
+  const planTop = P.filter(p => N(p.plan_value) > 0).sort((a, b) => N(b.plan_value) - N(a.plan_value));
+  const pcAvg = P.length ? P.reduce((s, p) => s + N(p.monthly_pc), 0) / P.length : 0;
+
+  document.getElementById('insights').innerHTML = `
+  <div class="insight">
+    <div class="head">📉 盈亏分析 <span class="tag ${T.profit >= 0 ? 'ok' : 'risk'}">${T.profit >= 0 ? '整体盈利' : '整体亏损'}</span></div>
+    <ul>
+      <li>18 个项目预计收益合计 <b class="${T.profit < 0 ? 'neg' : 'pos'}">${fmtWan(T.profit)}</b>，加权收益率 <b class="${T.weighted_rate < 0 ? 'neg' : 'pos'}">${(T.weighted_rate * 100).toFixed(2)}%</b></li>
+      <li>亏损 ${losses.length} 个合计 <b class="neg">${fmtWan(lossSum)}</b>；亏损前三：${losses.slice(0, 3).map(p => `${p.name.slice(0, 12)}（${fmtWan(p.profit)}）`).join('、')}</li>
+      <li>盈利 ${profits.length} 个，盈利前三：${profits.slice(0, 3).map(p => `${p.name.slice(0, 12)}（+${fmtWan(p.profit)}）`).join('、') || '—'}</li>
+    </ul>
+  </div>
+  <div class="insight">
+    <div class="head">⚠️ 风险预警 <span class="tag ${highRisk.length >= 3 ? 'risk' : 'warn'}">高风险 ${highRisk.length} 个</span></div>
+    <ul>
+      <li>高风险项目：<b class="neg">${highRisk.map(p => p.name.slice(0, 12)).join('、') || '无'}</b></li>
+      <li>高风险项目普遍伴随承接效益率为负（最低 ${fmtPct(Math.min(...P.map(p => N(p.rate_a))))}），先天不足叠加履约压力</li>
+      <li>建议对高风险项目实行月度成本纠偏专报，锁定策划创效落地</li>
+    </ul>
+  </div>
+  <div class="insight">
+    <div class="head">💰 目标成本执行 <span class="tag ${T.cost_diff <= 0 ? 'ok' : 'risk'}">${T.cost_diff <= 0 ? '优于目标' : '超出目标'}</span></div>
+    <ul>
+      <li>实际履约成本较 a 值目标成本 ${T.cost_diff <= 0 ? '节约' : '超支'} <b class="${T.cost_diff <= 0 ? 'pos' : 'neg'}">${fmtWan(Math.abs(T.cost_diff))}</b></li>
+      <li>超支最高：${costOver.slice(0, 2).map(p => `${p.name.slice(0, 12)}（+${fmtWan(costDiffOf(p))}）`).join('、') || '无'}</li>
+      <li>节约最高：${costSave.slice(0, 2).map(p => `${p.name.slice(0, 12)}（${fmtWan(costDiffOf(p))}）`).join('、') || '无'}</li>
+    </ul>
+  </div>
+  <div class="insight">
+    <div class="head">✨ 策划创效与亮点 <span class="tag ok">创效 ${fmtWan(T.plan_value)}</span></div>
+    <ul>
+      <li>策划创效前三：${planTop.slice(0, 3).map(p => `${p.name.slice(0, 12)}（${fmtWan(p.plan_value)}）`).join('、') || '—'}</li>
+      <li>超额成本降低 ${T.overSave} 个：${P.filter(p => p.pl_status === '超额成本降低').map(p => p.name.slice(0, 10)).join('、') || '—'}</li>
+      <li>在施项目平均月人均产值 <b>${pcAvg.toFixed(1)} 万元</b>，存贷差合计 <b class="${T.loan_gap >= 0 ? 'pos' : 'neg'}">${fmtWan(T.loan_gap)}</b></li>
+    </ul>
+  </div>`;
+}
+
+// ===================== 渲染：图表 =====================
+const chartObjs = {};
+const axStyle = { axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#334155' } } };
+const yi = v => +(N(v) / 1e4).toFixed(2);
+const shortName = (p, n) => p.name.length > n ? p.name.slice(0, n) + '…' : p.name;
+function mk(id, option) {
+  const el = document.getElementById(id);
+  if (!chartObjs[id]) chartObjs[id] = echarts.init(el, 'dark');
+  chartObjs[id].setOption(Object.assign({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis', backgroundColor: '#1e293b', borderColor: '#334155', textStyle: { color: '#f1f5f9' } },
+  }, option), true);
+}
+
+function renderCharts() {
+  // 1. 预计收益额全景
+  (function () {
+    const arr = P.slice().sort((a, b) => N(a.profit) - N(b.profit));
+    mk('chart-profit', {
+      title: { text: '在施项目 · 预计收益额全景（万元，红=亏损）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: ps => {
+          const p = arr[ps[0].dataIndex];
+          return `${p.name}<br/>预计收益额：${fmtWan(p.profit)}<br/>实际收益率：${fmtPct(p.actual_rate)} ｜ 承接效益率：${fmtPct(p.rate_a)}<br/>盈亏状态：${p.pl_status || '—'} ｜ 风险：${p.risk || '—'}`;
+        } },
+      grid: { left: 200, right: 80, top: 40, bottom: 30 },
+      xAxis: Object.assign({ type: 'value' }, axStyle),
+      yAxis: { type: 'category', data: arr.map(p => shortName(p, 15)), axisLabel: { color: '#cbd5e1', fontSize: 11 } },
+      series: [{
+        type: 'bar', barWidth: 12,
+        data: arr.map(p => ({ value: N(p.profit), itemStyle: { color: N(p.profit) < 0 ? '#ef4444' : '#10b981', borderRadius: 3 } })),
+        label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: p => fmtWan(p.value) }
+      }]
+    });
+  })();
+
+  // 2. 收益率三线对比
+  (function () {
+    const arr = P.slice().sort((a, b) => N(a.actual_rate) - N(b.actual_rate));
+    mk('chart-rate', {
+      title: { text: '收益率对比：实际 vs 承接(A) vs 综合核定（%）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: ps => {
+          const p = arr[ps[0].dataIndex];
+          return `${p.name}<br/>实际收益率：${fmtPct(p.actual_rate)}<br/>承接效益率(A)：${fmtPct(p.rate_a)}<br/>综合核定收益率：${fmtPct(p.approved_rate)}<br/>偏差率：${deviationOf(p) !== null ? fmtPct(deviationOf(p)) : '—'}（相对A值${deviationOf(p) >= 0 ? '改善' : '恶化'}）`;
+        } },
+      legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+      grid: { left: 60, right: 30, top: 46, bottom: 90 },
+      xAxis: { type: 'category', data: arr.map(p => shortName(p, 8)), axisLabel: { color: '#94a3b8', rotate: 40, fontSize: 10 } },
+      yAxis: Object.assign({ type: 'value', axisLabel: { color: '#94a3b8', formatter: v => v + '%' } }, { splitLine: axStyle.splitLine }),
+      series: [
+        { name: '实际收益率', type: 'bar', barWidth: 12,
+          data: arr.map(p => ({ value: +(N(p.actual_rate) * 100).toFixed(2), itemStyle: { color: N(p.actual_rate) < 0 ? '#ef4444' : '#10b981', borderRadius: [3, 3, 0, 0] } })) },
+        { name: '承接效益率(A)', type: 'line', data: arr.map(p => +(N(p.rate_a) * 100).toFixed(2)), symbolSize: 6, lineStyle: { width: 2, color: '#f59e0b', type: 'dashed' }, itemStyle: { color: '#f59e0b' } },
+        { name: '综合核定收益率', type: 'line', data: arr.map(p => +(N(p.approved_rate) * 100).toFixed(2)), symbolSize: 6, lineStyle: { width: 2, color: '#3b82f6' }, itemStyle: { color: '#3b82f6' } }
+      ]
+    });
+  })();
+
+  // 3. 目标成本 vs 实际履约成本（合同额 TOP10）
+  (function () {
+    const arr = P.filter(p => N(p.target_cost) > 0).sort((a, b) => N(b.contract) - N(a.contract)).slice(0, 10);
+    mk('chart-cost', {
+      title: { text: '目标成本(a值) vs 实际履约成本 · 合同额TOP10（亿元）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: ps => {
+          const p = arr[ps[0].dataIndex];
+          const d = costDiffOf(p);
+          return `${p.name}<br/>目标成本(a值)：${fmtWan(p.target_cost)}<br/>实际履约成本：${fmtWan(p.actual_cost)}<br/>偏差额：<b style="color:${d > 0 ? '#ef4444' : '#10b981'}">${d > 0 ? '+' : ''}${fmtWan(d)}</b>`;
+        } },
+      legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+      grid: { left: 60, right: 20, top: 46, bottom: 100 },
+      xAxis: { type: 'category', data: arr.map(p => shortName(p, 7)), axisLabel: { color: '#94a3b8', rotate: 42, fontSize: 10 } },
+      yAxis: Object.assign({ type: 'value', name: '亿元' }, axStyle),
+      series: [
+        { name: '目标成本(a值)', type: 'bar', data: arr.map(p => yi(p.target_cost)), itemStyle: { color: '#3b82f6', borderRadius: [3, 3, 0, 0] } },
+        { name: '实际履约成本', type: 'bar', data: arr.map(p => yi(p.actual_cost)), itemStyle: { color: '#f59e0b', borderRadius: [3, 3, 0, 0] } }
+      ]
+    });
+  })();
+
+  // 4. 策划创效 TOP
+  (function () {
+    const arr = P.filter(p => N(p.plan_value) !== 0).sort((a, b) => N(b.plan_value) - N(a.plan_value)).slice(0, 10).reverse();
+    mk('chart-plan', {
+      title: { text: '策划创效（b值）TOP10（万元）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: ps => {
+          const p = arr[ps[0].dataIndex];
+          return `${p.name}<br/>策划创效：${fmtWan(p.plan_value)}<br/>策划创效率(B)：${fmtPct(p.plan_rate)}`;
+        } },
+      grid: { left: 180, right: 70, top: 40, bottom: 30 },
+      xAxis: Object.assign({ type: 'value' }, axStyle),
+      yAxis: { type: 'category', data: arr.map(p => shortName(p, 13)), axisLabel: { color: '#cbd5e1', fontSize: 11 } },
+      series: [{
+        type: 'bar', barWidth: 14, data: arr.map(p => N(p.plan_value)),
+        itemStyle: { color: '#10b981', borderRadius: 4, opacity: .9 },
+        label: { show: true, position: 'right', color: '#f1f5f9', fontSize: 10, formatter: p => fmtWan(p.value) }
+      }]
+    });
+  })();
+
+  // 5. 风险分布
+  (function () {
+    const order = ['高风险', '中风险', '低风险', '无风险'];
+    const colors = { '高风险': '#ef4444', '中风险': '#f59e0b', '低风险': '#3b82f6', '无风险': '#10b981' };
+    const cnt = {};
+    P.forEach(p => { const k = p.risk || '未标注'; cnt[k] = (cnt[k] || 0) + 1; });
+    mk('chart-risk', {
+      title: { text: '项目风险等级分布', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+      tooltip: { trigger: 'item', formatter: p => `${p.name}：${p.value} 个（${p.percent}%）` },
+      legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+      series: [{
+        type: 'pie', radius: ['40%', '66%'], center: ['50%', '46%'],
+        data: order.filter(k => cnt[k]).map(k => ({ name: k, value: cnt[k], itemStyle: { color: colors[k] } })),
+        label: { color: '#f1f5f9', formatter: '{b}\n{c}个' },
+        itemStyle: { borderRadius: 6, borderColor: '#1e293b', borderWidth: 2 }
+      }]
+    });
+  })();
+
+  // 6. 盈亏状态分布
+  (function () {
+    const colors = { '完全成本亏损': '#ef4444', '制造成本亏损': '#f59e0b', '超额成本降低': '#10b981', '盈利': '#3b82f6' };
+    const sum = {};
+    P.forEach(p => { const k = p.pl_status || '未标注'; sum[k] = (sum[k] || 0) + N(p.profit); });
+    mk('chart-status', {
+      title: { text: '盈亏状态 · 预计收益额构成（万元）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+      tooltip: { trigger: 'item', formatter: p => `${p.name}<br/>收益额合计：${fmtWan(p.value)}` },
+      legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+      series: [{
+        type: 'pie', radius: ['40%', '66%'], center: ['50%', '46%'],
+        data: Object.entries(sum).map(([k, v]) => ({ name: k, value: Math.abs(v), itemStyle: { color: colors[k] || '#8b5cf6' } })),
+        label: { color: '#f1f5f9', formatter: p => `${p.name}\n${fmtWan(p.value)}` },
+        itemStyle: { borderRadius: 6, borderColor: '#1e293b', borderWidth: 2 }
+      }]
+    });
+  })();
+
+  // 7. 存贷差
+  (function () {
+    const arr = P.filter(p => N(p.loan_gap) !== 0).sort((a, b) => N(a.loan_gap) - N(b.loan_gap));
+    mk('chart-loan', {
+      title: { text: '存贷差（万元，正=资金沉淀，负=资金占用）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: 170, right: 70, top: 40, bottom: 30 },
+      xAxis: Object.assign({ type: 'value' }, axStyle),
+      yAxis: { type: 'category', data: arr.map(p => shortName(p, 12)), axisLabel: { color: '#cbd5e1', fontSize: 10 } },
+      series: [{
+        type: 'bar', barWidth: 12,
+        data: arr.map(p => ({ value: N(p.loan_gap), itemStyle: { color: N(p.loan_gap) < 0 ? '#ef4444' : '#3b82f6', borderRadius: 3 } })),
+        label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: p => fmtWan(p.value) }
+      }]
+    });
+  })();
+
+  // 8. 完工进度
+  (function () {
+    const arr = P.slice().sort((a, b) => N(b.progress) - N(a.progress));
+    mk('chart-progress', {
+      title: { text: '完工百分比（%）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: ps => {
+          const p = arr[ps[0].dataIndex];
+          return `${p.name}<br/>完工：${(N(p.progress) * 100).toFixed(1)}%<br/>开工：${p.start_date || '—'} ｜ 月人均产值：${N(p.monthly_pc).toFixed(1)} 万元 ｜ 管理人员：${N(p.staff)} 人`;
+        } },
+      grid: { left: 170, right: 60, top: 40, bottom: 30 },
+      xAxis: Object.assign({ type: 'value', max: 100, axisLabel: { color: '#94a3b8', formatter: '{value}%' } }, { splitLine: axStyle.splitLine }),
+      yAxis: { type: 'category', data: arr.map(p => shortName(p, 12)), axisLabel: { color: '#cbd5e1', fontSize: 10 } },
+      series: [{
+        type: 'bar', barWidth: 10,
+        data: arr.map(p => ({
+          value: +(N(p.progress) * 100).toFixed(1),
+          itemStyle: { color: N(p.progress) >= 0.8 ? '#10b981' : N(p.progress) >= 0.4 ? '#3b82f6' : '#f59e0b', borderRadius: 3 }
+        })),
+        label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: p => p.value + '%' }
+      }]
+    });
+  })();
+}
+
+// ===================== 明细表 =====================
+const state = { sec: '全部', kw: '', risk: '', sortKey: null, sortAsc: true, edit: false };
+// 可编辑数值列
+const EDITABLE_NUM = ['contract', 'income', 'profit', 'target_cost', 'actual_cost', 'plan_value', 'monthly_pc', 'staff', 'loan_gap'];
+// 可编辑比率列（按百分数填写，存储为小数）
+const EDITABLE_PCT = ['rate_a', 'actual_rate', 'approved_rate', 'plan_rate', 'mgmt_ratio1', 'mgmt_ratio2', 'progress'];
+
+const COLS = [
+  ['name', '项目名称'], ['group', '分组'], ['level', '项目分类'], ['start_date', '开工日期'],
+  ['contract', '合同额'], ['income', '累计合同收入'],
+  ['rate_a', '承接效益率A'], ['actual_rate', '实际收益率'], ['deviation', '偏差率'],
+  ['profit', '预计收益额'], ['target_cost', '目标成本a值'], ['actual_cost', '实际履约成本'], ['cost_diff', '成本偏差额'],
+  ['plan_value', '策划创效'], ['mgmt_ratio2', '管理费占比'], ['monthly_pc', '月人均产值'], ['staff', '管理人员'],
+  ['loan_gap', '存贷差'], ['progress', '完工%'], ['risk', '风险情况'], ['pl_status', '盈亏状态'],
+];
+const RISKS = ['高风险', '中风险', '低风险', '无风险'];
+const PL_STATUS = ['完全成本亏损', '制造成本亏损', '超额成本降低', '盈利'];
+
+function valOf(r, k) {
+  if (k === 'deviation') return deviationOf(r);
+  if (k === 'cost_diff') return costDiffOf(r);
+  return r[k];
+}
+
+function currentRows() {
+  let rows = P.slice();
+  if (state.sec !== '全部') rows = rows.filter(p => p.group === state.sec);
+  if (state.kw) rows = rows.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(state.kw)));
+  if (state.risk) rows = rows.filter(r => r.risk === state.risk);
+  if (state.sortKey) {
+    const k = state.sortKey;
+    rows.sort((a, b) => {
+      const va = valOf(a, k), vb = valOf(b, k);
+      const na = typeof va === 'number', nb = typeof vb === 'number';
+      let cmp = (na && nb) ? va - vb : String(va ?? '').localeCompare(String(vb ?? ''), 'zh');
+      return state.sortAsc ? cmp : -cmp;
+    });
+  }
+  return rows;
+}
+
+const isEdited = (name, field) => !!(EDITS[name] && EDITS[name][field] !== undefined);
+const riskBadge = v => v === '高风险' ? 'risk' : v === '中风险' ? 'pending' : 'done';
+const plBadge = v => String(v).includes('亏损') ? (v === '完全成本亏损' ? 'risk' : 'pending') : 'done';
+
+function renderTable() {
+  const thead = document.querySelector('#detail-table thead tr');
+  const tbody = document.querySelector('#detail-table tbody');
+  const editable = state.edit;
+
+  thead.innerHTML = COLS.map(([k, label]) =>
+    `<th data-key="${k}" style="cursor:pointer">${label}${state.sortKey === k ? (state.sortAsc ? ' ▲' : ' ▼') : ''}</th>`).join('')
+    + (editable ? '<th>操作</th>' : '');
+  thead.querySelectorAll('th[data-key]').forEach(th => th.onclick = () => {
+    const k = th.dataset.key;
+    if (state.sortKey === k) state.sortAsc = !state.sortAsc; else { state.sortKey = k; state.sortAsc = true; }
+    renderTable();
+  });
+
+  tbody.innerHTML = currentRows().map(r => '<tr>' + COLS.map(([k]) => {
+    const v = valOf(r, k);
+    // ---- 编辑模式 ----
+    if (editable && k === 'name' && r._custom) {
+      return `<td><input type="text" class="edit-input edit-text" data-name="${r.name}" data-field="name" value="${String(r.name).replace(/"/g, '&quot;')}"></td>`;
+    }
+    if (editable && k === 'risk') {
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="risk">
+        ${RISKS.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && k === 'pl_status') {
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="pl_status">
+        ${PL_STATUS.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && EDITABLE_NUM.includes(k)) {
+      const val = typeof v === 'number' ? v : '';
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}">
+        <input type="number" step="any" class="edit-input" data-name="${r.name}" data-field="${k}" value="${val}">${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && EDITABLE_PCT.includes(k)) {
+      const val = typeof v === 'number' ? +(v * 100).toFixed(2) : '';
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}">
+        <input type="number" step="any" class="edit-input" data-name="${r.name}" data-field="${k}" data-pct="1" value="${val}" style="width:72px">${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    // ---- 展示模式 ----
+    if (['rate_a', 'actual_rate', 'deviation', 'approved_rate', 'plan_rate', 'mgmt_ratio1', 'mgmt_ratio2', 'progress'].includes(k)) {
+      const neg = typeof v === 'number' && v < 0;
+      return `<td class="num ${neg ? 'neg' : ''}">${fmtPct(v)}${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (['contract', 'income', 'profit', 'target_cost', 'actual_cost', 'cost_diff', 'plan_value', 'monthly_pc', 'loan_gap'].includes(k)) {
+      const neg = typeof v === 'number' && v < 0;
+      const pos = k === 'plan_value' && typeof v === 'number' && v > 0;
+      return `<td class="num ${neg ? 'neg' : pos ? 'pos' : ''}">${typeof v === 'number' ? fmtNum(v) : '—'}${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (k === 'staff') return `<td class="num">${typeof v === 'number' ? v : '—'}</td>`;
+    if (k === 'risk') return `<td><span class="badge-status ${riskBadge(v)}">${v || '—'}</span>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    if (k === 'pl_status') return `<td><span class="badge-status ${plBadge(v)}">${v || '—'}</span>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    if (k === 'group') return `<td>${v === '优于目标' ? '<span class="badge-status done">优于目标</span>' : '<span class="badge-status pending">差于目标</span>'}</td>`;
+    return `<td>${v ?? '—'}</td>`;
+  }).join('') + (editable ? `<td><button class="row-del" data-name="${r.name}" title="删除该项目">🗑</button></td>` : '') + '</tr>').join('');
+}
+
+// ---- 编辑事件 ----
+document.querySelector('#detail-table tbody').addEventListener('change', e => {
+  const el = e.target;
+  const name = el.dataset.name, field = el.dataset.field;
+  if (!name || !field) return;
+  const p = P.find(x => x.name === name);
+  if (!p) return;
+  if (field === 'name') {
+    const newName = el.value.trim() || name;
+    p.name = newName;
+    if (EDITS[name]) { EDITS[newName] = EDITS[name]; delete EDITS[name]; }
+  } else if (field === 'risk' || field === 'pl_status') {
+    p[field] = el.value;
+    EDITS[name] = Object.assign({}, EDITS[name], { [field]: p[field] });
+  } else if (el.dataset.pct === '1') {
+    const num = parseFloat(el.value);
+    p[field] = isNaN(num) ? null : num / 100;
+    EDITS[name] = Object.assign({}, EDITS[name], { [field]: p[field] });
+  } else {
+    const num = parseFloat(el.value);
+    p[field] = isNaN(num) ? null : num;
+    EDITS[name] = Object.assign({}, EDITS[name], { [field]: p[field] });
+  }
+  saveEdits(EDITS); saveRows();
+  renderAll();
+});
+
+// ---- 删除行 ----
+document.querySelector('#detail-table tbody').addEventListener('click', e => {
+  const btn = e.target.closest('.row-del');
+  if (!btn) return;
+  const name = btn.dataset.name;
+  const p = P.find(x => x.name === name);
+  if (!p) return;
+  if (!confirm(`确定删除「${name}」？该操作会同步从全部图表中移除。`)) return;
+  const i = P.findIndex(x => x.name === name);
+  if (i >= 0) P.splice(i, 1);
+  if (p._custom) {
+    ROWEDITS.added = ROWEDITS.added.filter(x => x !== p && x.name !== name);
+  } else {
+    if (!ROWEDITS.deleted.includes(name)) ROWEDITS.deleted.push(name);
+  }
+  delete EDITS[name];
+  saveEdits(EDITS); saveRows();
+  renderAll();
+});
+
+// ===================== 工具栏事件 =====================
+document.getElementById('seg-btns').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#seg-btns button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.sec = e.target.dataset.sec; state.sortKey = null;
+  renderTable();
+});
+document.getElementById('search').addEventListener('input', e => { state.kw = e.target.value.trim().toLowerCase(); renderTable(); });
+document.getElementById('risk-filter').addEventListener('change', e => { state.risk = e.target.value; renderTable(); });
+
+document.getElementById('edit-toggle').addEventListener('click', () => {
+  state.edit = !state.edit;
+  const btn = document.getElementById('edit-toggle');
+  btn.textContent = state.edit ? '✅ 完成编辑' : '✏️ 编辑模式';
+  btn.classList.toggle('editing', state.edit);
+  document.getElementById('reset-data').style.display = state.edit ? '' : 'none';
+  document.getElementById('add-row').style.display = state.edit ? '' : 'none';
+  document.getElementById('edit-hint').style.display = state.edit ? '' : 'none';
+  renderTable();
+});
+
+document.getElementById('add-row').addEventListener('click', () => {
+  let n = ROWEDITS.added.length + 1;
+  while (P.some(p => p.name === '新项目' + n)) n++;
+  const obj = { name: '新项目' + n, group: state.sec === '优于目标' ? '优于目标' : '差于目标', risk: '低风险', pl_status: '制造成本亏损', _custom: true };
+  P.push(obj);
+  ROWEDITS.added.push(obj);
+  saveRows();
+  renderAll();
+  const sc = document.querySelector('.table-scroll');
+  if (sc) sc.scrollTop = sc.scrollHeight;
+});
+
+document.getElementById('reset-data').addEventListener('click', () => {
+  if (!confirm('确定恢复为 Excel 原始数据？本浏览器内的全部修改（含新增/删除行）将被清除。')) return;
+  localStorage.removeItem(LS_KEY);
+  localStorage.removeItem(LS_ROWS);
+  location.reload();
+});
+
+// ===================== 全量渲染 =====================
+function renderAll() {
+  renderKPIs();
+  renderInsights();
+  renderCharts();
+  renderTable();
+}
+renderAll();
+
+window.addEventListener('resize', () => Object.values(chartObjs).forEach(c => c.resize()));
+</script>
+</body>
+</html>
