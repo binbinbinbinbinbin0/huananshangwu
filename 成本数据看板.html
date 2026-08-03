@@ -123,6 +123,40 @@ table.data-table .pos { color: var(--green); }
 td.edited-cell { position: relative; }
 td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
 .modified-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); margin-left: 6px; vertical-align: middle; }
+
+/* KPI 卡可点击 + 钻取弹窗 */
+.kpi-card { cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.kpi-card:hover { transform: translateY(-2px); border-color: var(--gold); box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+.kpi-card .more { font-size: 10px; color: var(--gold); margin-top: 8px; opacity: .85; }
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(2,6,23,.72); z-index: 60;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-mask.show { display: flex; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  max-width: 980px; width: 100%; max-height: 84vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.modal .m-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.modal .m-title { font-size: 16px; font-weight: 600; }
+.modal .m-title small { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
+.modal .m-close { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; padding: 5px 14px; cursor: pointer; font-size: 13px; }
+.modal .m-close:hover { border-color: var(--red); color: var(--red); }
+.modal .m-body { padding: 16px 20px; overflow-y: auto; }
+.modal .m-sum { font-size: 13px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.9; }
+.modal .m-sum b { color: var(--text); }
+.modal .m-sum .neg { color: var(--red); font-weight: 600; }
+.modal .m-sum .pos { color: var(--green); font-weight: 600; }
+table.drill-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.drill-table th { text-align: left; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.drill-table td { padding: 7px 10px; border-bottom: 1px solid rgba(51,65,85,.4); white-space: nowrap; }
+table.drill-table tr:hover td { background: rgba(245,158,11,.06); }
+table.drill-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.drill-table .neg { color: var(--red); }
+table.drill-table .pos { color: var(--green); }
+table.drill-table tr.total td { border-top: 2px solid var(--border); font-weight: 700; background: rgba(245,158,11,.08); }
+
 .footnote { font-size: 12px; color: var(--text-muted); margin-top: 14px; line-height: 1.8; }
 </style>
 </head>
@@ -190,7 +224,19 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
 
   <div class="footnote">
     注：①偏差率 = 实际收益率（含已实现策划）− 承接效益率(A)；目标成本偏差额 = 实际履约成本（纠偏后）− 累计目标成本(a值)，随修改实时重算（与原表口径逐行核对一致）；
-    ②合计指标按项目行实时汇总；③编辑模式下可新增/删除项目行，修改保存在本浏览器（localStorage），点「恢复默认」全部还原；④比率列编辑时按百分数填写。
+    ②合计指标按项目行实时汇总；平均承接效益率(A)、平均实际收益率(A'+B') 为项目简单平均，A'+B'-A = 两者之差；③点击任意 KPI 卡片可查看该项的项目级明细；
+    ④编辑模式下可新增/删除项目行，修改保存在本浏览器（localStorage），点「恢复默认」全部还原；⑤比率列编辑时按百分数填写。
+  </div>
+</div>
+
+<!-- ========== KPI 钻取弹窗 ========== -->
+<div class="modal-mask" id="drill-mask">
+  <div class="modal">
+    <div class="m-head">
+      <div class="m-title" id="drill-title">明细</div>
+      <button class="m-close" onclick="closeDrill()">✕ 关闭</button>
+    </div>
+    <div class="m-body" id="drill-body"></div>
   </div>
 </div>
 
@@ -249,6 +295,12 @@ function getT() {
   t.lossFull = P.filter(p => p.pl_status === '完全成本亏损').length;
   t.lossMfg = P.filter(p => p.pl_status === '制造成本亏损').length;
   t.overSave = P.filter(p => p.pl_status === '超额成本降低').length;
+  // 平均承接效益率(A) / 平均实际收益率(A'+B') / A'+B'-A（简单平均，与目标成本收益率看板口径一致）
+  const validA = P.filter(p => typeof p.rate_a === 'number');
+  const validR = P.filter(p => typeof p.actual_rate === 'number');
+  t.avgRateA = validA.length ? validA.reduce((s, p) => s + p.rate_a, 0) / validA.length : 0;
+  t.avgActual = validR.length ? validR.reduce((s, p) => s + p.actual_rate, 0) / validR.length : 0;
+  t.rateDiff = t.avgActual - t.avgRateA;
   return t;
 }
 
@@ -256,20 +308,30 @@ function getT() {
 function renderKPIs() {
   const T = getT();
   const lossCnt = P.filter(p => N(p.profit) < 0).length;
+  const rateCls = v => v < 0 ? 'red' : 'green';
   document.getElementById('kpis').innerHTML = `
-    <div class="kpi-card purple"><div class="label">在施项目 / 合同额</div><div class="value">${T.count} 个</div>
-      <div class="foot">合同额合计 <b>${fmtWan(T.contract)}</b> · 收入 ${fmtWan(T.income)}</div></div>
-    <div class="kpi-card ${T.profit < 0 ? 'red' : 'green'}"><div class="label">预计收益额合计</div><div class="value">${fmtWan(T.profit)}</div>
-      <div class="foot">加权实际收益率 <span class="${T.weighted_rate < 0 ? 'bad' : 'good'}">${(T.weighted_rate * 100).toFixed(2)}%</span> · ${lossCnt} 个亏损</div></div>
-    <div class="kpi-card ${T.cost_diff <= 0 ? 'green' : 'gold'}"><div class="label">目标成本偏差额</div><div class="value">${fmtWan(T.cost_diff)}</div>
-      <div class="foot">${T.cost_diff <= 0 ? '<span class="good">整体优于a值目标成本</span>' : '<span class="bad">整体超出a值目标成本</span>'}</div></div>
-    <div class="kpi-card green"><div class="label">策划创效（b值）</div><div class="value">${fmtWan(T.plan_value)}</div>
-      <div class="foot">已实现的策划创效合计</div></div>
-    <div class="kpi-card gold"><div class="label">风险项目</div><div class="value">${T.riskHigh} 个高风险</div>
-      <div class="foot">完全成本亏损 ${T.lossFull} · 制造成本亏损 ${T.lossMfg} · 超额降低 ${T.overSave}</div></div>
-    <div class="kpi-card"><div class="label">存贷差合计</div><div class="value">${fmtWan(T.loan_gap)}</div>
-      <div class="foot">${T.loan_gap >= 0 ? '<span class="good">资金沉淀为正</span>' : '<span class="bad">资金被占用</span>'}</div></div>
+    <div class="kpi-card purple" data-drill="projects"><div class="label">在施项目 / 合同额</div><div class="value">${T.count} 个</div>
+      <div class="foot">合同额合计 <b>${fmtWan(T.contract)}</b> · 收入 ${fmtWan(T.income)}</div><div class="more">点击查看明细 ▸</div></div>
+    <div class="kpi-card ${T.profit < 0 ? 'red' : 'green'}" data-drill="profit"><div class="label">预计收益额合计</div><div class="value">${fmtWan(T.profit)}</div>
+      <div class="foot">加权实际收益率 <span class="${T.weighted_rate < 0 ? 'bad' : 'good'}">${(T.weighted_rate * 100).toFixed(2)}%</span> · ${lossCnt} 个亏损</div><div class="more">点击查看明细 ▸</div></div>
+    <div class="kpi-card ${T.cost_diff <= 0 ? 'green' : 'gold'}" data-drill="costdiff"><div class="label">目标成本偏差额</div><div class="value">${fmtWan(T.cost_diff)}</div>
+      <div class="foot">${T.cost_diff <= 0 ? '<span class="good">整体优于a值目标成本</span>' : '<span class="bad">整体超出a值目标成本</span>'}</div><div class="more">点击查看明细 ▸</div></div>
+    <div class="kpi-card green" data-drill="plan"><div class="label">策划创效（b值）</div><div class="value">${fmtWan(T.plan_value)}</div>
+      <div class="foot">已实现的策划创效合计</div><div class="more">点击查看明细 ▸</div></div>
+    <div class="kpi-card gold" data-drill="risk"><div class="label">风险项目</div><div class="value">${T.riskHigh} 个高风险</div>
+      <div class="foot">完全成本亏损 ${T.lossFull} · 制造成本亏损 ${T.lossMfg} · 超额降低 ${T.overSave}</div><div class="more">点击查看明细 ▸</div></div>
+    <div class="kpi-card" data-drill="loan"><div class="label">存贷差合计</div><div class="value">${fmtWan(T.loan_gap)}</div>
+      <div class="foot">${T.loan_gap >= 0 ? '<span class="good">资金沉淀为正</span>' : '<span class="bad">资金被占用</span>'}</div><div class="more">点击查看明细 ▸</div></div>
+    <div class="kpi-card ${rateCls(T.avgRateA)}" data-drill="rates"><div class="label">平均承接效益率（A）</div><div class="value">${(T.avgRateA * 100).toFixed(2)}%</div>
+      <div class="foot">承接阶段效益 · ${P.length} 个项目简单平均</div><div class="more">点击查看明细 ▸</div></div>
+    <div class="kpi-card ${rateCls(T.avgActual)}" data-drill="rates"><div class="label">平均实际收益率（A'+B'）</div><div class="value">${(T.avgActual * 100).toFixed(2)}%</div>
+      <div class="foot">含已实现策划 · ${P.length} 个项目简单平均</div><div class="more">点击查看明细 ▸</div></div>
+    <div class="kpi-card ${rateCls(T.rateDiff)}" data-drill="rates"><div class="label">A'+B'-A</div><div class="value">${T.rateDiff >= 0 ? '+' : ''}${(T.rateDiff * 100).toFixed(2)}%</div>
+      <div class="foot">平均实际收益率 − 平均承接效益率</div><div class="more">点击查看明细 ▸</div></div>
   `;
+  document.querySelectorAll('#kpis .kpi-card').forEach(c => {
+    c.addEventListener('click', () => openDrill(c.dataset.drill));
+  });
 }
 
 // ===================== 渲染：分析结论 =====================
@@ -689,12 +751,96 @@ document.getElementById('reset-data').addEventListener('click', () => {
   location.reload();
 });
 
+// ===================== KPI 钻取明细 =====================
+let drillKey = null;
+function closeDrill() { drillKey = null; document.getElementById('drill-mask').classList.remove('show'); }
+document.getElementById('drill-mask').addEventListener('click', e => { if (e.target.id === 'drill-mask') closeDrill(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrill(); });
+
+function drillTable(heads, rowsHtml, totalHtml) {
+  return `<table class="drill-table"><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rowsHtml}${totalHtml || ''}</tbody></table>`;
+}
+const tdN = (v, cls) => `<td class="num ${cls || (N(v) < 0 ? 'neg' : '')}">${typeof v === 'number' ? fmtNum(v) : '—'}</td>`;
+const tdP = v => `<td class="num ${N(v) < 0 ? 'neg' : ''}">${fmtPct(v)}</td>`;
+
+function openDrill(key) {
+  drillKey = key;
+  const T = getT();
+  let title = '', sum = '', table = '';
+
+  if (key === 'projects') {
+    title = `在施项目清单 <small>${T.count} 个项目 · 合同额合计 ${fmtWan(T.contract)}</small>`;
+    const arr = P.slice().sort((a, b) => N(b.contract) - N(a.contract));
+    table = drillTable(['#', '项目名称', '分类', '开工日期', '合同额(万)', '累计收入(万)', '完工%', '风险', '盈亏状态'],
+      arr.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td><td>${p.level || '—'}</td><td>${p.start_date || '—'}</td>
+        ${tdN(p.contract, '')}${tdN(p.income, '')}${tdP(p.progress)}
+        <td><span class="badge-status ${riskBadge(p.risk)}">${p.risk || '—'}</span></td>
+        <td><span class="badge-status ${plBadge(p.pl_status)}">${p.pl_status || '—'}</span></td></tr>`).join(''),
+      `<tr class="total"><td></td><td>合计</td><td></td><td></td>${tdN(T.contract, '')}${tdN(T.income, '')}<td></td><td></td><td></td></tr>`);
+  } else if (key === 'profit') {
+    title = `预计收益额明细 <small>合计 ${fmtWan(T.profit)} · 亏损 ${P.filter(p => N(p.profit) < 0).length} 个</small>`;
+    const arr = P.slice().sort((a, b) => N(a.profit) - N(b.profit));
+    sum = `按预计收益额升序排列，<b>红色为亏损项目</b>。盈利项目 ${P.filter(p => N(p.profit) > 0).length} 个合计 <span class="pos">${fmtWan(P.filter(p => N(p.profit) > 0).reduce((s, p) => s + N(p.profit), 0))}</span>，亏损项目合计 <span class="neg">${fmtWan(P.filter(p => N(p.profit) < 0).reduce((s, p) => s + N(p.profit), 0))}</span>。`;
+    table = drillTable(['#', '项目名称', '预计收益额(万)', '实际收益率', '承接效益率A', '偏差率', '盈亏状态'],
+      arr.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td>${tdN(p.profit)}${tdP(p.actual_rate)}${tdP(p.rate_a)}${tdP(deviationOf(p))}
+        <td><span class="badge-status ${plBadge(p.pl_status)}">${p.pl_status || '—'}</span></td></tr>`).join(''),
+      `<tr class="total"><td></td><td>合计</td>${tdN(T.profit)}<td></td><td></td><td></td><td></td></tr>`);
+  } else if (key === 'costdiff') {
+    title = `目标成本偏差额明细 <small>合计 ${fmtWan(T.cost_diff)}（负=节约，正=超支）</small>`;
+    const arr = P.filter(p => costDiffOf(p) !== null).sort((a, b) => costDiffOf(a) - costDiffOf(b));
+    sum = `目标成本偏差额 = 实际履约成本（纠偏后）− 累计目标成本(a值)。节约合计 <span class="pos">${fmtWan(arr.filter(p => costDiffOf(p) < 0).reduce((s, p) => s + costDiffOf(p), 0))}</span>，超支合计 <span class="neg">${fmtWan(arr.filter(p => costDiffOf(p) > 0).reduce((s, p) => s + costDiffOf(p), 0))}</span>。`;
+    table = drillTable(['#', '项目名称', '目标成本a值(万)', '实际履约成本(万)', '偏差额(万)'],
+      arr.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td>${tdN(p.target_cost, '')}${tdN(p.actual_cost, '')}${tdN(costDiffOf(p), costDiffOf(p) > 0 ? 'neg' : 'pos')}</tr>`).join(''),
+      `<tr class="total"><td></td><td>合计</td>${tdN(T.target_cost, '')}${tdN(T.actual_cost, '')}${tdN(T.cost_diff, T.cost_diff > 0 ? 'neg' : 'pos')}</tr>`);
+  } else if (key === 'plan') {
+    title = `策划创效明细 <small>合计 ${fmtWan(T.plan_value)}</small>`;
+    const arr = P.slice().sort((a, b) => N(b.plan_value) - N(a.plan_value));
+    table = drillTable(['#', '项目名称', '策划创效b值(万)', '策划创效率B', '实际收益率'],
+      arr.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td>${tdN(p.plan_value, N(p.plan_value) > 0 ? 'pos' : '')}${tdP(p.plan_rate)}${tdP(p.actual_rate)}</tr>`).join(''),
+      `<tr class="total"><td></td><td>合计</td>${tdN(T.plan_value, 'pos')}<td></td><td></td></tr>`);
+  } else if (key === 'risk') {
+    title = `风险项目清单 <small>高风险 ${T.riskHigh} 个 · 中风险 ${P.filter(p => p.risk === '中风险').length} 个</small>`;
+    const rank = { '高风险': 0, '中风险': 1, '低风险': 2, '无风险': 3 };
+    const arr = P.filter(p => p.risk === '高风险' || p.risk === '中风险').sort((a, b) => (rank[a.risk] ?? 9) - (rank[b.risk] ?? 9) || N(a.profit) - N(b.profit));
+    sum = `高风险项目 <b>${T.riskHigh} 个</b>，普遍承接效益率为负，建议月度成本纠偏专报并锁定策划创效落地。`;
+    table = drillTable(['#', '项目名称', '风险', '盈亏状态', '预计收益额(万)', '承接效益率A', '实际收益率', '月人均产值(万)', '管理人员'],
+      arr.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td>
+        <td><span class="badge-status ${riskBadge(p.risk)}">${p.risk}</span></td>
+        <td><span class="badge-status ${plBadge(p.pl_status)}">${p.pl_status || '—'}</span></td>
+        ${tdN(p.profit)}${tdP(p.rate_a)}${tdP(p.actual_rate)}${tdN(p.monthly_pc, '')}<td class="num">${N(p.staff)}</td></tr>`).join(''));
+  } else if (key === 'loan') {
+    title = `存贷差明细 <small>合计 ${fmtWan(T.loan_gap)}（正=资金沉淀，负=资金占用）</small>`;
+    const arr = P.filter(p => N(p.loan_gap) !== 0).sort((a, b) => N(a.loan_gap) - N(b.loan_gap));
+    table = drillTable(['#', '项目名称', '存贷差(万)', '完工%', '盈亏状态'],
+      arr.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td>${tdN(p.loan_gap, N(p.loan_gap) >= 0 ? 'pos' : 'neg')}${tdP(p.progress)}
+        <td><span class="badge-status ${plBadge(p.pl_status)}">${p.pl_status || '—'}</span></td></tr>`).join(''),
+      `<tr class="total"><td></td><td>合计</td>${tdN(T.loan_gap, T.loan_gap >= 0 ? 'pos' : 'neg')}<td></td><td></td></tr>`);
+  } else if (key === 'rates') {
+    title = `收益率对比明细 <small>平均承接(A) ${(T.avgRateA * 100).toFixed(2)}% · 平均实际(A'+B') ${(T.avgActual * 100).toFixed(2)}% · A'+B'-A ${T.rateDiff >= 0 ? '+' : ''}${(T.rateDiff * 100).toFixed(2)}%</small>`;
+    const arr = P.filter(p => deviationOf(p) !== null).sort((a, b) => deviationOf(a) - deviationOf(b));
+    sum = `A'+B'-A = 平均实际收益率 − 平均承接效益率（简单平均口径，与目标成本收益率看板一致）。
+      当前为 <b class="${T.rateDiff >= 0 ? 'pos' : 'neg'}">${T.rateDiff >= 0 ? '+' : ''}${(T.rateDiff * 100).toFixed(2)}%</b>，
+      即履约+策划较承接阶段${T.rateDiff >= 0 ? '<span class="pos">整体改善</span>' : '<span class="neg">整体恶化</span>'}。
+      偏差率改善最大：${arr.length ? arr[arr.length - 1].name.slice(0, 14) + '（' + fmtPct(deviationOf(arr[arr.length - 1])) + '）' : '—'}；
+      恶化最大：${arr.length ? arr[0].name.slice(0, 14) + '（' + fmtPct(deviationOf(arr[0])) + '）' : '—'}。`;
+    table = drillTable(['#', '项目名称', '承接效益率A', '实际收益率A\'+B\'', '偏差率(A\'+B\'-A)', '综合核定收益率'],
+      arr.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td>${tdP(p.rate_a)}${tdP(p.actual_rate)}${tdP(deviationOf(p))}${tdP(p.approved_rate)}</tr>`).join(''),
+      `<tr class="total"><td></td><td>平均</td>${tdP(T.avgRateA)}${tdP(T.avgActual)}${tdP(T.rateDiff)}<td></td></tr>`);
+  }
+
+  document.getElementById('drill-title').innerHTML = title;
+  document.getElementById('drill-body').innerHTML = (sum ? `<div class="m-sum">${sum}</div>` : '') + table;
+  document.getElementById('drill-mask').classList.add('show');
+}
+
 // ===================== 全量渲染 =====================
 function renderAll() {
   renderKPIs();
   renderInsights();
   renderCharts();
   renderTable();
+  if (drillKey) openDrill(drillKey); // 弹窗打开时编辑数据，明细同步刷新
 }
 renderAll();
 
