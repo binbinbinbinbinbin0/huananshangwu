@@ -44,6 +44,8 @@ body {
 .kpi-card .value { font-size: 24px; font-weight: 700; }
 .kpi-card .foot { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
 .kpi-card .foot .bad { color: var(--red); font-weight: 600; }
+.kpi-card { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.4); }
 .kpi-card .foot .good { color: var(--green); font-weight: 600; }
 
 .section-title { font-size: 16px; font-weight: 600; margin: 26px 0 14px; padding-left: 12px; border-left: 4px solid var(--accent); }
@@ -313,19 +315,54 @@ function renderKPIs() {
     : doneSrc.length <= 2 ? '来源：' + doneSrc.map(n => n.slice(0, 12)).join('、')
     : `来源：${doneSrc.length} 个项目`;
   document.getElementById('kpis').innerHTML = `
-    <div class="kpi-card purple"><div class="label">26年结算指标总额</div><div class="value">${fmtWan(T.target)}</div>
+    <div class="kpi-card purple" data-k="target" title="点击查看指标项目构成 ▸"><div class="label">26年结算指标总额</div><div class="value">${fmtWan(T.target)}</div>
       <div class="foot">已竣未结 ${P1.length} 个 · 已竣已结 ${P2.length} 个</div></div>
-    <div class="kpi-card"><div class="label">当前已完成结算</div><div class="value">${fmtWan(T.done)}</div>
+    <div class="kpi-card" data-k="done" title="点击查看完成项目构成 ▸"><div class="label">当前已完成结算</div><div class="value">${fmtWan(T.done)}</div>
       <div class="foot">完成率 <span class="${doneRate > 0.5 ? 'good' : 'bad'}">${(doneRate * 100).toFixed(1)}%</span> · ${srcText}</div></div>
-    <div class="kpi-card gold"><div class="label">保底预计可结算</div><div class="value">${fmtWan(T.floor)}</div>
+    <div class="kpi-card gold" data-k="floor" title="点击查看保底构成项目 ▸"><div class="label">保底预计可结算</div><div class="value">${fmtWan(T.floor)}</div>
       <div class="foot">保底缺口 <span class="bad">${fmtWan(gapFloor)}</span>（${(gapFloor / N(T.target) * 100).toFixed(1)}%）</div></div>
-    <div class="kpi-card"><div class="label">奋斗预计可结算</div><div class="value">${fmtWan(T.stretch)}</div>
+    <div class="kpi-card" data-k="stretch" title="点击查看奋斗构成项目 ▸"><div class="label">奋斗预计可结算</div><div class="value">${fmtWan(T.stretch)}</div>
       <div class="foot">奋斗缺口 <span class="bad">${fmtWan(gapStretch)}</span>（${(gapStretch / N(T.target) * 100).toFixed(1)}%）</div></div>
-    <div class="kpi-card red"><div class="label">预计自施收益（未结）</div><div class="value">${fmtWan(T.profit)}</div>
+    <div class="kpi-card red" data-k="profit" title="点击查看项目收益明细 ▸"><div class="label">预计自施收益（未结）</div><div class="value">${fmtWan(T.profit)}</div>
       <div class="foot">预计收益率 ${(N(T.profit_rate) * 100).toFixed(2)}% · <span class="bad">${lossCnt} 个项目亏损</span></div></div>
-    <div class="kpi-card green"><div class="label">截止目前已收款（未结）</div><div class="value">${fmtWan(T.received)}</div>
+    <div class="kpi-card green" data-k="received" title="点击查看收款项目构成 ▸"><div class="label">截止目前已收款（未结）</div><div class="value">${fmtWan(T.received)}</div>
       <div class="foot">自施已收款 ${fmtWan(T.self_received)} · 剩余回款 ${fmtWan(T.remaining)}</div></div>
   `;
+  document.querySelectorAll('#kpis .kpi-card').forEach(c => c.onclick = () => kpiDrill(c.dataset.k));
+}
+
+// ===================== KPI 卡片点击钻取 =====================
+function kpiDrill(k) {
+  const T = getT();
+  if (k === 'target') {
+    const list = DATA.indicators.filter(x => x.kind === '外控');
+    openDrill('26年结算指标总额 · 指标项目构成',
+      `共 ${list.length} 个外控指标项目 · 指标合计 ${fmtWan(list.reduce((s, p) => s + N(p.target), 0))} ｜ 已竣未结 ${P1.length} 个 · 已竣已结 ${P2.length} 个`,
+      indTable(list));
+  } else if (k === 'done') {
+    const list = P1.filter(p => N(p.done) > 0).sort((a, b) => N(b.done) - N(a.done));
+    openDrill('当前已完成结算 · 构成项目',
+      `${list.length} 个项目贡献了 ${fmtWan(T.done)}（含力争项目，完成结算即计入 70 亿总指标）`,
+      projTable(list, ['name', 'done', 'target', 'status', 'is_done', 'manager']));
+  } else if (k === 'floor' || k === 'stretch') {
+    const names = { floor: '保底预计', stretch: '奋斗预计' };
+    const list = P1.filter(p => N(p[k]) > 0).sort((a, b) => N(b[k]) - N(a[k]));
+    const gap = N(T.target) - N(T[k]);
+    openDrill(`${names[k]}可结算 · 构成项目`,
+      `${list.length} 个项目 · 合计 ${fmtWan(list.reduce((s, p) => s + N(p[k]), 0))} ｜ 距 26 年指标缺口 ${fmtWan(gap)}`,
+      projTable(list, ['name', k, 'target', 'done', 'status', 'manager']));
+  } else if (k === 'profit') {
+    const list = P1.slice().sort((a, b) => profitOf(a) - profitOf(b));
+    const lossCnt = list.filter(p => profitOf(p) < 0).length;
+    openDrill('预计自施收益（未结）· 项目明细（亏损在前）',
+      `共 ${list.length} 个项目 · 收益合计 ${fmtWan(T.profit)}（收益率 ${(N(T.profit_rate) * 100).toFixed(2)}%）· ${lossCnt} 个项目亏损`,
+      projTable(list, ['name', 'profit', 'profit_rate', 'self_settle', 'self_cost', 'status', 'manager']));
+  } else if (k === 'received') {
+    const list = P1.filter(p => N(p.received) > 0).sort((a, b) => N(b.received) - N(a.received));
+    openDrill('截止目前已收款（未结）· 项目构成',
+      `${list.length} 个项目 · 已收款合计 ${fmtWan(T.received)} ｜ 自施已收款 ${fmtWan(T.self_received)} · 剩余回款 ${fmtWan(T.remaining)}`,
+      projTable(list, ['name', 'received', 'self_received', 'remaining', 'status', 'manager']));
+  }
 }
 
 // ===================== 渲染：分析结论 =====================
