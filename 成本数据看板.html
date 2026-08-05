@@ -169,29 +169,29 @@ table.drill-table tr.total td { border-top: 2px solid var(--border); font-weight
       <div class="sub">在施项目成本分析 · 盈亏 / 风险 / 目标成本偏差 / 策划创效 一体化分析</div>
     </div>
     <div class="meta">
-      数据来源：在施项目成本分析.xlsx<br>
+      数据来源：2026.7在施项目成本分析.xlsx（数据期：2026年7月）<br>
       金额单位：万元 ｜ 比率单位：%
     </div>
   </div>
 
   <div class="kpi-row" id="kpis"></div>
 
-  <div class="section-title">🧭 核心分析结论 <small>基于 18 个在施项目成本数据自动生成</small></div>
+  <div class="section-title">🧭 核心分析结论 <small>基于在施项目成本数据自动生成 · 随明细编辑实时联动更新</small></div>
   <div class="insight-grid" id="insights"></div>
 
-  <div class="section-title">📉 盈亏与收益率分析 <small>预计收益额 / 实际收益率 vs 承接效益率 vs 核定收益率</small></div>
+  <div class="section-title">📉 盈亏与收益率分析 <small>预计收益额 / 实际收益率 vs 承接效益率 vs 核定收益率 · 点击柱子查看项目明细</small></div>
   <div class="chart-grid">
     <div class="chart-box wide" id="chart-profit"></div>
     <div class="chart-box wide" id="chart-rate"></div>
   </div>
 
-  <div class="section-title">💰 目标成本执行分析 <small>a值目标成本 vs 实际履约成本（纠偏后）</small></div>
+  <div class="section-title">💰 目标成本执行分析 <small>a值目标成本 vs 实际履约成本（纠偏后）· 点击柱子查看项目明细</small></div>
   <div class="chart-grid">
     <div class="chart-box" id="chart-cost"></div>
     <div class="chart-box" id="chart-plan"></div>
   </div>
 
-  <div class="section-title">⚠️ 风险与资金分析 <small>风险等级 / 盈亏状态 / 存贷差 / 完工进度</small></div>
+  <div class="section-title">⚠️ 风险与资金分析 <small>风险等级 / 盈亏状态 / 存贷差 / 完工进度 · 点击柱子/扇区查看项目明细</small></div>
   <div class="chart-grid">
     <div class="chart-box" id="chart-risk"></div>
     <div class="chart-box" id="chart-status"></div>
@@ -211,7 +211,7 @@ table.drill-table tr.total td { border-top: 2px solid var(--border); font-weight
     <button class="btn" id="edit-toggle">✏️ 编辑模式</button>
     <button class="btn ghost" id="add-row" style="display:none">＋ 新增项目</button>
     <button class="btn ghost" id="reset-data" style="display:none">↩️ 恢复默认</button>
-    <span class="edit-hint" id="edit-hint" style="display:none">编辑中：金框单元格可直接修改；偏差率与目标成本偏差额实时重算；比率列按百分数填写（如 -3.26 表示 -3.26%）</span>
+    <span class="edit-hint" id="edit-hint" style="display:none">编辑中：金框单元格可直接修改；分组 / 项目分类 / 风险 / 盈亏状态为下拉选择；偏差率与目标成本偏差额实时重算；比率列按百分数填写（如 -3.26 表示 -3.26%）</span>
   </div>
   <div class="data-table-wrap">
     <div class="table-scroll">
@@ -224,7 +224,7 @@ table.drill-table tr.total td { border-top: 2px solid var(--border); font-weight
 
   <div class="footnote">
     注：①偏差率 = 实际收益率（含已实现策划）− 承接效益率(A)；目标成本偏差额 = 实际履约成本（纠偏后）− 累计目标成本(a值)，随修改实时重算（与原表口径逐行核对一致）；
-    ②合计指标按项目行实时汇总；平均承接效益率(A)、平均实际收益率(A'+B') 为项目简单平均，A'+B'-A = 两者之差；③点击任意 KPI 卡片可查看该项的项目级明细；
+    ②合计指标按项目行实时汇总；平均承接效益率(A)、平均实际收益率(A'+B') 为项目简单平均，A'+B'-A = 两者之差；③点击任意 KPI 卡片、图表柱子或饼图扇区，均可查看对应项目级明细；
     ④编辑模式下可新增/删除项目行，修改保存在本浏览器（localStorage），点「恢复默认」全部还原；⑤比率列编辑时按百分数填写。
   </div>
 </div>
@@ -241,7 +241,7 @@ table.drill-table tr.total td { border-top: 2px solid var(--border); font-weight
 </div>
 
 <script>
-const DATA = {"updated": "2026-08", "projects": [{"group": "差于目标", "name": "深圳电子科技大学高等研究院", "org": "华南分公司", "level": "II级", "start_date": "2024-12-28", "contract": 95264.211215, "income": 88932.211215, "approved_rate": 0.0559, "rate_a": -0.0829, "actual_rate": -0.0326, "profit": -2906.504297, "target_cost": 96307.098032, "actual_cost": 92100.425289, "plan_rate": 0.034, "plan_value": 3030.329622, "mgmt_ratio1": 0.0383, "mgmt_ratio2": 0.0381, "monthly_pc": 102.66, "staff": 40, "loan_gap": 19826.877269, "progress": 0.4841, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳机场B4货站", "org": "华南分公司", "level": "IV级", "start_date": "2026-04-03", "contract": 12697.066666, "income": 11434.616037, "approved_rate": 0.0551, "rate_a": -0.207, "actual_rate": -0.207, "profit": -2367.082739, "target_cost": 13801.796525, "actual_cost": 13801.698776, "plan_rate": 0, "plan_value": 0, "mgmt_ratio1": 0.0239, "mgmt_ratio2": 0.0411, "monthly_pc": 101.02, "staff": 17, "loan_gap": 0, "progress": 0.071, "risk": "高风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳抖音二期基坑", "org": "华南分公司", "level": "IV级", "start_date": "2026-03-25", "contract": 18598, "income": 18342.899886, "approved_rate": 0.0606, "rate_a": -0.1273, "actual_rate": -0.1138, "profit": -2134.994261, "target_cost": 20678.358808, "actual_cost": 20897.372258, "plan_rate": 0, "plan_value": 0, "mgmt_ratio1": 0.0953, "mgmt_ratio2": 0.0884, "monthly_pc": 31.49, "staff": 16, "loan_gap": 590.462709, "progress": 0.0256, "risk": "高风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳医学科学院及深圳湾实验室I标", "org": "华南分公司", "level": "II级", "start_date": "2024-09-01", "contract": 35450.8, "income": 28174.044303, "approved_rate": 0.0532, "rate_a": -0.1096, "actual_rate": -0.0597, "profit": -1704.038817, "target_cost": 31263.23671, "actual_cost": 30251.77215, "plan_rate": 0.0133, "plan_value": 378.538729, "mgmt_ratio1": 0.041, "mgmt_ratio2": 0.0656, "monthly_pc": 31.43, "staff": 35, "loan_gap": 9919.18, "progress": 0.5849, "risk": "高风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳香港中文大学医学院", "org": "华南分公司", "level": "II级", "start_date": "2024-04-01", "contract": 84465.324804, "income": 61505.932066, "approved_rate": 0.0535, "rate_a": -0.0563, "actual_rate": -0.0193, "profit": -1201.593741, "target_cost": 64971.176868, "actual_cost": 63412.431962, "plan_rate": 0.0161, "plan_value": 1001.676887, "mgmt_ratio1": 0.0414, "mgmt_ratio2": 0.0417, "monthly_pc": 48.68, "staff": 44, "loan_gap": 11841.95, "progress": 0.6757, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳深港智汇风华产业园项目一期工程II标段EPC", "org": "华南分公司", "level": "III级", "start_date": "2024-12-30", "contract": 87462.493842, "income": 56967.409753, "approved_rate": 0.056, "rate_a": -0.0208, "actual_rate": -0.0208, "profit": -1186.846258, "target_cost": 58150.266701, "actual_cost": 58154.256011, "plan_rate": 0, "plan_value": 0, "mgmt_ratio1": 0.2851, "mgmt_ratio2": 0.0889, "monthly_pc": 0, "staff": 8, "loan_gap": 0, "progress": 0.2003, "risk": "低风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳职业技术大学西丽校区修缮改造", "org": "华南分公司", "level": "IV级", "start_date": "2024-05-10", "contract": 10558.66076, "income": 7941.082054, "approved_rate": 0.0606, "rate_a": -0.1605, "actual_rate": -0.119, "profit": -953.317393, "target_cost": 9215.891898, "actual_cost": 8966.579447, "plan_rate": 0.0188, "plan_value": 150.88131, "mgmt_ratio1": 0.0615, "mgmt_ratio2": 0.065, "monthly_pc": 39.12, "staff": 13, "loan_gap": 64.213293, "progress": 0.9611, "risk": "高风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "东莞市先进阿秒激光设施", "org": "华南分公司", "level": "II级", "start_date": "2024-12-31", "contract": 28193.129373, "income": 28193.129373, "approved_rate": 0.0588, "rate_a": -0.0727, "actual_rate": -0.0322, "profit": -938.253858, "target_cost": 30107.171419, "actual_cost": 30033.48957, "plan_rate": 0.04, "plan_value": 1164.715951, "mgmt_ratio1": 0.055, "mgmt_ratio2": 0.0537, "monthly_pc": 81.63, "staff": 23, "loan_gap": 470.116656, "progress": 0.4534, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳市药品检验研究院光明分院建设", "org": "华南分公司", "level": "II级", "start_date": "2023-12-31", "contract": 30886, "income": 15818.187268, "approved_rate": 0.0523, "rate_a": -0.0703, "actual_rate": -0.0419, "profit": -695.296677, "target_cost": 16930.42649, "actual_cost": 17308.915157, "plan_rate": 0.0032, "plan_value": 53.358646, "mgmt_ratio1": 0.0842, "mgmt_ratio2": 0.1212, "monthly_pc": 7.78, "staff": 18, "loan_gap": 6974.722044, "progress": 0.5606, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳市人才研修院配电设施建设", "org": "华南分公司", "level": "I级", "start_date": "2026-03-28", "contract": 2481.593624, "income": 2351.533424, "approved_rate": 0.0755, "rate_a": -0.0558, "actual_rate": 0.0045, "profit": 10.660748, "target_cost": 2482.85876, "actual_cost": 2340.872676, "plan_rate": 0.0395, "plan_value": 92.819167, "mgmt_ratio1": 0.0086, "mgmt_ratio2": 0.0094, "monthly_pc": 58.89, "staff": 6, "loan_gap": 691.18499, "progress": 0.6854, "risk": "中风险", "pl_status": "制造成本亏损"}, {"group": "差于目标", "name": "深圳市吉华医院", "org": "华南分公司", "level": "III级", "start_date": "2022-02-25", "contract": 89839.6, "income": 79709.6, "approved_rate": 0.0604, "rate_a": -0.017, "actual_rate": 0.001, "profit": 86.691931, "target_cost": 81063.482771, "actual_cost": 82546.573577, "plan_rate": 0.0108, "plan_value": 896.265966, "mgmt_ratio1": 0.0623, "mgmt_ratio2": 0.0639, "monthly_pc": 34.33, "staff": 9, "loan_gap": -1164.9, "progress": 0.9046, "risk": "高风险", "pl_status": "制造成本亏损"}, {"group": "差于目标", "name": "东莞骏鼎达功能性保护材料生产建设", "org": "华南分公司", "level": "II级", "start_date": "2025-01-15", "contract": 12202.396642, "income": 9531.915322, "approved_rate": 0.0511, "rate_a": 0.0148, "actual_rate": 0.0167, "profit": 167.113641, "target_cost": 9389.205415, "actual_cost": 9838.833932, "plan_rate": 0.0279, "plan_value": 278.799312, "mgmt_ratio1": 0.0576, "mgmt_ratio2": 0.059, "monthly_pc": 0, "staff": 10, "loan_gap": 546.402526, "progress": 0.9035, "risk": "低风险", "pl_status": "制造成本亏损"}, {"group": "差于目标", "name": "广东工商职业技术大学国际学术交流中心、音乐厅建设", "org": "华南分公司", "level": "II级", "start_date": "2024-08-01", "contract": 50000, "income": 26000, "approved_rate": 0.058, "rate_a": 0.0151, "actual_rate": 0.0225, "profit": 585.956145, "target_cost": 25606.650786, "actual_cost": 25414.043855, "plan_rate": 0.0035, "plan_value": 91, "mgmt_ratio1": 0.0461, "mgmt_ratio2": 0.064, "monthly_pc": 45.66, "staff": 17, "loan_gap": 307.673078, "progress": 0.6511, "risk": "低风险", "pl_status": "制造成本亏损"}, {"group": "差于目标", "name": "广州从化国际赛马发展中心", "org": "华南分公司", "level": "II级", "start_date": "2024-07-16", "contract": 24582.495546, "income": 22399.495546, "approved_rate": 0.0508, "rate_a": -0.0431, "actual_rate": -0.0369, "profit": -827.825624, "target_cost": 23364.875906, "actual_cost": 23566.143394, "plan_rate": 0.044, "plan_value": 986.956269, "mgmt_ratio1": 0.0428583847321051, "mgmt_ratio2": 0.0381451062938191, "monthly_pc": 85.5428571428571, "staff": 21, "loan_gap": 112.880855, "progress": 0.6759, "risk": "中风险", "pl_status": "完全成本亏损"}, {"group": "差于目标", "name": "深圳过沥路市政工程", "org": "华南分公司", "level": "II级", "start_date": "2025-12-06", "contract": 13101.262596, "income": 9275.440193, "approved_rate": 0.06, "rate_a": -0.0057, "actual_rate": 0.0454, "profit": 440.191247, "target_cost": 9327.902396, "actual_cost": 9258.58486, "plan_rate": 0.0403, "plan_value": 390.803584, "mgmt_ratio1": 0.0174041229961705, "mgmt_ratio2": 0.016171438272705, "monthly_pc": 40.2054545454545, "staff": 11, "loan_gap": -541.470774, "progress": 0.6422, "risk": "低风险", "pl_status": "制造成本亏损"}, {"group": "优于目标", "name": "东莞小天才智能科技中心一期", "org": "华南分公司", "level": "II级", "start_date": "2023-05-20", "contract": 4974.539726, "income": 4974.539726, "approved_rate": 0.054, "rate_a": 0.0546, "actual_rate": 0.0547, "profit": 271.859172, "target_cost": 4702.95746, "actual_cost": 4702.680554, "plan_rate": 0, "plan_value": 0, "mgmt_ratio1": 0.0369, "mgmt_ratio2": 0.0393, "monthly_pc": 0, "staff": null, "loan_gap": 0, "progress": 0.7099, "risk": "无风险", "pl_status": "超额成本降低"}, {"group": "优于目标", "name": "深圳龙城街道龙飞学校新建工程（二期）", "org": "华南分公司", "level": "II级", "start_date": "2023-10-20", "contract": 30460.51934, "income": 15603.55516, "approved_rate": 0.0526, "rate_a": -0.0052, "actual_rate": 0.0567, "profit": 885.141625, "target_cost": 15685.018208, "actual_cost": 14718.413535, "plan_rate": 0.0222, "plan_value": 345.7892, "mgmt_ratio1": 0.0817, "mgmt_ratio2": 0.1024, "monthly_pc": 0, "staff": 8, "loan_gap": 1301.44169, "progress": 0.8647, "risk": "无风险", "pl_status": "超额成本降低"}, {"group": "优于目标", "name": "东莞小天才滨海湾", "org": "华南分公司", "level": "II级", "start_date": "2022-11-11", "contract": 68958.779437, "income": 68958.779437, "approved_rate": 0.054, "rate_a": 0.0519, "actual_rate": 0.0564, "profit": 3906.230542, "target_cost": 65077.879694, "actual_cost": 65329.227361, "plan_rate": 0.0002, "plan_value": 12.382801, "mgmt_ratio1": 0.0469, "mgmt_ratio2": 0.053, "monthly_pc": 35.09, "staff": 13, "loan_gap": 0, "progress": 0.9428, "risk": "无风险", "pl_status": "超额成本降低"}]};
+const DATA = {"updated": "2026-07","projects": [{"group": "差于目标","name": "深圳机场B4货站","org": "华南分公司","level": "IV级","start_date": "2026-04-03","contract": 12697.066666,"income": 11434.616037,"approved_rate": 0.0551,"rate_a": -0.207,"actual_rate": -0.207,"profit": -2367.082739,"target_cost": 13801.796525,"actual_cost": 13801.698776,"plan_rate": 0,"plan_value": 0,"mgmt_ratio1": 0.0239,"mgmt_ratio2": 0.0411,"monthly_pc": 101.02,"staff": 17,"loan_gap": 0,"progress": 0.071,"risk": "高风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "深圳职业技术大学西丽校区修缮改造","org": "华南分公司","level": "IV级","start_date": "2024-05-10","contract": 10558.66076,"income": 7941.082054,"approved_rate": 0.0606,"rate_a": -0.1605,"actual_rate": -0.119,"profit": -953.317393,"target_cost": 9215.891898,"actual_cost": 8966.579447,"plan_rate": 0.0188,"plan_value": 150.88131,"mgmt_ratio1": 0.0615,"mgmt_ratio2": 0.065,"monthly_pc": 39.12,"staff": 13,"loan_gap": 64.213293,"progress": 0.9611,"risk": "高风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "深圳抖音二期基坑","org": "华南分公司","level": "IV级","start_date": "2026-03-25","contract": 18598,"income": 18342.899886,"approved_rate": 0.0606,"rate_a": -0.1273,"actual_rate": -0.1138,"profit": -2134.994261,"target_cost": 20678.358808,"actual_cost": 20897.372258,"plan_rate": 0,"plan_value": 0,"mgmt_ratio1": 0.0953,"mgmt_ratio2": 0.0884,"monthly_pc": 31.49,"staff": 16,"loan_gap": 590.462709,"progress": 0.0256,"risk": "高风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "深圳医学科学院及深圳湾实验室I标","org": "华南分公司","level": "II级","start_date": "2024-09-01","contract": 35450.8,"income": 28174.044303,"approved_rate": 0.0532,"rate_a": -0.1096,"actual_rate": -0.0597,"profit": -1704.038817,"target_cost": 31263.23671,"actual_cost": 30251.77215,"plan_rate": 0.0133,"plan_value": 378.538729,"mgmt_ratio1": 0.041,"mgmt_ratio2": 0.0656,"monthly_pc": 31.43,"staff": 35,"loan_gap": 9919.18,"progress": 0.5849,"risk": "高风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "深圳市药品检验研究院光明分院建设","org": "华南分公司","level": "II级","start_date": "2023-12-31","contract": 30886,"income": 15818.187268,"approved_rate": 0.0523,"rate_a": -0.0703,"actual_rate": -0.0419,"profit": -695.296677,"target_cost": 16930.42649,"actual_cost": 17308.915157,"plan_rate": 0.0032,"plan_value": 53.358646,"mgmt_ratio1": 0.0842,"mgmt_ratio2": 0.1212,"monthly_pc": 7.78,"staff": 18,"loan_gap": 6974.722044,"progress": 0.5606,"risk": "中风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "广州从化国际赛马发展中心","org": "华南分公司","level": "II级","start_date": "2024-07-16","contract": 24582.495546,"income": 22399.495546,"approved_rate": 0.0508,"rate_a": -0.0431,"actual_rate": -0.0369,"profit": -827.825624,"target_cost": 23364.875906,"actual_cost": 23566.143394,"plan_rate": 0.044,"plan_value": 986.956269,"mgmt_ratio1": 0.0428583847321051,"mgmt_ratio2": 0.0381451062938191,"monthly_pc": 85.5428571428571,"staff": 21,"loan_gap": 112.880855,"progress": 0.6759,"risk": "中风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "深圳电子科技大学高等研究院","org": "华南分公司","level": "II级","start_date": "2024-12-28","contract": 95264.211215,"income": 88932.211215,"approved_rate": 0.0559,"rate_a": -0.0829,"actual_rate": -0.0326,"profit": -2906.504297,"target_cost": 96307.098032,"actual_cost": 92100.425289,"plan_rate": 0.034,"plan_value": 3030.329622,"mgmt_ratio1": 0.0383,"mgmt_ratio2": 0.0381,"monthly_pc": 102.66,"staff": 40,"loan_gap": 19826.877269,"progress": 0.4841,"risk": "中风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "东莞市先进阿秒激光设施","org": "华南分公司","level": "II级","start_date": "2024-12-31","contract": 28193.129373,"income": 28193.129373,"approved_rate": 0.0588,"rate_a": -0.0727,"actual_rate": -0.0322,"profit": -938.253858,"target_cost": 30107.171419,"actual_cost": 30033.48957,"plan_rate": 0.04,"plan_value": 1164.715951,"mgmt_ratio1": 0.055,"mgmt_ratio2": 0.0537,"monthly_pc": 81.63,"staff": 23,"loan_gap": 470.116656,"progress": 0.4534,"risk": "中风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "深圳深港智汇风华产业园项目一期工程II标段EPC","org": "华南分公司","level": "III级","start_date": "2024-12-30","contract": 87462.493842,"income": 56967.409753,"approved_rate": 0.056,"rate_a": -0.0208,"actual_rate": -0.0208,"profit": -1186.846258,"target_cost": 58150.266701,"actual_cost": 58154.256011,"plan_rate": 0,"plan_value": 0,"mgmt_ratio1": 0.2851,"mgmt_ratio2": 0.0889,"monthly_pc": 0,"staff": 8,"loan_gap": 0,"progress": 0.2003,"risk": "低风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "深圳香港中文大学医学院","org": "华南分公司","level": "II级","start_date": "2024-04-01","contract": 84465.324804,"income": 61505.932066,"approved_rate": 0.0535,"rate_a": -0.0563,"actual_rate": -0.0193,"profit": -1201.593741,"target_cost": 64971.176868,"actual_cost": 63412.431962,"plan_rate": 0.0161,"plan_value": 1001.676887,"mgmt_ratio1": 0.0414,"mgmt_ratio2": 0.0417,"monthly_pc": 48.68,"staff": 44,"loan_gap": 11841.95,"progress": 0.6757,"risk": "中风险","pl_status": "完全成本亏损"},{"group": "差于目标","name": "深圳市吉华医院","org": "华南分公司","level": "III级","start_date": "2022-02-25","contract": 89839.6,"income": 79709.6,"approved_rate": 0.0604,"rate_a": -0.017,"actual_rate": 0.001,"profit": 86.691931,"target_cost": 81063.482771,"actual_cost": 82546.573577,"plan_rate": 0.0108,"plan_value": 896.265966,"mgmt_ratio1": 0.0623,"mgmt_ratio2": 0.0639,"monthly_pc": 34.33,"staff": 9,"loan_gap": -1164.9,"progress": 0.9046,"risk": "高风险","pl_status": "制造成本亏损"},{"group": "差于目标","name": "深圳市人才研修院配电设施建设","org": "华南分公司","level": "I级","start_date": "2026-03-28","contract": 2481.593624,"income": 2351.533424,"approved_rate": 0.0755,"rate_a": -0.0558,"actual_rate": 0.0045,"profit": 10.660748,"target_cost": 2482.85876,"actual_cost": 2340.872676,"plan_rate": 0.0395,"plan_value": 92.819167,"mgmt_ratio1": 0.0086,"mgmt_ratio2": 0.0094,"monthly_pc": 58.89,"staff": 6,"loan_gap": 691.18499,"progress": 0.6854,"risk": "中风险","pl_status": "制造成本亏损"},{"group": "差于目标","name": "东莞骏鼎达功能性保护材料生产建设","org": "华南分公司","level": "II级","start_date": "2025-01-15","contract": 12202.396642,"income": 9531.915322,"approved_rate": 0.0511,"rate_a": 0.0148,"actual_rate": 0.0167,"profit": 167.113641,"target_cost": 9389.205415,"actual_cost": 9838.833932,"plan_rate": 0.0279,"plan_value": 278.799312,"mgmt_ratio1": 0.0576,"mgmt_ratio2": 0.059,"monthly_pc": 0,"staff": 10,"loan_gap": 546.402526,"progress": 0.9035,"risk": "低风险","pl_status": "制造成本亏损"},{"group": "差于目标","name": "广东工商职业技术大学国际学术交流中心、音乐厅建设","org": "华南分公司","level": "II级","start_date": "2024-08-01","contract": 50000,"income": 26000,"approved_rate": 0.058,"rate_a": 0.0151,"actual_rate": 0.0225,"profit": 585.956145,"target_cost": 25606.650786,"actual_cost": 25414.043855,"plan_rate": 0.0035,"plan_value": 91,"mgmt_ratio1": 0.0461,"mgmt_ratio2": 0.064,"monthly_pc": 45.66,"staff": 17,"loan_gap": 307.673078,"progress": 0.6511,"risk": "低风险","pl_status": "制造成本亏损"},{"group": "差于目标","name": "深圳科学城体育中心EPCO机电","org": "华南分公司","level": "II级","start_date": "2025-12-15","contract": 14839.437838,"income": 14839.437838,"approved_rate": 0.07,"rate_a": -0.04,"actual_rate": 0.0262,"profit": 389.163153,"target_cost": 15433.015356,"actual_cost": 14450.274685,"plan_rate": 0.0027,"plan_value": 40,"mgmt_ratio1": 0.0199,"mgmt_ratio2": 0.0255,"monthly_pc": 80.17,"staff": 12,"loan_gap": 0,"progress": 0.2976,"risk": "低风险","pl_status": "制造成本亏损"},{"group": "差于目标","name": "深圳过沥路市政工程","org": "华南分公司","level": "II级","start_date": "2025-12-06","contract": 13101.262596,"income": 9275.440193,"approved_rate": 0.06,"rate_a": -0.0057,"actual_rate": 0.0454,"profit": 440.191247,"target_cost": 9327.902396,"actual_cost": 9258.58486,"plan_rate": 0.0403,"plan_value": 390.803584,"mgmt_ratio1": 0.0174041229961705,"mgmt_ratio2": 0.016171438272705,"monthly_pc": 40.2054545454545,"staff": 11,"loan_gap": -541.470774,"progress": 0.6422,"risk": "低风险","pl_status": "制造成本亏损"},{"group": "优于目标","name": "东莞小天才智能科技中心一期","org": "华南分公司","level": "II级","start_date": "2023-05-20","contract": 4974.539726,"income": 4974.539726,"approved_rate": 0.054,"rate_a": 0.0546,"actual_rate": 0.0547,"profit": 271.859172,"target_cost": 4702.95746,"actual_cost": 4702.680554,"plan_rate": 0,"plan_value": 0,"mgmt_ratio1": 0.0369,"mgmt_ratio2": 0.0393,"monthly_pc": 0,"staff": null,"loan_gap": 0,"progress": 0.7099,"risk": "无风险","pl_status": "超额成本降低"},{"group": "优于目标","name": "东莞小天才滨海湾","org": "华南分公司","level": "II级","start_date": "2022-11-11","contract": 68958.779437,"income": 68958.779437,"approved_rate": 0.054,"rate_a": 0.0519,"actual_rate": 0.0564,"profit": 3906.230542,"target_cost": 65077.879694,"actual_cost": 65329.227361,"plan_rate": 0.0002,"plan_value": 12.382801,"mgmt_ratio1": 0.0469,"mgmt_ratio2": 0.053,"monthly_pc": 35.09,"staff": 13,"loan_gap": 0,"progress": 0.9428,"risk": "无风险","pl_status": "超额成本降低"},{"group": "优于目标","name": "深圳龙城街道龙飞学校新建工程（二期）","org": "华南分公司","level": "II级","start_date": "2023-10-20","contract": 30460.51934,"income": 15603.55516,"approved_rate": 0.0526,"rate_a": -0.0052,"actual_rate": 0.0567,"profit": 885.141625,"target_cost": 15685.018208,"actual_cost": 14718.413535,"plan_rate": 0.0222,"plan_value": 345.7892,"mgmt_ratio1": 0.0817,"mgmt_ratio2": 0.1024,"monthly_pc": 0,"staff": 8,"loan_gap": 1301.44169,"progress": 0.8647,"risk": "无风险","pl_status": "超额成本降低"}]};
 
 // ===================== 工具 =====================
 const N = v => (typeof v === 'number' && !isNaN(v)) ? v : 0;
@@ -258,8 +258,8 @@ const deviationOf = p => (typeof p.actual_rate === 'number' && typeof p.rate_a =
 const costDiffOf = p => (typeof p.actual_cost === 'number' && typeof p.target_cost === 'number') ? p.actual_cost - p.target_cost : null;
 
 // ===================== 本地修改（localStorage 持久化） =====================
-const LS_KEY = 'cost_edits_v1';
-const LS_ROWS = 'cost_rows_v1';
+const LS_KEY = 'cost_edits_v2';
+const LS_ROWS = 'cost_rows_v2';
 const loadEdits = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch (e) { return {}; } };
 const saveEdits = o => localStorage.setItem(LS_KEY, JSON.stringify(o));
 const loadRows = () => { try { return JSON.parse(localStorage.getItem(LS_ROWS) || '{"added":[],"deleted":[]}'); } catch (e) { return { added: [], deleted: [] }; } };
@@ -350,7 +350,7 @@ function renderInsights() {
   <div class="insight">
     <div class="head">📉 盈亏分析 <span class="tag ${T.profit >= 0 ? 'ok' : 'risk'}">${T.profit >= 0 ? '整体盈利' : '整体亏损'}</span></div>
     <ul>
-      <li>18 个项目预计收益合计 <b class="${T.profit < 0 ? 'neg' : 'pos'}">${fmtWan(T.profit)}</b>，加权收益率 <b class="${T.weighted_rate < 0 ? 'neg' : 'pos'}">${(T.weighted_rate * 100).toFixed(2)}%</b></li>
+      <li>${P.length} 个项目预计收益合计 <b class="${T.profit < 0 ? 'neg' : 'pos'}">${fmtWan(T.profit)}</b>，加权收益率 <b class="${T.weighted_rate < 0 ? 'neg' : 'pos'}">${(T.weighted_rate * 100).toFixed(2)}%</b></li>
       <li>亏损 ${losses.length} 个合计 <b class="neg">${fmtWan(lossSum)}</b>；亏损前三：${losses.slice(0, 3).map(p => `${p.name.slice(0, 12)}（${fmtWan(p.profit)}）`).join('、')}</li>
       <li>盈利 ${profits.length} 个，盈利前三：${profits.slice(0, 3).map(p => `${p.name.slice(0, 12)}（+${fmtWan(p.profit)}）`).join('、') || '—'}</li>
     </ul>
@@ -562,6 +562,63 @@ function renderCharts() {
   })();
 }
 
+// ===================== 图表点击钻取 =====================
+let chartDrillSpec = null;
+
+function projDetailHtml(p) {
+  const d = deviationOf(p), cd = costDiffOf(p);
+  const rows = [
+    ['分组', p.group || '—'], ['项目分类', p.level || '—'], ['直管机构', p.org || '—'], ['实际开工日期', p.start_date || '—'],
+    ['合同额(万)', fmtNum(N(p.contract))], ['累计合同收入(万)', fmtNum(N(p.income))],
+    ['综合核定收益率', fmtPct(p.approved_rate)], ['承接效益率(A)', fmtPct(p.rate_a)], ['实际收益率(A+B)', fmtPct(p.actual_rate)],
+    ['偏差率(实际-承接)', d === null ? '—' : fmtPct(d)],
+    ['预计收益额(万)', fmtNum(N(p.profit))], ['累计目标成本a值(万)', fmtNum(N(p.target_cost))], ['实际履约成本(万)', fmtNum(N(p.actual_cost))],
+    ['目标成本偏差额(万)', cd === null ? '—' : fmtNum(cd)],
+    ['策划创效率(B)', fmtPct(p.plan_rate)], ['策划创效b值(万)', fmtNum(N(p.plan_value))],
+    ['管理费占比(确权)', fmtPct(p.mgmt_ratio1)], ['管理费占比(开累成本)', fmtPct(p.mgmt_ratio2)],
+    ['月人均产值(万)', fmtNum(N(p.monthly_pc))], ['管理人员数量(人)', typeof p.staff === 'number' ? p.staff : '—'],
+    ['存贷差(万)', fmtNum(N(p.loan_gap))], ['完工百分比', fmtPct(p.progress)],
+    ['项目风险情况', p.risk || '—'], ['项目盈亏状态', p.pl_status || '—'],
+  ];
+  return '<div class="m-sum">该柱对应项目的全字段明细，与下方明细表实时一致；开启「编辑模式」修改后此处同步更新。</div>' +
+    drillTable(['指标', '数值'], rows.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td></tr>`).join(''));
+}
+
+function openChartDrill(spec) {
+  chartDrillSpec = spec; drillKey = null;
+  const ttl = document.getElementById('drill-title');
+  const body = document.getElementById('drill-body');
+  if (spec.type === 'proj') {
+    const p = P.find(x => x.name === spec.name);
+    if (!p) { closeDrill(); return; }
+    ttl.innerHTML = `项目明细 <small>${p.name} ｜ ${p.group || '—'} ｜ ${p.risk || '—'}</small>`;
+    body.innerHTML = projDetailHtml(p);
+  } else {
+    const arr = spec.type === 'risk' ? P.filter(p => p.risk === spec.value) : P.filter(p => p.pl_status === spec.value);
+    if (!arr.length) { closeDrill(); return; }
+    const profitSum = arr.reduce((s, p) => s + N(p.profit), 0);
+    ttl.innerHTML = `${spec.value} · 项目清单 <small>${arr.length} 个项目 ｜ 预计收益合计 ${fmtWan(profitSum)}</small>`;
+    body.innerHTML = `<div class="m-sum">点击图表「${spec.value}」区域联动生成，随编辑实时更新。</div>` + drillTable(
+      ['#', '项目名称', '分类', '合同额(万)', '预计收益额(万)', '实际收益率', '承接效益率A', '风险', '盈亏状态'],
+      arr.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td><td>${p.level || '—'}</td>${tdN(p.contract, '')}${tdN(p.profit)}${tdP(p.actual_rate)}${tdP(p.rate_a)}
+        <td><span class="badge-status ${riskBadge(p.risk)}">${p.risk || '—'}</span></td>
+        <td><span class="badge-status ${plBadge(p.pl_status)}">${p.pl_status || '—'}</span></td></tr>`).join(''));
+  }
+  document.getElementById('drill-mask').classList.add('show');
+}
+
+function bindDrill() {
+  const on = (id, fn) => { const c = chartObjs[id]; if (!c) return; c.off('click'); c.on('click', fn); };
+  on('chart-profit', ps => { const arr = P.slice().sort((a, b) => N(a.profit) - N(b.profit)); const p = arr[ps.dataIndex]; if (p) openChartDrill({ type: 'proj', name: p.name }); });
+  on('chart-rate', ps => { const arr = P.slice().sort((a, b) => N(a.actual_rate) - N(b.actual_rate)); const p = arr[ps.dataIndex]; if (p) openChartDrill({ type: 'proj', name: p.name }); });
+  on('chart-cost', ps => { const arr = P.filter(p => N(p.target_cost) > 0).sort((a, b) => N(b.contract) - N(a.contract)).slice(0, 10); const p = arr[ps.dataIndex]; if (p) openChartDrill({ type: 'proj', name: p.name }); });
+  on('chart-plan', ps => { const arr = P.filter(p => N(p.plan_value) !== 0).sort((a, b) => N(b.plan_value) - N(a.plan_value)).slice(0, 10).reverse(); const p = arr[ps.dataIndex]; if (p) openChartDrill({ type: 'proj', name: p.name }); });
+  on('chart-risk', ps => { if (ps.name) openChartDrill({ type: 'risk', value: ps.name }); });
+  on('chart-status', ps => { if (ps.name) openChartDrill({ type: 'pl', value: ps.name }); });
+  on('chart-loan', ps => { const arr = P.filter(p => N(p.loan_gap) !== 0).sort((a, b) => N(a.loan_gap) - N(b.loan_gap)); const p = arr[ps.dataIndex]; if (p) openChartDrill({ type: 'proj', name: p.name }); });
+  on('chart-progress', ps => { const arr = P.slice().sort((a, b) => N(b.progress) - N(a.progress)); const p = arr[ps.dataIndex]; if (p) openChartDrill({ type: 'proj', name: p.name }); });
+}
+
 // ===================== 明细表 =====================
 const state = { sec: '全部', kw: '', risk: '', sortKey: null, sortAsc: true, edit: false };
 // 可编辑数值列
@@ -627,6 +684,14 @@ function renderTable() {
     if (editable && k === 'name' && r._custom) {
       return `<td><input type="text" class="edit-input edit-text" data-name="${r.name}" data-field="name" value="${String(r.name).replace(/"/g, '&quot;')}"></td>`;
     }
+    if (editable && k === 'group') {
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="group" style="width:92px">
+        ${['差于目标', '优于目标'].map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && k === 'level') {
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="level" style="width:74px">
+        ${['I级', 'II级', 'III级', 'IV级'].map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
     if (editable && k === 'risk') {
       return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="risk">
         ${RISKS.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
@@ -658,7 +723,7 @@ function renderTable() {
     if (k === 'staff') return `<td class="num">${typeof v === 'number' ? v : '—'}</td>`;
     if (k === 'risk') return `<td><span class="badge-status ${riskBadge(v)}">${v || '—'}</span>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
     if (k === 'pl_status') return `<td><span class="badge-status ${plBadge(v)}">${v || '—'}</span>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
-    if (k === 'group') return `<td>${v === '优于目标' ? '<span class="badge-status done">优于目标</span>' : '<span class="badge-status pending">差于目标</span>'}</td>`;
+    if (k === 'group') return `<td>${v === '优于目标' ? '<span class="badge-status done">优于目标</span>' : '<span class="badge-status pending">差于目标</span>'}${isEdited(r.name, 'group') ? '<span class="modified-dot"></span>' : ''}</td>`;
     return `<td>${v ?? '—'}</td>`;
   }).join('') + (editable ? `<td><button class="row-del" data-name="${r.name}" title="删除该项目">🗑</button></td>` : '') + '</tr>').join('');
 }
@@ -674,7 +739,7 @@ document.querySelector('#detail-table tbody').addEventListener('change', e => {
     const newName = el.value.trim() || name;
     p.name = newName;
     if (EDITS[name]) { EDITS[newName] = EDITS[name]; delete EDITS[name]; }
-  } else if (field === 'risk' || field === 'pl_status') {
+  } else if (['risk', 'pl_status', 'group', 'level'].includes(field)) {
     p[field] = el.value;
     EDITS[name] = Object.assign({}, EDITS[name], { [field]: p[field] });
   } else if (el.dataset.pct === '1') {
@@ -753,7 +818,7 @@ document.getElementById('reset-data').addEventListener('click', () => {
 
 // ===================== KPI 钻取明细 =====================
 let drillKey = null;
-function closeDrill() { drillKey = null; document.getElementById('drill-mask').classList.remove('show'); }
+function closeDrill() { drillKey = null; chartDrillSpec = null; document.getElementById('drill-mask').classList.remove('show'); }
 document.getElementById('drill-mask').addEventListener('click', e => { if (e.target.id === 'drill-mask') closeDrill(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrill(); });
 
@@ -839,8 +904,10 @@ function renderAll() {
   renderKPIs();
   renderInsights();
   renderCharts();
+  bindDrill();
   renderTable();
   if (drillKey) openDrill(drillKey); // 弹窗打开时编辑数据，明细同步刷新
+  else if (chartDrillSpec) openChartDrill(chartDrillSpec);
 }
 renderAll();
 
