@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>监理确认完成量看板 · 华南区域确权产值</title>
+<script src="./echarts.min.js"></script>
+<script>if (typeof echarts === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><\/script>');</script>
+<style>
+:root {
+  --bg: #0f172a; --bg-card: #1e293b; --border: #334155;
+  --text: #f1f5f9; --text-muted: #94a3b8;
+  --accent: #3b82f6; --gold: #f59e0b; --green: #10b981;
+  --purple: #8b5cf6; --teal: #14b8a6; --red: #ef4444;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+}
+.page { max-width: 1440px; margin: 0 auto; padding: 20px 24px 48px; }
+
+.topbar {
+  background: linear-gradient(135deg, #7c2d12 0%, #9a3412 50%, #b45309 100%);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 18px 22px; display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px;
+}
+.topbar h1 { font-size: 20px; letter-spacing: 1px; }
+.topbar .sub { font-size: 12px; opacity: .75; margin-top: 4px; }
+.topbar .meta { font-size: 12px; color: #ffedd5; text-align: right; line-height: 1.7; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 18px 0; }
+.kpi-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; position: relative; overflow: hidden;
+}
+.kpi-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(var(--accent), var(--teal)); }
+.kpi-card.gold::before { background: linear-gradient(var(--gold), var(--red)); }
+.kpi-card.green::before { background: linear-gradient(var(--green), var(--teal)); }
+.kpi-card.purple::before { background: linear-gradient(var(--purple), var(--accent)); }
+.kpi-card.red::before { background: linear-gradient(var(--red), var(--gold)); }
+.kpi-card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.kpi-card .value { font-size: 24px; font-weight: 700; }
+.kpi-card .foot { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.kpi-card .foot .bad { color: var(--red); font-weight: 600; }
+.kpi-card .foot .good { color: var(--green); font-weight: 600; }
+.kpi-card { cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.kpi-card:hover { transform: translateY(-2px); border-color: var(--gold); box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+.kpi-card .more { font-size: 10px; color: var(--gold); margin-top: 8px; opacity: .85; }
+
+.section-title { font-size: 16px; font-weight: 600; margin: 26px 0 14px; padding-left: 12px; border-left: 4px solid var(--gold); }
+.section-title small { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
+
+/* 十四五 / 十五五 期间对比 */
+.period-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .period-grid { grid-template-columns: 1fr; } }
+.period-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; position: relative; overflow: hidden; }
+.period-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(var(--gold), var(--red)); }
+.period-card.p155::before { background: linear-gradient(var(--green), var(--teal)); }
+.period-card .p-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.period-card .p-name { font-size: 15px; font-weight: 700; }
+.period-card .p-total { font-size: 28px; font-weight: 800; margin: 4px 0 10px; }
+.period-card.p145 .p-total { color: var(--gold); }
+.period-card.p155 .p-total { color: var(--green); }
+.period-card .p-rows { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12.5px; color: #cbd5e1; }
+.period-card .p-rows b { color: var(--text); }
+.period-card .p-note { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.chart-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; height: 380px; }
+.chart-box.wide { grid-column: 1 / -1; height: 430px; }
+@media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+
+.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.toolbar input[type="text"], .toolbar select {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 12px; border-radius: 8px; font-size: 13px; outline: none;
+}
+.toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
+.btn {
+  background: var(--accent); color: #fff; border: none; padding: 8px 16px;
+  border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn:hover { opacity: .9; }
+.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+.btn.editing { background: var(--gold); color: #0f172a; }
+.seg-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg-btns button {
+  background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+  padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+}
+.seg-btns button:hover { border-color: var(--gold); color: var(--text); }
+.seg-btns button.active { background: var(--gold); border-color: var(--gold); color: #0f172a; font-weight: 600; }
+.edit-hint { font-size: 12px; color: var(--gold); }
+
+/* 年人均产值 */
+.percap-wrap { display: grid; grid-template-columns: 1.15fr 1fr; gap: 14px; }
+@media (max-width: 1100px) { .percap-wrap { grid-template-columns: 1fr; } }
+.percap-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+table.percap-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.percap-table th { color: var(--text-muted); text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; font-weight: 600; }
+table.percap-table th:first-child, table.percap-table td:first-child { text-align: left; }
+table.percap-table td { padding: 9px 10px; border-bottom: 1px solid rgba(51,65,85,.4); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+table.percap-table tr:hover td { background: rgba(245,158,11,.06); }
+table.percap-table .hc { color: var(--gold); font-weight: 700; }
+table.percap-table .pc { color: var(--teal); font-weight: 700; }
+table.percap-table .sub-note { font-size: 10px; color: var(--text-muted); }
+.hc-input {
+  background: #0f172a; border: 1px solid var(--gold); color: var(--text);
+  border-radius: 6px; padding: 4px 8px; font-size: 12.5px; outline: none;
+  width: 80px; text-align: right; font-variant-numeric: tabular-nums;
+}
+.hc-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,.25); }
+td.edited-cell { position: relative; }
+td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.modified-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); margin-left: 6px; vertical-align: middle; }
+
+.data-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.table-scroll { overflow: auto; max-height: 560px; }
+.table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.data-table th {
+  background: #0f172a; color: var(--text-muted); padding: 10px 12px; text-align: left;
+  font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap;
+  position: sticky; top: 0; z-index: 1; cursor: pointer;
+}
+table.data-table td { padding: 8px 12px; border-bottom: 1px solid rgba(51,65,85,.4); white-space: nowrap; }
+table.data-table tr:hover td { background: rgba(245,158,11,.06); }
+table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.badge-status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.badge-status.done { background: rgba(16,185,129,.15); color: var(--green); }
+.badge-status.pending { background: rgba(245,158,11,.15); color: var(--gold); }
+.badge-status.na { background: rgba(148,163,184,.15); color: var(--text-muted); }
+
+/* 钻取弹窗 */
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(2,6,23,.72); z-index: 60;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-mask.show { display: flex; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  max-width: 980px; width: 100%; max-height: 84vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.modal .m-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.modal .m-title { font-size: 16px; font-weight: 600; }
+.modal .m-title small { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
+.modal .m-close { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; padding: 5px 14px; cursor: pointer; font-size: 13px; }
+.modal .m-close:hover { border-color: var(--red); color: var(--red); }
+.modal .m-body { padding: 16px 20px; overflow-y: auto; }
+.modal .m-sum { font-size: 13px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.9; }
+.modal .m-sum b { color: var(--text); }
+table.drill-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.drill-table th { text-align: left; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.drill-table td { padding: 7px 10px; border-bottom: 1px solid rgba(51,65,85,.4); white-space: nowrap; }
+table.drill-table tr:hover td { background: rgba(245,158,11,.06); }
+table.drill-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.drill-table tr.total td { border-top: 2px solid var(--border); font-weight: 700; background: rgba(245,158,11,.08); }
+
+.footnote { font-size: 12px; color: var(--text-muted); margin-top: 14px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <div>
+      <h1>📊 监理确认完成量看板（确权产值）</h1>
+      <div class="sub">2020 年至今 · 分年度确权 / 十四五·十五五对比 / 年人均产值 一体化分析</div>
+    </div>
+    <div class="meta">
+      数据来源：监理业主确认完成量-截止2026.8.5（系统导出）＋ 确权统计台账-2026（8-12月预测）<br>
+      金额单位：万元 ｜ 数据截止：2026-08-05
+    </div>
+  </div>
+
+  <div class="kpi-row" id="kpis"></div>
+
+  <div class="section-title">🗓️ 期间确权对比 <small>十四五（2020-2025） vs 十五五（2026-2030）· 点击卡片查看项目明细</small></div>
+  <div class="period-grid" id="periods"></div>
+
+  <div class="section-title">👷 年人均产值 <small>年人均产值 = 年度自施产值含税（元）之和 ÷ 本区域年度平均人数 · 人数可校正</small></div>
+  <div class="toolbar">
+    <button class="btn" id="hc-edit">✏️ 校正人数</button>
+    <button class="btn ghost" id="hc-reset" style="display:none">↩️ 恢复示例值</button>
+    <span class="edit-hint" id="hc-hint">当前人数为示例值，请点击「校正人数」填写本区域各年度实际平均人数</span>
+  </div>
+  <div class="percap-wrap">
+    <div class="chart-box" id="chart-percap" style="height:400px"></div>
+    <div class="percap-table-wrap">
+      <table class="percap-table" id="percap-table">
+        <thead><tr><th>年份</th><th>年度自施产值<br>含税合计(万元)</th><th>年度平均<br>人数(人)</th><th>年人均产值<br>(万元/人)</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-title">📈 分年度确权 <small>2020-2025 实际 · 2026 = 1-7月实际 + 8-12月预测 · 点击柱子查看该年项目明细</small></div>
+  <div class="chart-grid">
+    <div class="chart-box wide" id="chart-year"></div>
+  </div>
+
+  <div class="section-title">📅 月度确权 <small>点击年份按钮切换（2020-2026）· 柱状图显示选定年份各月确权金额 · 点击柱子查看当月项目明细</small></div>
+  <div class="toolbar">
+    <div class="seg-btns" id="year-btns"></div>
+    <span class="edit-hint" id="month-hint"></span>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-box wide" id="chart-month"></div>
+  </div>
+
+  <div class="section-title">🏆 项目确权排行与活跃度 <small>累计确权TOP15 · 点击柱子查看单项目分年明细</small></div>
+  <div class="chart-grid">
+    <div class="chart-box" id="chart-top"></div>
+    <div class="chart-box" id="chart-count"></div>
+  </div>
+
+  <div class="section-title">📋 项目分年确权明细 <small>单位：万元 · 年份可点选筛选 · 数据可编辑并全板联动 · 点击列头排序</small></div>
+  <div class="toolbar">
+    <div class="seg-btns" id="year-filter"></div>
+    <input type="text" id="search" placeholder="搜索项目名称…">
+    <select id="status-filter"><option value="">全部状态</option><option>在施</option><option>竣工</option><option>在施（2026新接）</option></select>
+    <button class="btn" id="edit-toggle">✏️ 编辑模式</button>
+    <button class="btn ghost" id="reset-data" style="display:none">↩️ 恢复默认</button>
+    <span class="edit-hint" id="edit-hint" style="display:none">编辑中：金框单元格可修改该项目当年确权（万元，留空=清除），KPI / 对比卡 / 全部图表实时联动；月度分摊按比例估算</span>
+  </div>
+  <div class="data-table-wrap">
+    <div class="table-scroll">
+      <table class="data-table" id="detail-table">
+        <thead><tr></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footnote">
+    注：①统计口径：2020-2025 年确权产值全部取自《监理业主确认完成量-截止2026.8.5》（系统导出，原始单位：元，看板统一换算为万元）；
+    ②2026 年 1-7 月以监理表为准，8-12 月按《华南区域在施项目确权统计台账-2026》预测；监理表中 2026 年 8 月已有的 1,634.27 万元实际数按此口径不计入；
+    ③十四五 = 2020-2025 年；十五五 = 2026-2030 年（目前仅有 2026 年数据，含 8-12 月预测）；
+    ④年人均产值 = 年度自施产值含税之和 ÷ 本区域年度平均人数；人数初始为示例值，校正后保存在本浏览器（localStorage），点「恢复示例值」还原；
+    ⑤点击 KPI 卡片、期间卡片或图表柱子，均可查看对应项目级明细；⑥明细表「编辑模式」的修改保存在本浏览器（localStorage），修改某项目某年确权后，月度图按该项目当年原月度分布比例分摊估算，点「恢复默认」全部还原。
+  </div>
+</div>
+
+<!-- 钻取弹窗 -->
+<div class="modal-mask" id="drill-mask">
+  <div class="modal">
+    <div class="m-head">
+      <div class="m-title" id="drill-title">明细</div>
+      <button class="m-close" onclick="closeDrill()">✕ 关闭</button>
+    </div>
+    <div class="m-body" id="drill-body"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {"updated":"2026-08-05","years":["2020","2021","2022","2023","2024","2025","2026"],"yearly":{"2020":{"value_wan":174888.11,"zd_wan":6204.98,"project_count":22},"2021":{"value_wan":259936.28,"zd_wan":48923.93,"project_count":39},"2022":{"value_wan":338328.22,"zd_wan":57507.14,"project_count":36},"2023":{"value_wan":278017.47,"zd_wan":60393.79,"project_count":26},"2024":{"value_wan":201021.3,"zd_wan":70122.86,"project_count":33},"2025":{"value_wan":212588.04,"zd_wan":25732.41,"project_count":26},"2026":{"actual_wan":101564.95,"forecast_wan":91467.12,"value_wan":193032.07,"zd_wan":4167.4,"project_count":31}},"monthly2026":[{"m":1,"actual":21180.27,"forecast":null},{"m":2,"actual":7901.85,"forecast":null},{"m":3,"actual":10885.43,"forecast":null},{"m":4,"actual":10237.42,"forecast":null},{"m":5,"actual":16647.21,"forecast":null},{"m":6,"actual":17434.8,"forecast":null},{"m":7,"actual":17277.97,"forecast":null},{"m":8,"actual":null,"forecast":21161.97},{"m":9,"actual":null,"forecast":20899.79},{"m":10,"actual":null,"forecast":18715.02},{"m":11,"actual":null,"forecast":16675.61},{"m":12,"actual":null,"forecast":14014.73}],"monthly2026_projects":{"1":[{"name":"东莞骏鼎达功能性保护材料生产建设","value":776.76},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":2675.53},{"name":"广州从化国际赛马发展中心","value":2396.0},{"name":"深圳前湾信息枢纽中心","value":919.96},{"name":"深圳医学科学院及深圳湾实验室I标","value":4206.33},{"name":"深圳嘉里商务中心(三期)","value":300.3},{"name":"深圳市吉华医院","value":313.99},{"name":"深圳机场教育基地","value":1011.38},{"name":"深圳科学城体育中心EPCO机电","value":400.0},{"name":"深圳过沥路市政工程","value":1450.71},{"name":"深圳香港中文大学医学院","value":5015.47},{"name":"深圳鹏鼎时代大厦机电","value":1713.84}],"2":[{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":1000.04},{"name":"深圳云计算中心柴发机电","value":233.55},{"name":"深圳市药品检验研究院光明分院建设","value":772.46},{"name":"深圳电子科技大学高等研究院","value":2859.55},{"name":"深圳科学城体育中心EPCO机电","value":1792.69},{"name":"深圳过沥路市政工程","value":1243.56}],"3":[{"name":"东莞OPPO滨海湾高级人才房机电","value":-1275.5},{"name":"东莞骏鼎达功能性保护材料生产建设","value":569.04},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":974.12},{"name":"广州从化国际赛马发展中心","value":753.3},{"name":"深圳医学科学院及深圳湾实验室I标","value":2300.0},{"name":"深圳市吉华医院","value":305.99},{"name":"深圳市药品检验研究院光明分院建设","value":2076.1},{"name":"深圳电子科技大学高等研究院","value":2102.37},{"name":"深圳科学城体育中心EPCO机电","value":205.97},{"name":"深圳过沥路市政工程","value":858.61},{"name":"深圳香港中文大学医学院","value":2015.44}],"4":[{"name":"东莞小天才滨海湾","value":986.06},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":912.77},{"name":"广州从化国际赛马发展中心","value":368.9},{"name":"深圳医学科学院及深圳湾实验室I标","value":1000.0},{"name":"深圳市人才研修院配电设施建设","value":643.67},{"name":"深圳市吉华医院","value":295.99},{"name":"深圳机场教育基地","value":412.1},{"name":"深圳电子科技大学高等研究院","value":2059.96},{"name":"深圳科学城体育中心EPCO机电","value":394.49},{"name":"深圳职业技术大学西丽校区修缮改造","value":444.41},{"name":"深圳过沥路市政工程","value":663.73},{"name":"深圳香港中文大学医学院","value":2055.34}],"5":[{"name":"东莞小天才滨海湾","value":1500.54},{"name":"东莞市先进阿秒激光设施","value":1518.77},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":900.08},{"name":"广州从化国际赛马发展中心","value":2540.1},{"name":"深圳医学科学院及深圳湾实验室I标","value":1000.0},{"name":"深圳市人才研修院配电设施建设","value":773.09},{"name":"深圳市吉华医院","value":301.79},{"name":"深圳电子科技大学高等研究院","value":4852.15},{"name":"深圳过沥路市政工程","value":1232.76},{"name":"深圳香港中文大学医学院","value":2027.92}],"6":[{"name":"东莞小天才滨海湾","value":456.19},{"name":"东莞市先进阿秒激光设施","value":1877.4},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":776.17},{"name":"广州从化国际赛马发展中心","value":1796.4},{"name":"深圳医学科学院及深圳湾实验室I标","value":1100.0},{"name":"深圳市人才研修院配电设施建设","value":353.34},{"name":"深圳市吉华医院","value":308.94},{"name":"深圳市坪地北地块场平工程","value":244.05},{"name":"深圳市药品检验研究院光明分院建设","value":140.0},{"name":"深圳抖音二期基坑","value":503.76},{"name":"深圳机场B4货站","value":1717.37},{"name":"深圳电子科技大学高等研究院","value":4106.58},{"name":"深圳科学城体育中心EPCO机电","value":962.01},{"name":"深圳职业技术大学西丽校区修缮改造","value":508.53},{"name":"深圳过沥路市政工程","value":442.27},{"name":"深圳香港中文大学医学院","value":2141.78}],"7":[{"name":"东莞市先进阿秒激光设施","value":2213.86},{"name":"广州从化国际赛马发展中心","value":1763.3},{"name":"深圳医学科学院及深圳湾实验室I标","value":2390.02},{"name":"深圳市人才研修院配电设施建设","value":205.91},{"name":"深圳市吉华医院","value":294.64},{"name":"深圳抖音二期基坑","value":565.27},{"name":"深圳机场B4货站","value":234.95},{"name":"深圳电子科技大学高等研究院","value":4030.23},{"name":"深圳科学城体育中心EPCO机电","value":1980.76},{"name":"深圳过沥路市政工程","value":639.82},{"name":"深圳首创商务大厦","value":903.79},{"name":"深圳香港中文大学医学院","value":2055.42}],"8":[{"name":"东莞小天才滨海湾","value":200},{"name":"深圳香港中文大学医学院","value":1500},{"name":"深圳市吉华医院","value":120},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":600},{"name":"广州从化国际赛马发展中心","value":2718.32},{"name":"深圳医学科学院及深圳湾实验室I标","value":300},{"name":"深圳电子科技大学高等研究院","value":4000},{"name":"东莞市先进阿秒激光设施","value":3691},{"name":"深圳过沥路市政工程","value":819.67},{"name":"深圳科学城体育中心EPCO机电","value":530},{"name":"深圳抖音二期基坑","value":1802.98},{"name":"深圳机场B4货站","value":1800},{"name":"深圳市人才研修院配电设施建设","value":240},{"name":"深圳海洋大学一期实验室","value":2000},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"东莞步步高学校游泳馆","value":250},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":100}],"9":[{"name":"深圳香港中文大学医学院","value":1500},{"name":"深圳市吉华医院","value":120},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":500},{"name":"广州从化国际赛马发展中心","value":1571.72},{"name":"深圳医学科学院及深圳湾实验室I标","value":200},{"name":"深圳电子科技大学高等研究院","value":4000},{"name":"东莞市先进阿秒激光设施","value":3691},{"name":"深圳过沥路市政工程","value":693.52},{"name":"深圳科学城体育中心EPCO机电","value":512},{"name":"深圳抖音二期基坑","value":1821.55},{"name":"深圳机场B4货站","value":1750},{"name":"深圳海洋大学一期实验室","value":3000},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"东莞步步高学校游泳馆","value":250},{"name":"深圳A113-0080宗地项目地基与基础工程","value":600},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":200}],"10":[{"name":"深圳香港中文大学医学院","value":1500},{"name":"深圳市吉华医院","value":120},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":425.93},{"name":"广州从化国际赛马发展中心","value":656.67},{"name":"深圳医学科学院及深圳湾实验室I标","value":192.6},{"name":"深圳电子科技大学高等研究院","value":4000},{"name":"东莞市先进阿秒激光设施","value":2210},{"name":"深圳过沥路市政工程","value":522.93},{"name":"深圳科学城体育中心EPCO机电","value":755},{"name":"深圳抖音二期基坑","value":1191.89},{"name":"深圳机场B4货站","value":2050},{"name":"深圳海洋大学一期实验室","value":3000},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"深圳龙岗河流域排水管网系统完善EPC","value":350},{"name":"东莞步步高学校游泳馆","value":250},{"name":"深圳A113-0080宗地项目地基与基础工程","value":800},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":200}],"11":[{"name":"深圳香港中文大学医学院","value":1300},{"name":"深圳市吉华医院","value":120},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"广州从化国际赛马发展中心","value":290.17},{"name":"深圳电子科技大学高等研究院","value":3800},{"name":"东莞市先进阿秒激光设施","value":1472.02},{"name":"深圳过沥路市政工程","value":287.53},{"name":"深圳科学城体育中心EPCO机电","value":405},{"name":"深圳抖音二期基坑","value":765.93},{"name":"深圳机场B4货站","value":1050},{"name":"深圳海洋大学一期实验室","value":1850},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"深圳龙岗河流域排水管网系统完善EPC","value":1050},{"name":"东莞步步高学校游泳馆","value":200},{"name":"深圳A113-0080宗地项目地基与基础工程","value":800},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":794.96},{"name":"深圳市第四十高级中学项目设计采购施工总承包(EPC)","value":2000}],"12":[{"name":"深圳香港中文大学医学院","value":1300},{"name":"深圳市吉华医院","value":130.21},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"深圳电子科技大学高等研究院","value":3600},{"name":"深圳科学城体育中心EPCO机电","value":300},{"name":"深圳抖音二期基坑","value":799.56},{"name":"深圳机场B4货站","value":600},{"name":"深圳海洋大学一期实验室","value":1000},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"深圳龙岗河流域排水管网系统完善EPC","value":1200},{"name":"东莞步步高学校游泳馆","value":200},{"name":"深圳A113-0080宗地项目地基与基础工程","value":600},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":794.96},{"name":"深圳市第四十高级中学项目设计采购施工总承包(EPC)","value":3000}]},"monthly_all":{"2020":{"1":0.0,"2":0.0,"3":0.0,"4":0.0,"5":10152.55,"6":14934.64,"7":29525.07,"8":17107.71,"9":22740.58,"10":23482.91,"11":20422.73,"12":36521.91},"2021":{"1":31560.16,"2":12401.2,"3":6535.62,"4":11135.64,"5":10186.72,"6":13089.2,"7":25627.03,"8":23187.32,"9":30742.18,"10":25430.23,"11":31559.39,"12":38481.58},"2022":{"1":35701.29,"2":4890.57,"3":13180.23,"4":15681.92,"5":26402.1,"6":40969.98,"7":31810.01,"8":29738.7,"9":29458.33,"10":36248.45,"11":33833.47,"12":40413.17},"2023":{"1":13510.04,"2":10613.91,"3":15563.73,"4":26980.4,"5":34787.06,"6":26894.78,"7":24553.12,"8":18451.12,"9":15718.66,"10":21885.56,"11":24213.41,"12":44845.67},"2024":{"1":23633.71,"2":10805.61,"3":6285.99,"4":17902.78,"5":18312.78,"6":23914.62,"7":13908.86,"8":12232.56,"9":11848.9,"10":25059.3,"11":9759.02,"12":27357.15},"2025":{"1":23102.77,"2":5609.7,"3":12122.47,"4":19261.84,"5":19912.3,"6":28302.09,"7":14802.7,"8":18302.5,"9":11591.91,"10":13207.21,"11":18583.4,"12":27789.15},"2026":{"1":21180.27,"2":7901.85,"3":10885.43,"4":10237.42,"5":16647.21,"6":17434.8,"7":17277.97,"8":21161.97,"9":20899.79,"10":18715.02,"11":16675.61,"12":14014.73}},"monthly_projects":{"2020-1":[],"2020-2":[],"2020-3":[],"2020-4":[],"2020-5":[{"name":"江门华发四季","value":2813.49},{"name":"深圳职业技术学院学生公寓拆建","value":2127.07},{"name":"广州保利三元里","value":1813.38},{"name":"佛山顺德光正实验学校","value":1500.0},{"name":"东莞小天才生产中心","value":1188.97},{"name":"珠海华发广场","value":709.64}],"2020-6":[{"name":"深圳大学西丽校区","value":3160.99},{"name":"湛江华发新城花园","value":2894.71},{"name":"深圳职业技术学院留仙洞校区","value":2112.84},{"name":"深圳职业技术学院学生公寓拆建","value":1891.7},{"name":"深圳前湾信息枢纽中心","value":1728.45},{"name":"佛山顺德光正实验学校","value":1000.0},{"name":"深圳嘉里商务中心","value":989.6},{"name":"东莞小天才生产中心","value":649.74},{"name":"深圳鹏鼎时代大厦机电","value":506.6}],"2020-7":[{"name":"广州保利三元里","value":4216.35},{"name":"佛山市东亚项目西区EPC","value":3884.33},{"name":"湛江华发新城花园","value":3256.39},{"name":"深圳大学西丽校区","value":3155.47},{"name":"珠海华发广场","value":2498.42},{"name":"江门华发四季","value":2342.51},{"name":"深圳职业技术学院留仙洞校区","value":2161.07},{"name":"深圳职业技术学院学生公寓拆建","value":2021.27},{"name":"深圳光明区金融街","value":1502.94},{"name":"深圳职业技术学院北校区","value":1236.99},{"name":"佛山顺德光正实验学校","value":1000.0},{"name":"东莞小天才生产中心","value":885.43},{"name":"广州金融街海珠区石岗路","value":705.38},{"name":"深圳鹏鼎时代大厦机电","value":392.1},{"name":"深圳前湾信息枢纽中心","value":266.42}],"2020-8":[{"name":"深圳职业技术学院留仙洞校区","value":2596.83},{"name":"深圳大学西丽校区","value":2493.59},{"name":"深圳嘉里商务中心","value":2209.6},{"name":"深圳光明区金融街","value":1997.01},{"name":"深圳职业技术学院学生公寓拆建","value":1754.66},{"name":"广州保利三元里","value":1361.74},{"name":"江门华发四季","value":1300.6},{"name":"珠海华发广场","value":1112.0},{"name":"深圳鹏鼎时代大厦机电","value":847.68},{"name":"东莞小天才生产中心","value":808.87},{"name":"深圳职业技术学院北校区","value":625.13}],"2020-9":[{"name":"湛江华发新城花园","value":4247.71},{"name":"深圳光明区金融街","value":2839.29},{"name":"广州保利三元里","value":2753.31},{"name":"深圳职业技术学院留仙洞校区","value":2599.89},{"name":"深圳大学西丽校区","value":1833.85},{"name":"深圳职业技术学院北校区","value":1714.36},{"name":"深圳嘉里商务中心","value":1691.4},{"name":"深圳职业技术学院学生公寓拆建","value":1477.9},{"name":"江门华发四季","value":1329.58},{"name":"佛山顺德光正实验学校","value":806.62},{"name":"东莞小天才生产中心","value":771.73},{"name":"深圳鹏鼎时代大厦机电","value":465.3},{"name":"深圳前湾信息枢纽中心","value":130.98},{"name":"佛山建鑫乐家花园","value":78.66}],"2020-10":[{"name":"佛山市东亚项目西区EPC","value":3429.13},{"name":"深圳大学西丽校区","value":2942.96},{"name":"深圳职业技术学院留仙洞校区","value":2606.03},{"name":"江门华发四季","value":2527.92},{"name":"湛江华发新城花园","value":2188.79},{"name":"东莞小天才生产中心","value":1609.98},{"name":"广州保利三元里","value":1575.55},{"name":"珠海华发广场","value":1347.57},{"name":"深圳达实大厦改扩建","value":1138.99},{"name":"深圳职业技术学院学生公寓拆建","value":978.84},{"name":"深圳鹏鼎时代大厦机电","value":913.8},{"name":"深圳光明区金融街","value":814.64},{"name":"深圳嘉里商务中心","value":712.6},{"name":"佛山顺德光正实验学校","value":696.12}],"2020-11":[{"name":"江门华发四季","value":2931.72},{"name":"深圳职业技术学院留仙洞校区","value":2781.8},{"name":"深圳大学西丽校区","value":2708.19},{"name":"湛江华发新城花园","value":2643.42},{"name":"深圳职业技术学院北校区","value":2142.78},{"name":"广州保利三元里","value":1260.82},{"name":"深圳鹏鼎时代大厦机电","value":1125.47},{"name":"东莞小天才生产中心","value":1076.17},{"name":"珠海华发广场","value":1004.29},{"name":"佛山市东亚项目西区EPC","value":882.55},{"name":"深圳职业技术学院学生公寓拆建","value":808.24},{"name":"上海黄金交易所深圳运营中心","value":449.82},{"name":"深圳嘉里商务中心","value":380.6},{"name":"深圳前湾信息枢纽中心","value":226.87}],"2020-12":[{"name":"深圳光明区金融街","value":4768.76},{"name":"深圳职业技术学院留仙洞校区","value":4568.81},{"name":"海口空港综合保税区监管设施","value":3312.0},{"name":"江门华发四季","value":3070.51},{"name":"东莞小天才生产中心","value":3042.47},{"name":"佛山市东亚项目西区EPC","value":2911.05},{"name":"深圳水木一方大厦","value":2678.65},{"name":"广州保利三元里","value":2245.08},{"name":"湛江华发新城花园","value":2020.78},{"name":"珠海华发广场","value":1657.41},{"name":"深圳前湾信息枢纽中心","value":1500.55},{"name":"深圳大学西丽校区","value":1110.89},{"name":"深圳职业技术学院北校区","value":1026.21},{"name":"深圳鹏鼎时代大厦机电","value":974.6},{"name":"深圳嘉里商务中心","value":764.9},{"name":"深圳职业技术学院学生公寓拆建","value":444.46},{"name":"佛山市原干部家属区部分政府旧物业修缮改造","value":366.23},{"name":"佛山建鑫乐家花园","value":58.55}],"2021-1":[{"name":"广东阿里巴巴云计算数据中心河源源城区三期机电","value":7207.88},{"name":"广州保利三元里","value":6423.77},{"name":"江门华发四季","value":3406.85},{"name":"深圳嘉里商务中心","value":2824.8},{"name":"深圳光明区金融街","value":2401.27},{"name":"深圳大学西丽校区","value":2257.98},{"name":"珠海华发广场","value":2048.77},{"name":"深圳前湾信息枢纽中心","value":1800.0},{"name":"东莞小天才生产中心","value":1060.73},{"name":"深圳职业技术学院北校区","value":627.58},{"name":"深圳嘉里商务中心（一期）","value":541.1},{"name":"深圳鹏鼎时代大厦机电","value":369.9},{"name":"佛山市原干部家属区部分政府旧物业修缮改造","value":355.5},{"name":"深圳职业技术学院学生公寓拆建","value":234.04}],"2021-2":[{"name":"深圳光明区金融街","value":2539.13},{"name":"湛江华发新城花园","value":1929.89},{"name":"海口空港综合保税区监管设施","value":1824.76},{"name":"深圳达实大厦改扩建","value":1788.27},{"name":"广州金融街海珠区石岗路","value":1597.65},{"name":"佛山市东亚项目西区EPC","value":1529.01},{"name":"深圳前湾信息枢纽中心","value":800.0},{"name":"深圳嘉里商务中心（一期）","value":214.4},{"name":"佛山建鑫乐家花园","value":178.08}],"2021-3":[{"name":"深圳大学西丽校区","value":2300.93},{"name":"深圳职业技术学院留仙洞校区","value":1349.86},{"name":"深圳职业技术学院北校区","value":1050.49},{"name":"深圳鹏鼎时代大厦机电","value":918.5},{"name":"佛山市原干部家属区部分政府旧物业修缮改造","value":566.36},{"name":"海口空港综合保税区监管设施","value":300.0},{"name":"深圳职业技术学院学生公寓拆建","value":166.47},{"name":"深圳微软科通大厦","value":-117.0}],"2021-4":[{"name":"深圳鹏鼎时代大厦机电","value":2388.17},{"name":"深圳职业技术学院北校区","value":1859.2},{"name":"深圳职业技术学院留仙洞校区","value":1547.94},{"name":"佛山市东亚项目西区EPC","value":1434.08},{"name":"广州保利三元里","value":1234.54},{"name":"东莞小天才生产中心","value":1197.38},{"name":"深圳大学西丽校区","value":648.94},{"name":"深圳前湾信息枢纽中心","value":400.0},{"name":"海口空港综合保税区监管设施","value":300.0},{"name":"深圳嘉里商务中心","value":125.4}],"2021-5":[{"name":"广州保利三元里","value":2651.75},{"name":"深圳职业技术学院留仙洞校区","value":1568.05},{"name":"深圳职业技术学院北校区","value":1309.9},{"name":"东莞小天才生产中心","value":1163.02},{"name":"珠海华发广场","value":1084.88},{"name":"深圳前湾信息枢纽中心","value":950.0},{"name":"深圳光明区金融街","value":542.18},{"name":"东莞OPPO滨海湾数据中心机电","value":380.92},{"name":"佛山市原干部家属区部分政府旧物业修缮改造","value":241.7},{"name":"海口空港综合保税区监管设施","value":130.0},{"name":"深圳大学西丽校区","value":78.83},{"name":"深圳嘉里商务中心（一期）","value":46.5},{"name":"江门华发四季","value":38.98}],"2021-6":[{"name":"深圳南山中国电子科技园","value":2462.53},{"name":"深圳职业技术学院留仙洞校区","value":2446.73},{"name":"珠海华发广场","value":1722.43},{"name":"深圳职业技术学院北校区","value":1497.96},{"name":"深圳光明区金融街","value":1387.12},{"name":"海口塔","value":1053.77},{"name":"东莞小天才生产中心","value":936.01},{"name":"东莞OPPO滨海湾数据中心机电","value":814.48},{"name":"三亚海棠湾国际购物中心物流基地","value":456.33},{"name":"深圳嘉里商务中心","value":178.6},{"name":"海口空港综合保税区监管设施","value":133.24}],"2021-7":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":10565.9},{"name":"深圳香港中文大学二期II标","value":4105.86},{"name":"深圳职业技术学院留仙洞校区","value":2413.99},{"name":"东莞小天才生产中心","value":2003.46},{"name":"深圳职业技术学院北校区","value":1678.13},{"name":"广州保利三元里","value":1637.24},{"name":"深圳嘉里商务中心(三期)","value":891.9},{"name":"深圳职业技术学院学生公寓拆建","value":551.6},{"name":"深圳南山中国电子科技园","value":534.8},{"name":"佛山市东亚项目西区EPC","value":429.23},{"name":"东莞OPPO滨海湾数据中心机电","value":400.0},{"name":"深圳嘉里商务中心","value":344.9},{"name":"佛山市原干部家属区部分政府旧物业修缮改造","value":70.01}],"2021-8":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":9661.23},{"name":"深圳香港中文大学二期II标","value":4308.19},{"name":"广州保利三元里","value":2542.29},{"name":"深圳联想创新科技园综合机电","value":988.4},{"name":"深圳职业技术学院北校区","value":891.06},{"name":"珠海华发广场","value":886.7},{"name":"深圳职业技术学院留仙洞校区","value":767.82},{"name":"深圳市创新创业无障碍服务中心","value":760.56},{"name":"深圳前湾信息枢纽中心","value":700.0},{"name":"深圳光明区金融街","value":562.78},{"name":"深圳南山中国电子科技园","value":463.09},{"name":"广州黄石路白云汇广场影城","value":449.9},{"name":"深圳嘉里商务中心","value":205.3}],"2021-9":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":8015.12},{"name":"东莞OPPO滨海湾数据中心机电","value":3738.13},{"name":"深圳职业技术学院北校区","value":3626.39},{"name":"深圳香港中文大学二期II标","value":3286.86},{"name":"深圳嘉里商务中心(三期)","value":2686.9},{"name":"深圳南山中国电子科技园","value":1652.51},{"name":"深圳光明区金融街","value":1360.46},{"name":"广州保利三元里","value":1180.94},{"name":"佛山市东亚项目西区EPC","value":1098.12},{"name":"深圳嘉里商务中心","value":980.41},{"name":"深圳联想创新科技园综合机电","value":928.26},{"name":"深圳前湾信息枢纽中心","value":700.0},{"name":"深圳小米国际总部","value":544.16},{"name":"深圳职业技术学院留仙洞校区","value":427.59},{"name":"深圳市创新创业无障碍服务中心","value":295.79},{"name":"深圳前海十单元3小镇","value":220.56}],"2021-10":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":5855.97},{"name":"深圳香港中文大学二期II标","value":2813.32},{"name":"东莞OPPO滨海湾数据中心机电","value":2500.0},{"name":"深圳前海十单元3小镇","value":2019.67},{"name":"深圳职业技术学院北校区","value":1999.44},{"name":"深圳联想创新科技园综合机电","value":1885.44},{"name":"东莞小天才生产中心","value":1514.48},{"name":"深圳南山中国电子科技园","value":1501.95},{"name":"广州保利三元里","value":1482.7},{"name":"佛山市东亚项目西区EPC","value":1105.14},{"name":"广州金融街海珠区石岗路","value":869.37},{"name":"深圳前湾信息枢纽中心","value":729.0},{"name":"深圳小米国际总部","value":698.72},{"name":"深圳市创新创业无障碍服务中心","value":380.13},{"name":"珠海华发广场","value":74.91},{"name":"深圳水木一方大厦","value":-0.0}],"2021-11":[{"name":"深圳前湾信息枢纽中心","value":6221.0},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":4631.99},{"name":"深圳香港中文大学二期II标","value":4439.6},{"name":"深圳嘉里商务中心(三期)","value":3385.1},{"name":"江门华发四季","value":1749.88},{"name":"深圳嘉里商务中心","value":1543.38},{"name":"深圳南山中国电子科技园","value":1475.43},{"name":"深圳联想创新科技园综合机电","value":1376.78},{"name":"深圳职业技术学院北校区","value":1336.03},{"name":"深圳职业技术学院留仙洞校区","value":1161.34},{"name":"深圳职业技术学院学生公寓拆建","value":1045.39},{"name":"广州保利三元里","value":788.82},{"name":"深圳市创新创业无障碍服务中心","value":597.06},{"name":"深圳小米国际总部","value":424.87},{"name":"深圳首创商务大厦","value":350.0},{"name":"东莞OPPO滨海湾数据中心机电","value":300.0},{"name":"深圳光明区金融街","value":290.48},{"name":"深圳石厦村综合管廊","value":258.24},{"name":"海南中国石化自贸大厦","value":145.76},{"name":"东莞小天才生产中心","value":38.24}],"2021-12":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":8036.66},{"name":"深圳嘉里商务中心(三期)","value":4259.2},{"name":"深圳市创新创业无障碍服务中心","value":3388.74},{"name":"深圳前湾信息枢纽中心","value":3000.0},{"name":"深圳职业技术学院留仙洞校区","value":2506.45},{"name":"深圳职业技术学院北校区","value":2365.02},{"name":"深圳南山中国电子科技园","value":2164.11},{"name":"深圳嘉里商务中心","value":2031.03},{"name":"湛江华发新城花园","value":1980.61},{"name":"广州保利三元里","value":1823.33},{"name":"珠海臻林山庄","value":1717.96},{"name":"深圳联想创新科技园综合机电","value":1166.36},{"name":"珠海华发广场","value":1140.3},{"name":"深圳香港中文大学二期II标","value":1110.89},{"name":"深圳小米国际总部","value":1047.65},{"name":"东莞OPPO滨海湾数据中心机电","value":305.6},{"name":"佛山市原干部家属区部分政府旧物业修缮改造","value":244.14},{"name":"深圳嘉里商务中心（一期）","value":137.6},{"name":"深圳光明区金融街","value":48.24},{"name":"广东阿里巴巴云计算数据中心河源源城区三期机电","value":8.3},{"name":"江门华发四季","value":-0.6}],"2022-1":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":9980.62},{"name":"深圳香港中文大学二期II标","value":7390.51},{"name":"深圳南山中国电子科技园","value":4406.64},{"name":"深圳联想创新科技园综合机电","value":2843.3},{"name":"佛山市东亚项目西区EPC","value":2119.49},{"name":"湛江华发新城花园","value":1852.86},{"name":"深圳职业技术学院北校区","value":1688.19},{"name":"深圳前湾信息枢纽中心","value":1500.0},{"name":"广州保利三元里","value":1267.88},{"name":"深圳嘉里商务中心(三期)","value":815.4},{"name":"珠海华发广场","value":759.7},{"name":"东莞OPPO滨海湾数据中心机电","value":500.0},{"name":"深圳小米国际总部","value":405.94},{"name":"东莞小天才生产中心","value":120.36},{"name":"广东阿里巴巴云计算数据中心河源源城区三期机电","value":50.42}],"2022-2":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":6796.74},{"name":"深圳联想创新科技园综合机电","value":3339.97},{"name":"深圳南山中国电子科技园","value":1701.19},{"name":"深圳香港中文大学二期II标","value":1439.76},{"name":"深圳市吉华医院","value":822.44},{"name":"深圳光明区金融街","value":781.28},{"name":"深圳小米国际总部","value":417.98},{"name":"深圳市创新创业无障碍服务中心","value":354.65},{"name":"深圳前湾信息枢纽中心","value":300.0},{"name":"东莞OPPO滨海湾数据中心机电","value":200.0},{"name":"佛山市东亚项目西区EPC","value":167.34},{"name":"深圳柔宇国际柔性显示产业园机电","value":-2757.04},{"name":"深圳职业技术学院留仙洞校区","value":-8673.73}],"2022-3":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":4544.77},{"name":"深圳香港中文大学二期II标","value":3656.41},{"name":"深圳市吉华医院","value":1326.0},{"name":"深圳国深博物馆","value":1042.46},{"name":"深圳职业技术学院北校区","value":969.85},{"name":"珠海华发广场","value":583.96},{"name":"广州市增城区房地产开发","value":536.31},{"name":"深圳前湾信息枢纽中心","value":500.0},{"name":"深圳职业技术学院留仙洞校区","value":270.48},{"name":"东莞OPPO滨海湾数据中心机电","value":100.0},{"name":"深圳首创商务大厦","value":-350.0}],"2022-4":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":3184.68},{"name":"深圳市吉华医院","value":2897.96},{"name":"深圳市皇岗公园改造","value":2693.02},{"name":"深圳国深博物馆","value":1256.03},{"name":"深圳前湾信息枢纽中心","value":1200.0},{"name":"广州市增城区房地产开发","value":1042.2},{"name":"深圳市创新创业无障碍服务中心","value":605.24},{"name":"深圳小米国际总部","value":534.18},{"name":"广州保利三元里","value":520.93},{"name":"深圳香港中文大学二期II标","value":491.18},{"name":"深圳职业技术学院学生公寓拆建","value":438.93},{"name":"深圳前海十单元3小镇","value":359.77},{"name":"深圳嘉里商务中心(三期)","value":323.4},{"name":"东莞OPPO滨海湾数据中心机电","value":100.0},{"name":"深圳职业技术学院北校区","value":34.41}],"2022-5":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":6953.06},{"name":"深圳香港中文大学二期II标","value":4333.01},{"name":"深圳市吉华医院","value":2889.12},{"name":"深圳前湾信息枢纽中心","value":2300.0},{"name":"广州市增城区房地产开发","value":2192.37},{"name":"深圳国深博物馆","value":2082.24},{"name":"东莞小天才生产中心","value":1504.77},{"name":"深圳南山中国电子科技园","value":1267.32},{"name":"广州保利三元里","value":1088.59},{"name":"深圳市创新创业无障碍服务中心","value":949.63},{"name":"深圳小米国际总部","value":559.29},{"name":"深圳联想创新科技园综合机电","value":182.71},{"name":"东莞OPPO滨海湾数据中心机电","value":100.0}],"2022-6":[{"name":"深圳香港中文大学二期II标","value":14849.87},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":6646.21},{"name":"深圳市吉华医院","value":4427.43},{"name":"深圳国深博物馆","value":3417.69},{"name":"深圳嘉里商务中心(三期)","value":2596.6},{"name":"广州市增城区房地产开发","value":2527.33},{"name":"深圳前湾信息枢纽中心","value":2500.0},{"name":"广州保利三元里","value":1281.22},{"name":"深圳市创新创业无障碍服务中心","value":1199.33},{"name":"深圳职业技术学院北校区","value":562.33},{"name":"深圳小米国际总部","value":475.6},{"name":"东莞OPPO滨海湾数据中心机电","value":300.0},{"name":"珠海华发广场","value":161.38},{"name":"深圳联想创新科技园综合机电","value":24.99}],"2022-7":[{"name":"深圳国深博物馆","value":7810.92},{"name":"深圳香港中文大学二期II标","value":6278.11},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":5253.69},{"name":"深圳市吉华医院","value":2764.97},{"name":"深圳前湾信息枢纽中心","value":1800.0},{"name":"深圳南山中国电子科技园","value":1680.56},{"name":"深圳前海深港青年梦工场北区(二期)","value":1500.0},{"name":"深圳市创新创业无障碍服务中心","value":1151.98},{"name":"广州市增城区房地产开发","value":1136.34},{"name":"深圳嘉里商务中心","value":626.9},{"name":"深圳嘉里商务中心(三期)","value":594.9},{"name":"深圳职业技术学院北校区","value":506.33},{"name":"东莞OPPO滨海湾数据中心机电","value":500.0},{"name":"深圳联想创新科技园综合机电","value":208.79},{"name":"海南中国石化自贸大厦","value":-3.47}],"2022-8":[{"name":"深圳香港中文大学二期II标","value":6689.91},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":4790.58},{"name":"深圳市吉华医院","value":4460.32},{"name":"深圳南山中国电子科技园","value":2696.9},{"name":"广州市增城区房地产开发","value":2007.55},{"name":"深圳嘉里商务中心(三期)","value":1645.8},{"name":"深圳前湾信息枢纽中心","value":1400.0},{"name":"深圳前海深港青年梦工场北区(二期)","value":1300.0},{"name":"深圳新皇岗口岸综合业务楼","value":1000.27},{"name":"东莞OPPO滨海湾数据中心机电","value":800.0},{"name":"深圳市创新创业无障碍服务中心","value":763.53},{"name":"广州保利三元里","value":584.51},{"name":"深圳职业技术学院北校区","value":519.79},{"name":"深圳市皇岗公园改造","value":433.28},{"name":"深圳小米国际总部","value":407.25},{"name":"深圳SZX-GF01字节跳动后海中心","value":239.01}],"2022-9":[{"name":"深圳市吉华医院","value":6558.31},{"name":"深圳香港中文大学二期II标","value":6511.35},{"name":"深圳国深博物馆","value":2449.71},{"name":"广州市增城区房地产开发","value":2350.94},{"name":"深圳南山中国电子科技园","value":2146.05},{"name":"深圳职业技术学院北校区","value":1740.55},{"name":"深圳嘉里商务中心(三期)","value":1295.9},{"name":"深圳新皇岗口岸综合业务楼","value":1100.06},{"name":"深圳前海深港青年梦工场北区(二期)","value":1086.34},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":1022.29},{"name":"东莞OPPO滨海湾数据中心机电","value":800.0},{"name":"广州保利三元里","value":781.39},{"name":"深圳前湾信息枢纽中心","value":550.0},{"name":"深圳SZX-GF01字节跳动后海中心","value":421.18},{"name":"深圳市创新创业无障碍服务中心","value":390.49},{"name":"深圳小米国际总部","value":253.77}],"2022-10":[{"name":"深圳香港中文大学二期II标","value":6603.96},{"name":"深圳市吉华医院","value":5746.23},{"name":"湛江华发新城花园","value":5701.8},{"name":"深圳前海深港青年梦工场北区(二期)","value":3441.96},{"name":"广州市增城区房地产开发","value":2597.19},{"name":"深圳新皇岗口岸综合业务楼","value":2000.37},{"name":"深圳南山中国电子科技园","value":1593.12},{"name":"深圳嘉里商务中心(三期)","value":1466.5},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":1365.73},{"name":"深圳SZX-GF01字节跳动后海中心","value":1327.34},{"name":"深圳前湾信息枢纽中心","value":1200.0},{"name":"佛山顺德光正实验学校","value":1196.84},{"name":"深圳职业技术学院北校区","value":1000.13},{"name":"深圳小米国际总部","value":636.03},{"name":"深圳鹏鼎时代大厦机电","value":203.34},{"name":"深圳职业技术学院留仙洞校区","value":167.94}],"2022-11":[{"name":"深圳嘉里商务中心(三期)","value":7291.7},{"name":"深圳南山中国电子科技园","value":4393.08},{"name":"深圳前海深港青年梦工场北区(二期)","value":3270.06},{"name":"深圳香港中文大学二期II标","value":3219.5},{"name":"深圳市吉华医院","value":3067.29},{"name":"广州市增城区房地产开发","value":3013.17},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":2742.39},{"name":"深圳新皇岗口岸综合业务楼","value":1701.26},{"name":"深圳小米国际总部","value":1233.24},{"name":"深圳前湾信息枢纽中心","value":1092.0},{"name":"深圳国深博物馆","value":1009.28},{"name":"深圳SZX-GF01字节跳动后海中心","value":781.92},{"name":"深圳嘉里商务中心","value":351.03},{"name":"深圳职业技术学院北校区","value":346.49},{"name":"东莞OPPO滨海湾数据中心机电","value":172.67},{"name":"佛山市原干部家属区部分政府旧物业修缮改造","value":76.07},{"name":"广州黄石路白云汇广场影城","value":46.63},{"name":"深圳前海十单元3小镇","value":25.68}],"2022-12":[{"name":"深圳南山中国电子科技园","value":6942.45},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":5294.27},{"name":"深圳市吉华医院","value":3285.96},{"name":"深圳香港中文大学二期II标","value":3095.5},{"name":"深圳新皇岗口岸综合业务楼","value":3002.54},{"name":"东莞小天才生产中心","value":2795.24},{"name":"三亚海棠湾河心岛","value":2657.09},{"name":"深圳前海深港青年梦工场北区(二期)","value":2549.53},{"name":"广州市增城区房地产开发","value":2013.6},{"name":"深圳SZX-GF01字节跳动后海中心","value":1809.92},{"name":"深圳前湾信息枢纽中心","value":1800.0},{"name":"深圳职业技术学院北校区","value":1763.4},{"name":"广东阿里巴巴云计算数据中心河源源城区三期机电","value":1100.27},{"name":"广州保利三元里","value":855.95},{"name":"深圳小米国际总部","value":717.18},{"name":"深圳嘉里商务中心","value":514.0},{"name":"东莞OPPO滨海湾数据中心机电","value":216.28}],"2023-1":[{"name":"广州市增城区房地产开发","value":4430.69},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":3457.53},{"name":"江门华发四季","value":2441.0},{"name":"东莞小天才滨海湾","value":1273.03},{"name":"深圳前湾信息枢纽中心","value":790.0},{"name":"深圳嘉里商务中心(三期)","value":469.42},{"name":"深圳联想创新科技园综合机电","value":364.84},{"name":"深圳职业技术学院北校区","value":283.52}],"2023-2":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":3111.32},{"name":"深圳国深博物馆","value":2820.79},{"name":"深圳市吉华医院","value":2258.02},{"name":"深圳前湾信息枢纽中心","value":703.0},{"name":"深圳嘉里商务中心(三期)","value":610.0},{"name":"深圳南山中国电子科技园","value":609.17},{"name":"深圳小米国际总部","value":296.24},{"name":"广州保利三元里","value":205.38}],"2023-3":[{"name":"深圳中山大学附属七院二期","value":4880.05},{"name":"深圳市吉华医院","value":3759.39},{"name":"深圳SZX-GF01字节跳动后海中心","value":1628.74},{"name":"深圳南山中国电子科技园","value":1561.92},{"name":"东莞小天才滨海湾","value":1155.51},{"name":"深圳新皇岗口岸综合业务楼","value":867.05},{"name":"深圳前湾信息枢纽中心","value":698.73},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":564.43},{"name":"广州市增城区房地产开发","value":447.91}],"2023-4":[{"name":"深圳中山大学附属七院二期","value":4314.44},{"name":"广州市增城区房地产开发","value":4214.07},{"name":"深圳市吉华医院","value":3776.92},{"name":"深圳南山中国电子科技园","value":3451.71},{"name":"深圳市坪地北地块场平工程","value":2233.24},{"name":"深圳香港中文大学二期II标","value":2211.92},{"name":"深圳新皇岗口岸综合业务楼","value":2000.5},{"name":"深圳前海深港青年梦工场北区(二期)","value":1796.96},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":856.93},{"name":"深圳前湾信息枢纽中心","value":781.56},{"name":"东莞小天才滨海湾","value":707.01},{"name":"深圳嘉里商务中心(三期)","value":258.9},{"name":"深圳嘉里商务中心","value":188.9},{"name":"深圳联想创新科技园综合机电","value":94.12},{"name":"东莞小天才智能科技中心一期","value":91.35},{"name":"广州保利三元里","value":1.88}],"2023-5":[{"name":"深圳中山大学附属七院二期","value":7591.85},{"name":"深圳市吉华医院","value":4096.02},{"name":"广州市增城区房地产开发","value":3749.86},{"name":"深圳市坪地北地块场平工程","value":3641.05},{"name":"东莞小天才滨海湾","value":3151.98},{"name":"深圳香港中文大学二期II标","value":3029.94},{"name":"深圳新皇岗口岸综合业务楼","value":3002.93},{"name":"深圳南山中国电子科技园","value":2704.3},{"name":"深圳SZX-GF01字节跳动后海中心","value":2209.88},{"name":"深圳前湾信息枢纽中心","value":806.35},{"name":"深圳嘉里商务中心(三期)","value":802.9}],"2023-6":[{"name":"深圳中山大学附属七院二期","value":4860.07},{"name":"广州市增城区房地产开发","value":4238.68},{"name":"深圳市吉华医院","value":3168.81},{"name":"深圳新皇岗口岸综合业务楼","value":3000.25},{"name":"东莞小天才滨海湾","value":2801.76},{"name":"深圳南山中国电子科技园","value":2162.91},{"name":"深圳市坪地北地块场平工程","value":1602.13},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":1589.72},{"name":"深圳SZX-GF01字节跳动后海中心","value":1042.24},{"name":"深圳嘉里商务中心(三期)","value":1005.1},{"name":"深圳前湾信息枢纽中心","value":798.65},{"name":"深圳国深博物馆","value":624.46}],"2023-7":[{"name":"深圳新皇岗口岸综合业务楼","value":4513.89},{"name":"广州市增城区房地产开发","value":3948.13},{"name":"深圳市吉华医院","value":3233.46},{"name":"深圳中山大学附属七院二期","value":2806.35},{"name":"东莞小天才滨海湾","value":2470.13},{"name":"深圳南山中国电子科技园","value":2391.36},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":1622.95},{"name":"深圳职业技术学院北校区","value":1394.47},{"name":"深圳SZX-GF01字节跳动后海中心","value":1172.4},{"name":"深圳市坪地北地块场平工程","value":578.83},{"name":"深圳嘉里商务中心(三期)","value":242.0},{"name":"深圳鹏鼎时代大厦机电","value":146.6},{"name":"深圳嘉里商务中心（一期）","value":20.17},{"name":"广州保利三元里","value":9.81},{"name":"广东阿里巴巴云计算数据中心河源源城区三期机电","value":2.58}],"2023-8":[{"name":"深圳新皇岗口岸综合业务楼","value":3376.66},{"name":"深圳市吉华医院","value":2798.95},{"name":"广州市增城区房地产开发","value":2643.7},{"name":"深圳中山大学附属七院二期","value":2562.9},{"name":"深圳南山中国电子科技园","value":2153.11},{"name":"东莞小天才滨海湾","value":1901.21},{"name":"深圳SZX-GF01字节跳动后海中心","value":1398.44},{"name":"深圳市坪地北地块场平工程","value":1265.64},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":350.51}],"2023-9":[{"name":"深圳新皇岗口岸综合业务楼","value":5004.37},{"name":"深圳南山中国电子科技园","value":3397.56},{"name":"广州市增城区房地产开发","value":2554.24},{"name":"深圳SZX-GF01字节跳动后海中心","value":1700.93},{"name":"深圳市吉华医院","value":1302.88},{"name":"深圳嘉里商务中心(三期)","value":790.2},{"name":"深圳市坪地北地块场平工程","value":732.51},{"name":"东莞小天才智能科技中心一期","value":235.96}],"2023-10":[{"name":"东莞小天才滨海湾","value":5662.03},{"name":"深圳新皇岗口岸综合业务楼","value":5507.31},{"name":"深圳中山大学附属七院二期","value":3952.83},{"name":"深圳SZX-GF01字节跳动后海中心","value":1979.29},{"name":"广州市增城区房地产开发","value":1667.42},{"name":"深圳南山中国电子科技园","value":1408.75},{"name":"深圳市吉华医院","value":1138.55},{"name":"深圳嘉里商务中心(三期)","value":566.2},{"name":"广州保利三元里","value":3.18}],"2023-11":[{"name":"深圳新皇岗口岸综合业务楼","value":6502.2},{"name":"东莞小天才滨海湾","value":4851.06},{"name":"深圳中山大学附属七院二期","value":4021.52},{"name":"深圳SZX-GF01字节跳动后海中心","value":2226.78},{"name":"东莞小天才智能科技中心一期","value":1965.88},{"name":"深圳市吉华医院","value":1554.66},{"name":"深圳南山中国电子科技园","value":1308.89},{"name":"深圳嘉里商务中心(三期)","value":892.73},{"name":"深圳市皇岗公园改造","value":832.02},{"name":"深圳香港中文大学二期II标","value":57.68}],"2023-12":[{"name":"深圳中山大学附属七院二期","value":18953.58},{"name":"深圳香港中文大学二期II标","value":6113.41},{"name":"深圳新皇岗口岸综合业务楼","value":5508.5},{"name":"深圳SZX-GF01字节跳动后海中心","value":3072.19},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":2858.72},{"name":"深圳市吉华医院","value":2306.46},{"name":"广州市增城区房地产开发","value":2053.67},{"name":"深圳嘉里商务中心(三期)","value":1880.0},{"name":"深圳南山中国电子科技园","value":1692.04},{"name":"东莞小天才智能科技中心一期","value":407.1}],"2024-1":[{"name":"东莞小天才滨海湾","value":5559.22},{"name":"深圳机场教育基地","value":4233.59},{"name":"上海黄金交易所深圳运营中心","value":3526.58},{"name":"深圳SZX-GF01字节跳动后海中心","value":3284.35},{"name":"广州市增城区房地产开发","value":2162.32},{"name":"深圳市吉华医院","value":1678.62},{"name":"广州金融街海珠区石岗路","value":1548.56},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":1547.33},{"name":"广州保利三元里","value":65.66},{"name":"东莞小天才智能科技中心一期","value":27.49}],"2024-2":[{"name":"东莞小天才滨海湾","value":5068.09},{"name":"深圳南山中国电子科技园","value":1740.11},{"name":"深圳大学西丽校区","value":1359.16},{"name":"深圳嘉里商务中心","value":1158.9},{"name":"深圳市吉华医院","value":582.67},{"name":"东莞OPPO滨海湾高级人才房机电","value":495.07},{"name":"深圳小米国际总部","value":365.15},{"name":"东莞小天才智能科技中心一期","value":36.45}],"2024-3":[{"name":"深圳新皇岗口岸综合业务楼","value":3304.46},{"name":"深圳机场教育基地","value":1093.86},{"name":"深圳市吉华医院","value":1009.75},{"name":"深圳中山大学附属七院二期","value":877.91}],"2024-4":[{"name":"深圳新皇岗口岸综合业务楼","value":5023.79},{"name":"深圳SZX-GF01字节跳动后海中心","value":2600.63},{"name":"东莞小天才滨海湾","value":1969.78},{"name":"广东惠州金融街巽寮湾海世界","value":1750.09},{"name":"深圳市坪地北地块场平工程","value":1715.87},{"name":"深圳市吉华医院","value":1429.5},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":1090.38},{"name":"深圳机场教育基地","value":998.39},{"name":"深圳柔宇国际柔性显示产业园机电","value":671.58},{"name":"东莞OPPO滨海湾高级人才房机电","value":300.64},{"name":"广州市增城区房地产开发","value":268.59},{"name":"东莞小天才智能科技中心一期","value":83.55}],"2024-5":[{"name":"深圳中山大学附属七院二期","value":5117.96},{"name":"深圳新皇岗口岸综合业务楼","value":4902.75},{"name":"东莞小天才滨海湾","value":3584.48},{"name":"深圳嘉里商务中心(三期)","value":1101.2},{"name":"深圳机场教育基地","value":1042.6},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":1022.27},{"name":"深圳市吉华医院","value":551.08},{"name":"深圳香港中文大学医学院","value":469.58},{"name":"东莞OPPO滨海湾高级人才房机电","value":418.96},{"name":"东莞小天才智能科技中心一期","value":101.89}],"2024-6":[{"name":"深圳中山大学附属七院二期","value":9591.46},{"name":"深圳新皇岗口岸综合业务楼","value":3235.65},{"name":"深圳南山中国电子科技园","value":2200.81},{"name":"深圳SZX-GF01字节跳动后海中心","value":1885.56},{"name":"深圳职业技术大学西丽校区修缮改造","value":1533.63},{"name":"深圳机场教育基地","value":1331.19},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":1023.43},{"name":"深圳香港中文大学医学院","value":1023.28},{"name":"深圳市药品检验研究院光明分院建设","value":847.12},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":680.7},{"name":"东莞OPPO滨海湾高级人才房机电","value":561.81}],"2024-7":[{"name":"深圳SZX-GF01字节跳动后海中心","value":3648.41},{"name":"东莞小天才滨海湾","value":2472.43},{"name":"深圳新皇岗口岸综合业务楼","value":2452.68},{"name":"深圳机场教育基地","value":2180.23},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":988.75},{"name":"东莞OPPO滨海湾高级人才房机电","value":607.98},{"name":"深圳石厦村综合管廊","value":594.48},{"name":"东莞小天才智能科技中心一期","value":273.8},{"name":"广州市增城区房地产开发","value":211.63},{"name":"深圳香港中文大学医学院","value":185.69},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":160.0},{"name":"佛山市东亚项目西区EPC","value":125.66},{"name":"深圳国深博物馆","value":7.11}],"2024-8":[{"name":"东莞小天才滨海湾","value":3101.0},{"name":"深圳新皇岗口岸综合业务楼","value":2493.93},{"name":"深圳机场教育基地","value":1488.78},{"name":"深圳SZX-GF01字节跳动后海中心","value":1431.04},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":982.47},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":845.6},{"name":"深圳香港中文大学医学院","value":669.23},{"name":"东莞OPPO滨海湾高级人才房机电","value":530.06},{"name":"广州市增城区房地产开发","value":429.71},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":225.0},{"name":"东莞小天才智能科技中心一期","value":35.74}],"2024-9":[{"name":"深圳机场教育基地","value":2293.92},{"name":"东莞小天才滨海湾","value":2156.49},{"name":"深圳新皇岗口岸综合业务楼","value":1790.63},{"name":"深圳职业技术大学西丽校区修缮改造","value":1379.29},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":1051.23},{"name":"深圳礼鼎高端集成电路载板及先进封装基地","value":920.84},{"name":"深圳香港中文大学医学院","value":691.74},{"name":"深圳SZX-GF01字节跳动后海中心","value":650.75},{"name":"深圳市吉华医院","value":501.04},{"name":"深圳南山中国电子科技园","value":339.24},{"name":"广州市增城区房地产开发","value":63.74},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":10.0}],"2024-10":[{"name":"深圳中山大学附属七院二期","value":16384.23},{"name":"东莞小天才滨海湾","value":2182.18},{"name":"深圳机场教育基地","value":1490.47},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":1388.24},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":993.0},{"name":"东莞OPPO滨海湾高级人才房机电","value":729.85},{"name":"深圳SZX-GF01字节跳动后海中心","value":544.17},{"name":"深圳嘉里商务中心(三期)","value":400.8},{"name":"深圳市吉华医院","value":301.53},{"name":"深圳市坪地北地块场平工程","value":202.54},{"name":"广州从化国际赛马发展中心","value":180.0},{"name":"广州市增城区房地产开发","value":133.33},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":128.96}],"2024-11":[{"name":"东莞小天才滨海湾","value":2015.65},{"name":"深圳联想创新科技园综合机电","value":1610.33},{"name":"东莞OPPO滨海湾数据中心机电","value":1242.22},{"name":"深圳机场教育基地","value":1086.13},{"name":"东莞OPPO滨海湾高级人才房机电","value":1066.44},{"name":"深圳职业技术大学西丽校区修缮改造","value":1043.08},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":976.62},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":417.8},{"name":"深圳市吉华医院","value":300.76}],"2024-12":[{"name":"深圳香港中文大学医学院","value":7478.2},{"name":"深圳新皇岗口岸综合业务楼","value":4934.37},{"name":"深圳中山大学附属七院二期","value":3628.49},{"name":"东莞小天才滨海湾","value":2685.5},{"name":"深圳南山中国电子科技园","value":1986.26},{"name":"深圳SZX-GF01字节跳动后海中心","value":1514.52},{"name":"深圳机场教育基地","value":1119.48},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":916.54},{"name":"东莞OPPO滨海湾高级人才房机电","value":900.0},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":738.58},{"name":"广州从化国际赛马发展中心","value":473.0},{"name":"深圳职业技术大学西丽校区修缮改造","value":425.52},{"name":"深圳市吉华医院","value":401.17},{"name":"深圳市坪地北地块场平工程","value":79.65},{"name":"东莞小天才智能科技中心一期","value":53.12},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":22.76}],"2025-1":[{"name":"深圳嘉里商务中心","value":5569.99},{"name":"东莞小天才滨海湾","value":4791.06},{"name":"深圳中山大学附属七院二期","value":3807.84},{"name":"东莞OPPO滨海湾高级人才房机电","value":3740.61},{"name":"深圳机场教育基地","value":1998.63},{"name":"深圳SZX-GF01字节跳动后海中心","value":1663.62},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":629.6},{"name":"广州从化国际赛马发展中心","value":598.0},{"name":"深圳市吉华医院","value":210.5},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":92.93}],"2025-2":[{"name":"深圳医学科学院及深圳湾实验室I标","value":3450.0},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":921.7},{"name":"深圳机场教育基地","value":704.46},{"name":"深圳香港中文大学医学院","value":305.24},{"name":"广州从化国际赛马发展中心","value":149.0},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":79.3}],"2025-3":[{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":2288.06},{"name":"深圳医学科学院及深圳湾实验室I标","value":2000.0},{"name":"深圳嘉里商务中心(三期)","value":1702.6},{"name":"深圳电子科技大学高等研究院","value":1573.18},{"name":"深圳新皇岗口岸综合业务楼","value":1500.46},{"name":"东莞OPPO滨海湾高级人才房机电","value":1478.17},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":996.07},{"name":"深圳市吉华医院","value":300.5},{"name":"深圳职业技术大学西丽校区修缮改造","value":181.14},{"name":"深圳香港中文大学医学院","value":102.31}],"2025-4":[{"name":"深圳香港中文大学医学院","value":4058.87},{"name":"深圳电子科技大学高等研究院","value":3705.77},{"name":"东莞OPPO滨海湾高级人才房机电","value":2228.08},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":2067.84},{"name":"深圳职业技术大学西丽校区修缮改造","value":1576.78},{"name":"深圳新皇岗口岸综合业务楼","value":1269.04},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":1232.46},{"name":"东莞小天才滨海湾","value":985.31},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":958.55},{"name":"深圳机场教育基地","value":711.3},{"name":"深圳市吉华医院","value":305.02},{"name":"深圳市药品检验研究院光明分院建设","value":162.81}],"2025-5":[{"name":"东莞OPPO滨海湾高级人才房机电","value":3130.69},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":2340.42},{"name":"深圳香港中文大学医学院","value":2264.42},{"name":"深圳医学科学院及深圳湾实验室I标","value":2000.0},{"name":"深圳电子科技大学高等研究院","value":1910.6},{"name":"东莞骏鼎达功能性保护材料生产建设","value":1816.78},{"name":"深圳市药品检验研究院光明分院建设","value":1559.89},{"name":"珠海臻林山庄","value":950.8},{"name":"深圳新皇岗口岸综合业务楼","value":839.14},{"name":"深圳龙城街道龙飞学校新建工程（二期）","value":823.84},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":762.8},{"name":"深圳机场教育基地","value":622.81},{"name":"深圳中山大学附属七院二期","value":588.24},{"name":"深圳市吉华医院","value":301.9}],"2025-6":[{"name":"深圳中山大学附属七院二期","value":7914.53},{"name":"深圳市药品检验研究院光明分院建设","value":4827.73},{"name":"东莞骏鼎达功能性保护材料生产建设","value":2189.48},{"name":"深圳医学科学院及深圳湾实验室I标","value":1989.05},{"name":"深圳电子科技大学高等研究院","value":1941.23},{"name":"东莞OPPO滨海湾高级人才房机电","value":1750.47},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":1691.0},{"name":"深圳香港中文大学医学院","value":1426.13},{"name":"深圳新皇岗口岸综合业务楼","value":1035.99},{"name":"深圳机场教育基地","value":842.45},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":806.82},{"name":"广州从化国际赛马发展中心","value":734.0},{"name":"东莞小天才滨海湾","value":537.6},{"name":"深圳市吉华医院","value":322.0},{"name":"深圳职业技术大学西丽校区修缮改造","value":293.61}],"2025-7":[{"name":"东莞市先进阿秒激光设施","value":2408.24},{"name":"深圳香港中文大学医学院","value":2165.35},{"name":"深圳电子科技大学高等研究院","value":2082.41},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":1297.46},{"name":"深圳深港智汇风华产业园项目一期工程II标段EPC","value":1269.64},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":1264.83},{"name":"东莞OPPO滨海湾高级人才房机电","value":1201.43},{"name":"深圳新皇岗口岸综合业务楼","value":1003.33},{"name":"深圳职业技术大学西丽校区修缮改造","value":750.21},{"name":"广州从化国际赛马发展中心","value":389.0},{"name":"深圳机场教育基地","value":328.47},{"name":"东莞小天才滨海湾","value":321.77},{"name":"深圳市吉华医院","value":320.56}],"2025-8":[{"name":"深圳电子科技大学高等研究院","value":2531.73},{"name":"东莞骏鼎达功能性保护材料生产建设","value":2102.34},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":2010.31},{"name":"深圳香港中文大学医学院","value":1953.56},{"name":"东莞市先进阿秒激光设施","value":1640.48},{"name":"深圳深港智汇风华产业园项目一期工程II标段EPC","value":1531.62},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":1394.81},{"name":"深圳医学科学院及深圳湾实验室I标","value":1300.0},{"name":"东莞小天才滨海湾","value":1157.32},{"name":"深圳新皇岗口岸综合业务楼","value":1000.04},{"name":"东莞OPPO滨海湾高级人才房机电","value":503.0},{"name":"广州从化国际赛马发展中心","value":443.4},{"name":"深圳机场教育基地","value":412.67},{"name":"深圳市吉华医院","value":312.0},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","value":9.23}],"2025-9":[{"name":"深圳电子科技大学高等研究院","value":2222.35},{"name":"深圳香港中文大学医学院","value":2015.44},{"name":"深圳机场教育基地","value":1383.83},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":1080.25},{"name":"深圳新皇岗口岸综合业务楼","value":1000.5},{"name":"深圳深港智汇风华产业园项目一期工程II标段EPC","value":912.12},{"name":"深圳医学科学院及深圳湾实验室I标","value":850.0},{"name":"广州从化国际赛马发展中心","value":813.0},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":552.81},{"name":"东莞OPPO滨海湾高级人才房机电","value":352.8},{"name":"深圳市吉华医院","value":320.0},{"name":"深圳云计算中心柴发机电","value":88.82}],"2025-10":[{"name":"深圳电子科技大学高等研究院","value":2869.73},{"name":"东莞市先进阿秒激光设施","value":2512.66},{"name":"深圳香港中文大学医学院","value":2025.67},{"name":"东莞小天才滨海湾","value":1731.78},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":1069.53},{"name":"深圳医学科学院及深圳湾实验室I标","value":933.45},{"name":"广州从化国际赛马发展中心","value":679.0},{"name":"东莞OPPO滨海湾高级人才房机电","value":604.73},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":484.66},{"name":"深圳市吉华医院","value":295.99}],"2025-11":[{"name":"深圳电子科技大学高等研究院","value":5313.42},{"name":"深圳香港中文大学医学院","value":2315.67},{"name":"东莞骏鼎达功能性保护材料生产建设","value":1866.41},{"name":"深圳机场教育基地","value":1399.21},{"name":"东莞OPPO滨海湾高级人才房机电","value":1308.68},{"name":"深圳新皇岗口岸综合业务楼","value":1213.08},{"name":"广州从化国际赛马发展中心","value":1133.6},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":1105.52},{"name":"深圳市药品检验研究院光明分院建设","value":1012.26},{"name":"深圳医学科学院及深圳湾实验室I标","value":568.48},{"name":"深圳职业技术大学西丽校区修缮改造","value":559.83},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":452.56},{"name":"深圳市吉华医院","value":260.88},{"name":"深圳云计算中心柴发机电","value":73.79}],"2025-12":[{"name":"东莞市先进阿秒激光设施","value":5368.95},{"name":"深圳医学科学院及深圳湾实验室I标","value":5284.14},{"name":"深圳香港中文大学医学院","value":4015.44},{"name":"深圳电子科技大学高等研究院","value":3590.04},{"name":"深圳市药品检验研究院光明分院建设","value":3058.29},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":2151.92},{"name":"东莞小天才滨海湾","value":1272.74},{"name":"深圳职业技术大学西丽校区修缮改造","value":811.32},{"name":"广州从化国际赛马发展中心","value":705.2},{"name":"深圳云计算中心柴发机电","value":587.99},{"name":"广东河源江东CD楼及源城E楼最小化机电","value":500.0},{"name":"深圳市吉华医院","value":295.99},{"name":"东莞小天才智能科技中心一期","value":155.1},{"name":"东莞小天才生产中心","value":-7.95}],"2026-1":[{"name":"深圳香港中文大学医学院","value":5015.47},{"name":"深圳医学科学院及深圳湾实验室I标","value":4206.33},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":2675.53},{"name":"广州从化国际赛马发展中心","value":2396.0},{"name":"深圳鹏鼎时代大厦机电","value":1713.84},{"name":"深圳过沥路市政工程","value":1450.71},{"name":"深圳机场教育基地","value":1011.38},{"name":"深圳前湾信息枢纽中心","value":919.96},{"name":"东莞骏鼎达功能性保护材料生产建设","value":776.76},{"name":"深圳科学城体育中心EPCO机电","value":400.0},{"name":"深圳市吉华医院","value":313.99},{"name":"深圳嘉里商务中心(三期)","value":300.3}],"2026-2":[{"name":"深圳电子科技大学高等研究院","value":2859.55},{"name":"深圳科学城体育中心EPCO机电","value":1792.69},{"name":"深圳过沥路市政工程","value":1243.56},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":1000.04},{"name":"深圳市药品检验研究院光明分院建设","value":772.46},{"name":"深圳云计算中心柴发机电","value":233.55}],"2026-3":[{"name":"深圳医学科学院及深圳湾实验室I标","value":2300.0},{"name":"深圳电子科技大学高等研究院","value":2102.37},{"name":"深圳市药品检验研究院光明分院建设","value":2076.1},{"name":"深圳香港中文大学医学院","value":2015.44},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":974.12},{"name":"深圳过沥路市政工程","value":858.61},{"name":"广州从化国际赛马发展中心","value":753.3},{"name":"东莞骏鼎达功能性保护材料生产建设","value":569.04},{"name":"深圳市吉华医院","value":305.99},{"name":"深圳科学城体育中心EPCO机电","value":205.97},{"name":"东莞OPPO滨海湾高级人才房机电","value":-1275.5}],"2026-4":[{"name":"深圳电子科技大学高等研究院","value":2059.96},{"name":"深圳香港中文大学医学院","value":2055.34},{"name":"深圳医学科学院及深圳湾实验室I标","value":1000.0},{"name":"东莞小天才滨海湾","value":986.06},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":912.77},{"name":"深圳过沥路市政工程","value":663.73},{"name":"深圳市人才研修院配电设施建设","value":643.67},{"name":"深圳职业技术大学西丽校区修缮改造","value":444.41},{"name":"深圳机场教育基地","value":412.1},{"name":"深圳科学城体育中心EPCO机电","value":394.49},{"name":"广州从化国际赛马发展中心","value":368.9},{"name":"深圳市吉华医院","value":295.99}],"2026-5":[{"name":"深圳电子科技大学高等研究院","value":4852.15},{"name":"广州从化国际赛马发展中心","value":2540.1},{"name":"深圳香港中文大学医学院","value":2027.92},{"name":"东莞市先进阿秒激光设施","value":1518.77},{"name":"东莞小天才滨海湾","value":1500.54},{"name":"深圳过沥路市政工程","value":1232.76},{"name":"深圳医学科学院及深圳湾实验室I标","value":1000.0},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":900.08},{"name":"深圳市人才研修院配电设施建设","value":773.09},{"name":"深圳市吉华医院","value":301.79}],"2026-6":[{"name":"深圳电子科技大学高等研究院","value":4106.58},{"name":"深圳香港中文大学医学院","value":2141.78},{"name":"东莞市先进阿秒激光设施","value":1877.4},{"name":"广州从化国际赛马发展中心","value":1796.4},{"name":"深圳机场B4货站","value":1717.37},{"name":"深圳医学科学院及深圳湾实验室I标","value":1100.0},{"name":"深圳科学城体育中心EPCO机电","value":962.01},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":776.17},{"name":"深圳职业技术大学西丽校区修缮改造","value":508.53},{"name":"深圳抖音二期基坑","value":503.76},{"name":"东莞小天才滨海湾","value":456.19},{"name":"深圳过沥路市政工程","value":442.27},{"name":"深圳市人才研修院配电设施建设","value":353.34},{"name":"深圳市吉华医院","value":308.94},{"name":"深圳市坪地北地块场平工程","value":244.05},{"name":"深圳市药品检验研究院光明分院建设","value":140.0}],"2026-7":[{"name":"深圳电子科技大学高等研究院","value":4030.23},{"name":"深圳医学科学院及深圳湾实验室I标","value":2390.02},{"name":"东莞市先进阿秒激光设施","value":2213.86},{"name":"深圳香港中文大学医学院","value":2055.42},{"name":"深圳科学城体育中心EPCO机电","value":1980.76},{"name":"广州从化国际赛马发展中心","value":1763.3},{"name":"深圳首创商务大厦","value":903.79},{"name":"深圳过沥路市政工程","value":639.82},{"name":"深圳抖音二期基坑","value":565.27},{"name":"深圳市吉华医院","value":294.64},{"name":"深圳机场B4货站","value":234.95},{"name":"深圳市人才研修院配电设施建设","value":205.91}],"2026-8":[{"name":"深圳电子科技大学高等研究院","value":4000},{"name":"东莞市先进阿秒激光设施","value":3691},{"name":"广州从化国际赛马发展中心","value":2718.32},{"name":"深圳海洋大学一期实验室","value":2000},{"name":"深圳抖音二期基坑","value":1802.98},{"name":"深圳机场B4货站","value":1800},{"name":"深圳香港中文大学医学院","value":1500},{"name":"深圳过沥路市政工程","value":819.67},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":600},{"name":"深圳科学城体育中心EPCO机电","value":530},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"深圳医学科学院及深圳湾实验室I标","value":300},{"name":"东莞步步高学校游泳馆","value":250},{"name":"深圳市人才研修院配电设施建设","value":240},{"name":"东莞小天才滨海湾","value":200},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"深圳市吉华医院","value":120},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":100}],"2026-9":[{"name":"深圳电子科技大学高等研究院","value":4000},{"name":"东莞市先进阿秒激光设施","value":3691},{"name":"深圳海洋大学一期实验室","value":3000},{"name":"深圳抖音二期基坑","value":1821.55},{"name":"深圳机场B4货站","value":1750},{"name":"广州从化国际赛马发展中心","value":1571.72},{"name":"深圳香港中文大学医学院","value":1500},{"name":"深圳过沥路市政工程","value":693.52},{"name":"深圳A113-0080宗地项目地基与基础工程","value":600},{"name":"深圳科学城体育中心EPCO机电","value":512},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":500},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"东莞步步高学校游泳馆","value":250},{"name":"深圳医学科学院及深圳湾实验室I标","value":200},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":200},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"深圳市吉华医院","value":120}],"2026-10":[{"name":"深圳电子科技大学高等研究院","value":4000},{"name":"深圳海洋大学一期实验室","value":3000},{"name":"东莞市先进阿秒激光设施","value":2210},{"name":"深圳机场B4货站","value":2050},{"name":"深圳香港中文大学医学院","value":1500},{"name":"深圳抖音二期基坑","value":1191.89},{"name":"深圳A113-0080宗地项目地基与基础工程","value":800},{"name":"深圳科学城体育中心EPCO机电","value":755},{"name":"广州从化国际赛马发展中心","value":656.67},{"name":"深圳过沥路市政工程","value":522.93},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","value":425.93},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"深圳龙岗河流域排水管网系统完善EPC","value":350},{"name":"东莞步步高学校游泳馆","value":250},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":200},{"name":"深圳医学科学院及深圳湾实验室I标","value":192.6},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"深圳市吉华医院","value":120}],"2026-11":[{"name":"深圳电子科技大学高等研究院","value":3800},{"name":"深圳市第四十高级中学项目设计采购施工总承包(EPC)","value":2000},{"name":"深圳海洋大学一期实验室","value":1850},{"name":"东莞市先进阿秒激光设施","value":1472.02},{"name":"深圳香港中文大学医学院","value":1300},{"name":"深圳机场B4货站","value":1050},{"name":"深圳龙岗河流域排水管网系统完善EPC","value":1050},{"name":"深圳A113-0080宗地项目地基与基础工程","value":800},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":794.96},{"name":"深圳抖音二期基坑","value":765.93},{"name":"深圳科学城体育中心EPCO机电","value":405},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"广州从化国际赛马发展中心","value":290.17},{"name":"深圳过沥路市政工程","value":287.53},{"name":"东莞步步高学校游泳馆","value":200},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"深圳市吉华医院","value":120}],"2026-12":[{"name":"深圳电子科技大学高等研究院","value":3600},{"name":"深圳市第四十高级中学项目设计采购施工总承包(EPC)","value":3000},{"name":"深圳香港中文大学医学院","value":1300},{"name":"深圳龙岗河流域排水管网系统完善EPC","value":1200},{"name":"深圳海洋大学一期实验室","value":1000},{"name":"深圳抖音二期基坑","value":799.56},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","value":794.96},{"name":"深圳机场B4货站","value":600},{"name":"深圳A113-0080宗地项目地基与基础工程","value":600},{"name":"深圳龙岗区二次供水设施提标改造工程","value":350},{"name":"深圳科学城体育中心EPCO机电","value":300},{"name":"东莞步步高学校游泳馆","value":200},{"name":"深圳市药品检验研究院光明分院建设","value":140},{"name":"深圳市吉华医院","value":130.21}]},"periods":{"p145":{"label":"十四五（2020-2025）","years":["2020","2021","2022","2023","2024","2025"],"project_count":79},"p155":{"label":"十五五（2026-2030）","years":["2026"],"project_count":31}},"projects":[{"name":"深圳礼鼎高端集成电路载板及先进封装基地","status":"竣工","by_year":{"2021":46766.86,"2022":58575.03,"2023":11553.38,"2024":3994.46},"total_wan":120889.73,"new2026":false},{"name":"深圳中山大学附属七院二期","status":"竣工","by_year":{"2023":53943.6,"2024":35600.06,"2025":12310.6},"total_wan":101854.26,"new2026":false},{"name":"深圳香港中文大学二期II标","status":"竣工","by_year":{"2021":20064.72,"2022":64559.06,"2023":11412.96},"total_wan":96036.74,"new2026":false},{"name":"深圳新皇岗口岸综合业务楼","status":"竣工","by_year":{"2022":8804.51,"2023":39283.66,"2024":28138.26,"2025":8861.58},"total_wan":85088.01,"new2026":false},{"name":"深圳市吉华医院","status":"在施","by_year":{"2022":38246.03,"2023":29394.12,"2024":6756.14,"2025":3245.35,"2026":2431.55},"total_wan":80073.19,"new2026":false},{"name":"东莞小天才滨海湾","status":"在施","by_year":{"2023":23973.7,"2024":30794.8,"2025":10797.58,"2026":3142.79},"total_wan":68708.87,"new2026":false},{"name":"深圳电子科技大学高等研究院","status":"在施","by_year":{"2025":27740.47,"2026":39410.83},"total_wan":67151.3,"new2026":false},{"name":"深圳南山中国电子科技园","status":"竣工","by_year":{"2021":10254.42,"2022":26827.3,"2023":22841.72,"2024":6266.42},"total_wan":66189.86,"new2026":false},{"name":"深圳香港中文大学医学院","status":"在施","by_year":{"2024":10517.73,"2025":22648.09,"2026":22411.37},"total_wan":55577.19,"new2026":false},{"name":"广州市增城区房地产开发","status":"竣工","by_year":{"2022":19416.98,"2023":29948.37,"2024":3269.31},"total_wan":52634.66,"new2026":false},{"name":"广州保利三元里","status":"竣工","by_year":{"2020":15226.22,"2021":19765.37,"2022":6380.46,"2023":220.25,"2024":65.66},"total_wan":41657.96,"new2026":false},{"name":"深圳前湾信息枢纽中心","status":"竣工","by_year":{"2020":3853.27,"2021":15300.0,"2022":16142.0,"2023":4578.29,"2026":919.96},"total_wan":40793.52,"new2026":false},{"name":"深圳嘉里商务中心(三期)","status":"竣工","by_year":{"2021":11223.1,"2022":16030.2,"2023":7517.45,"2024":1502.0,"2025":1702.6,"2026":300.3},"total_wan":38275.65,"new2026":false},{"name":"深圳SZX-GF01字节跳动后海中心","status":"竣工","by_year":{"2022":4579.37,"2023":16430.88,"2024":15559.42,"2025":1663.62},"total_wan":38233.29,"new2026":false},{"name":"深圳职业技术学院北校区","status":"竣工","by_year":{"2020":6745.46,"2021":18241.21,"2022":9131.46,"2023":1677.99},"total_wan":35796.12,"new2026":false},{"name":"深圳医学科学院及深圳湾实验室I标","status":"在施","by_year":{"2025":18375.11,"2026":12688.96},"total_wan":31064.07,"new2026":false},{"name":"湛江华发新城花园","status":"竣工","by_year":{"2020":17251.8,"2021":3910.5,"2022":7554.66},"total_wan":28716.96,"new2026":false},{"name":"东莞市先进阿秒激光设施","status":"在施","by_year":{"2025":11930.34,"2026":16674.05},"total_wan":28604.39,"new2026":false},{"name":"深圳机场教育基地","status":"竣工","by_year":{"2024":18358.64,"2025":8403.83,"2026":1423.48},"total_wan":28185.95,"new2026":false},{"name":"深圳职业技术学院留仙洞校区","status":"竣工","by_year":{"2020":19427.28,"2021":14189.76,"2022":-8235.32},"total_wan":25381.72,"new2026":false},{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","status":"在施","by_year":{"2024":2126.81,"2025":14434.71,"2026":8764.64},"total_wan":25326.16,"new2026":false},{"name":"深圳大学西丽校区","status":"竣工","by_year":{"2020":17405.94,"2021":5286.67,"2024":1359.16},"total_wan":24051.77,"new2026":false},{"name":"江门华发四季","status":"竣工","by_year":{"2020":16316.34,"2021":5195.11,"2023":2441.0},"total_wan":23952.45,"new2026":false},{"name":"深圳嘉里商务中心","status":"竣工","by_year":{"2020":6748.7,"2021":8233.82,"2022":1491.93,"2023":188.9,"2024":1158.9,"2025":5569.99},"total_wan":23392.24,"new2026":false},{"name":"深圳国深博物馆","status":"竣工","by_year":{"2022":19068.32,"2023":3445.25,"2024":7.11},"total_wan":22520.68,"new2026":false},{"name":"东莞小天才生产中心","status":"竣工","by_year":{"2020":10033.36,"2021":7913.32,"2022":4420.37,"2025":-7.95},"total_wan":22359.1,"new2026":false},{"name":"深圳光明区金融街","status":"竣工","by_year":{"2020":11922.64,"2021":9131.66,"2022":781.28},"total_wan":21835.58,"new2026":false},{"name":"广州从化国际赛马发展中心","status":"在施","by_year":{"2024":653.0,"2025":5644.2,"2026":14854.88},"total_wan":21152.08,"new2026":false},{"name":"东莞OPPO滨海湾高级人才房机电","status":"竣工","by_year":{"2024":5610.82,"2025":16298.66,"2026":-1275.5},"total_wan":20633.98,"new2026":false},{"name":"佛山市东亚项目西区EPC","status":"竣工","by_year":{"2020":11107.06,"2021":5595.57,"2022":2286.83,"2024":125.66},"total_wan":19115.12,"new2026":false},{"name":"珠海华发广场","status":"竣工","by_year":{"2020":8329.34,"2021":6958.01,"2022":1505.04},"total_wan":16792.39,"new2026":false},{"name":"深圳龙城街道龙飞学校新建工程（二期）","status":"在施","by_year":{"2023":2858.72,"2024":9044.69,"2025":3700.15},"total_wan":15603.56,"new2026":false},{"name":"深圳市药品检验研究院光明分院建设","status":"在施","by_year":{"2024":847.12,"2025":10620.98,"2026":3688.56},"total_wan":15156.66,"new2026":false},{"name":"深圳联想创新科技园综合机电","status":"竣工","by_year":{"2021":6345.24,"2022":6599.76,"2023":458.96,"2024":1610.33},"total_wan":15014.29,"new2026":false},{"name":"深圳前海深港青年梦工场北区(二期)","status":"竣工","by_year":{"2022":13147.89,"2023":1796.96},"total_wan":14944.85,"new2026":false},{"name":"深圳职业技术学院学生公寓拆建","status":"竣工","by_year":{"2020":11504.14,"2021":1997.51,"2022":438.93},"total_wan":13940.58,"new2026":false},{"name":"东莞OPPO滨海湾数据中心机电","status":"竣工","by_year":{"2021":8439.13,"2022":3788.95,"2024":1242.22},"total_wan":13470.3,"new2026":false},{"name":"深圳市坪地北地块场平工程","status":"竣工","by_year":{"2023":10053.41,"2024":1998.05,"2026":244.05},"total_wan":12295.51,"new2026":false},{"name":"深圳鹏鼎时代大厦机电","status":"竣工","by_year":{"2020":5225.55,"2021":3676.57,"2022":203.34,"2023":146.6,"2026":1713.84},"total_wan":10965.9,"new2026":false},{"name":"深圳海洋大学一期实验室","status":"在施（2026新接）","by_year":{"2026":10850},"total_wan":10850,"new2026":true},{"name":"深圳市创新创业无障碍服务中心","status":"竣工","by_year":{"2021":5422.28,"2022":5414.85},"total_wan":10837.13,"new2026":false},{"name":"广东河源江东CD楼及源城E楼最小化机电","status":"竣工","by_year":{"2025":10748.93},"total_wan":10748.93,"new2026":false},{"name":"深圳职业技术大学西丽校区修缮改造","status":"在施","by_year":{"2024":4381.51,"2025":4172.89,"2026":952.94},"total_wan":9507.34,"new2026":false},{"name":"东莞骏鼎达功能性保护材料生产建设","status":"在施","by_year":{"2025":7975.0,"2026":1345.8},"total_wan":9320.8,"new2026":false},{"name":"深圳机场B4货站","status":"在施（2026新接）","by_year":{"2026":9202.32},"total_wan":9202.32,"new2026":true},{"name":"深圳小米国际总部","status":"竣工","by_year":{"2021":2715.39,"2022":5640.46,"2023":296.24,"2024":365.15},"total_wan":9017.24,"new2026":false},{"name":"深圳过沥路市政工程","status":"在施","by_year":{"2026":8855.11},"total_wan":8855.11,"new2026":false},{"name":"广东阿里巴巴云计算数据中心河源源城区三期机电","status":"竣工","by_year":{"2021":7216.18,"2022":1150.68,"2023":2.58},"total_wan":8369.44,"new2026":false},{"name":"深圳科学城体育中心EPCO机电","status":"在施","by_year":{"2026":8237.92},"total_wan":8237.92,"new2026":false},{"name":"深圳抖音二期基坑","status":"在施（2026新接）","by_year":{"2026":7450.94},"total_wan":7450.94,"new2026":true},{"name":"佛山顺德光正实验学校","status":"竣工","by_year":{"2020":5002.74,"2022":1196.84},"total_wan":6199.58,"new2026":false},{"name":"海口空港综合保税区监管设施","status":"竣工","by_year":{"2020":3312.0,"2021":2688.0},"total_wan":6000.0,"new2026":false},{"name":"深圳市第四十高级中学项目设计采购施工总承包(EPC)","status":"在施（2026新接）","by_year":{"2026":5000},"total_wan":5000,"new2026":true},{"name":"广州金融街海珠区石岗路","status":"竣工","by_year":{"2020":705.38,"2021":2467.01,"2024":1548.56},"total_wan":4720.95,"new2026":false},{"name":"上海黄金交易所深圳运营中心","status":"竣工","by_year":{"2020":449.82,"2024":3526.58},"total_wan":3976.4,"new2026":false},{"name":"深圳市皇岗公园改造","status":"竣工","by_year":{"2022":3126.3,"2023":832.02},"total_wan":3958.32,"new2026":false},{"name":"深圳深港智汇风华产业园项目一期工程II标段EPC","status":"在施","by_year":{"2025":3713.37},"total_wan":3713.37,"new2026":false},{"name":"东莞小天才智能科技中心一期","status":"在施","by_year":{"2023":2700.29,"2024":612.05,"2025":155.1},"total_wan":3467.44,"new2026":false},{"name":"深圳达实大厦改扩建","status":"竣工","by_year":{"2020":1138.99,"2021":1788.27},"total_wan":2927.26,"new2026":false},{"name":"深圳A113-0080宗地项目地基与基础工程","status":"在施（2026新接）","by_year":{"2026":2800},"total_wan":2800,"new2026":true},{"name":"深圳水木一方大厦","status":"竣工","by_year":{"2020":2678.65,"2021":-0.0},"total_wan":2678.65,"new2026":false},{"name":"珠海臻林山庄","status":"竣工","by_year":{"2021":1717.96,"2025":950.8},"total_wan":2668.76,"new2026":false},{"name":"三亚海棠湾河心岛","status":"竣工","by_year":{"2022":2657.09},"total_wan":2657.09,"new2026":false},{"name":"深圳前海十单元3小镇","status":"竣工","by_year":{"2021":2240.23,"2022":385.45},"total_wan":2625.68,"new2026":false},{"name":"深圳龙岗河流域排水管网系统完善EPC","status":"在施（2026新接）","by_year":{"2026":2600},"total_wan":2600,"new2026":true},{"name":"深圳市人才研修院配电设施建设","status":"在施（2026新接）","by_year":{"2026":2216.01},"total_wan":2216.01,"new2026":true},{"name":"华泰联合证券有限责任公司深圳前海总部大楼项目通风空调工程","status":"在施（2026新接）","by_year":{"2026":2089.92},"total_wan":2089.92,"new2026":true},{"name":"佛山市原干部家属区部分政府旧物业修缮改造","status":"竣工","by_year":{"2020":366.23,"2021":1477.72,"2022":76.07},"total_wan":1920.02,"new2026":false},{"name":"广东惠州金融街巽寮湾海世界","status":"竣工","by_year":{"2024":1750.09},"total_wan":1750.09,"new2026":false},{"name":"深圳龙岗区二次供水设施提标改造工程","status":"在施（2026新接）","by_year":{"2026":1750},"total_wan":1750,"new2026":true},{"name":"东莞步步高学校游泳馆","status":"在施（2026新接）","by_year":{"2026":1150},"total_wan":1150,"new2026":true},{"name":"深圳市公安局刑事科学技术中心项目实验室工艺工程Ⅱ标段机电","status":"竣工","by_year":{"2024":964.52,"2025":181.45},"total_wan":1145.97,"new2026":false},{"name":"海口塔","status":"竣工","by_year":{"2021":1053.77},"total_wan":1053.77,"new2026":false},{"name":"深圳云计算中心柴发机电","status":"竣工","by_year":{"2025":750.6,"2026":233.55},"total_wan":984.15,"new2026":false},{"name":"深圳嘉里商务中心（一期）","status":"竣工","by_year":{"2021":939.6,"2023":20.17},"total_wan":959.77,"new2026":false},{"name":"深圳首创商务大厦","status":"竣工","by_year":{"2021":350.0,"2022":-350.0,"2026":903.79},"total_wan":903.79,"new2026":false},{"name":"深圳石厦村综合管廊","status":"竣工","by_year":{"2021":258.24,"2024":594.48},"total_wan":852.72,"new2026":false},{"name":"广州黄石路白云汇广场影城","status":"竣工","by_year":{"2021":449.9,"2022":46.63},"total_wan":496.53,"new2026":false},{"name":"三亚海棠湾国际购物中心物流基地","status":"竣工","by_year":{"2021":456.33},"total_wan":456.33,"new2026":false},{"name":"佛山建鑫乐家花园","status":"竣工","by_year":{"2020":137.21,"2021":178.08},"total_wan":315.29,"new2026":false},{"name":"海南中国石化自贸大厦","status":"竣工","by_year":{"2021":145.76,"2022":-3.47},"total_wan":142.29,"new2026":false},{"name":"三亚海棠湾君悦酒店","status":"竣工","by_year":{},"total_wan":0,"new2026":false},{"name":"深圳机场开发区西区","status":"竣工","by_year":{},"total_wan":0,"new2026":false},{"name":"深圳平安财险大厦","status":"竣工","by_year":{},"total_wan":0,"new2026":false},{"name":"佛山怡翠尊堤嘉园D2区","status":"竣工","by_year":{},"total_wan":0,"new2026":false},{"name":"广州LG Display GP3","status":"竣工","by_year":{},"total_wan":0,"new2026":false},{"name":"佛山国际体育文化演艺中心","status":"竣工","by_year":{},"total_wan":0,"new2026":false},{"name":"T1航站楼地块土地整备项目拆除工程","status":"在施（2026新接）","by_year":{},"total_wan":0,"new2026":true},{"name":"南湖31号工程《417(安全隐患整治)项目工程总承包(EPC)》","status":"在施（2026新接）","by_year":{},"total_wan":0,"new2026":true},{"name":"佛山绿城","status":"竣工","by_year":{},"total_wan":0,"new2026":false},{"name":"海口塔南塔试桩工程","status":"竣工","by_year":{},"total_wan":0,"new2026":false},{"name":"深圳微软科通大厦","status":"竣工","by_year":{"2021":-117.0},"total_wan":-117.0,"new2026":false},{"name":"深圳柔宇国际柔性显示产业园机电","status":"竣工","by_year":{"2022":-2757.04,"2024":671.58},"total_wan":-2085.46,"new2026":false}],"notes":{"xls_aug_excluded_wan":1634.27,"tz_jan_jul_wan":98832.01},"headcount_default":{"2020":150,"2021":180,"2022":220,"2023":210,"2024":190,"2025":180,"2026":170}};
+
+// ===================== 工具 =====================
+const N = v => (typeof v === 'number' && !isNaN(v)) ? v : 0;
+const YEARS = DATA.years;
+const fmtWan = v => {
+  const n = Math.abs(N(v));
+  if (n >= 1e4) return (v < 0 ? '-' : '') + (n / 1e4).toFixed(2) + ' 亿';
+  return (v < 0 ? '-' : '') + n.toLocaleString('zh-CN', { maximumFractionDigits: 0 }) + ' 万';
+};
+const fmtNum = v => N(v).toLocaleString('zh-CN', { maximumFractionDigits: 1 });
+// ---- 本地修改（localStorage 持久化） ----
+DATA.projects.forEach(p => { p._orig = Object.assign({}, p.by_year); });
+const LS_EDITS = 'qr_edits_v1';
+const loadEdits = () => { try { return JSON.parse(localStorage.getItem(LS_EDITS) || '{}'); } catch (e) { return {}; } };
+const saveEdits = o => localStorage.setItem(LS_EDITS, JSON.stringify(o));
+let EDITS = loadEdits();
+Object.keys(EDITS).forEach(name => {
+  const p = DATA.projects.find(x => x.name === name);
+  if (!p) return;
+  Object.keys(EDITS[name]).forEach(y => {
+    if (EDITS[name][y] === null) delete p.by_year[y]; else p.by_year[y] = EDITS[name][y];
+  });
+  p.total_wan = Object.values(p.by_year).reduce((s, v) => s + N(v), 0);
+});
+const isEdited = (name, y) => !!(EDITS[name] && EDITS[name][y] !== undefined);
+
+// ---- 动态聚合（编辑后全板实时联动） ----
+const yearVal = y => DATA.projects.reduce((s, p) => s + N(p.by_year[y]), 0);
+const yearCount = y => DATA.projects.filter(p => N(p.by_year[y]) !== 0).length;
+const sumYears = ys => ys.reduce((s, y) => s + yearVal(y), 0);
+const totalAll = () => sumYears(YEARS);
+const P145 = DATA.periods.p145, P155 = DATA.periods.p155;
+const periodCount = per => DATA.projects.filter(p => per.years.some(y => N(p.by_year[y]) !== 0)).length;
+const peakYear = () => YEARS.slice(0, 6).reduce((a, b) => yearVal(a) >= yearVal(b) ? a : b);
+// 月度联动：项目年度值被修改后，差额按该项目当年原始月度分布比例分摊（原年度值为 0 则均摊 12 个月）
+function projMonthOrig(name, y, m) {
+  const r = (DATA.monthly_projects[`${y}-${m}`] || []).find(x => x.name === name);
+  return r ? N(r.value) : 0;
+}
+function monthDelta(y, m) {
+  let adj = 0;
+  DATA.projects.forEach(p => {
+    const origY = N(p._orig[y]), newY = N(p.by_year[y]);
+    const delta = newY - origY;
+    if (!delta) return;
+    adj += origY !== 0 ? delta * (projMonthOrig(p.name, y, m) / origY) : delta / 12;
+  });
+  return adj;
+}
+const monthVal = (y, m) => N((DATA.monthly_all[y] || {})[String(m)]) + monthDelta(y, m);
+function monthProjects(y, m) {
+  const lst = (DATA.monthly_projects[`${y}-${m}`] || []).map(r => ({ name: r.name, value: r.value }));
+  DATA.projects.forEach(p => {
+    const origY = N(p._orig[y]), newY = N(p.by_year[y]);
+    const delta = newY - origY;
+    if (!delta) return;
+    const add = origY !== 0 ? delta * (projMonthOrig(p.name, y, m) / origY) : delta / 12;
+    const hit = lst.find(x => x.name === p.name);
+    if (hit) hit.value = Math.round((hit.value + add) * 100) / 100;
+    else if (add) lst.push({ name: p.name, value: Math.round(add * 100) / 100 });
+  });
+  return lst.filter(r => r.value !== 0).sort((a, b) => b.value - a.value);
+}
+const split2026 = () => {
+  let a = 0, f = 0;
+  for (let m = 1; m <= 7; m++) a += monthVal('2026', m);
+  for (let m = 8; m <= 12; m++) f += monthVal('2026', m);
+  return { actual: a, forecast: f };
+};
+
+// ===================== 年人均产值：人数（可编辑，localStorage） =====================
+const LS_HC = 'qr_headcount_v1';
+const loadHC = () => { try { return Object.assign({}, DATA.headcount_default, JSON.parse(localStorage.getItem(LS_HC) || '{}')); } catch (e) { return Object.assign({}, DATA.headcount_default); } };
+let HC = loadHC();
+let hcEdit = false;
+const perCap = y => { const h = N(HC[y]); return h > 0 ? yearVal(y) / h : null; };
+const isHcEdited = y => { try { const o = JSON.parse(localStorage.getItem(LS_HC) || '{}'); return o[y] !== undefined; } catch (e) { return false; } };
+
+// ===================== KPI =====================
+function renderKPIs() {
+  const v145 = sumYears(P145.years), v155 = sumYears(P155.years);
+  const y26 = split2026();
+  const cards = [
+    { cls: 'purple', drill: { type: 'year', year: null }, label: '累计确权（2020至今）', value: fmtWan(totalAll()), foot: `${DATA.projects.length} 个项目 · 7 个年度` },
+    { cls: 'gold', drill: { type: 'period', key: 'p145' }, label: '十四五确权（2020-2025）', value: fmtWan(v145), foot: `年均 ${fmtWan(v145 / 6)} · ${periodCount(P145)} 个项目` },
+    { cls: 'green', drill: { type: 'period', key: 'p155' }, label: '十五五确权（2026起）', value: fmtWan(v155), foot: `仅 2026 年 · 含 8-12 月预测` },
+    { cls: '', drill: { type: 'm2026' }, label: '2026 全年预计', value: fmtWan(yearVal('2026')), foot: `实际(1-7月) ${fmtWan(y26.actual)} ＋ 预测(8-12月) ${fmtWan(y26.forecast)}` },
+    { cls: 'red', drill: { type: 'year', year: peakYear() }, label: `峰值年份 ${peakYear()}`, value: fmtWan(yearVal(peakYear())), foot: `七年中确权最高的一年` },
+    { cls: '', drill: { type: 'year', year: null }, label: '涉及项目', value: `${DATA.projects.length} 个`, foot: `2026 年新接 ${DATA.projects.filter(p => p.new2026).length} 个` },
+  ];
+  document.getElementById('kpis').innerHTML = cards.map((c, i) => `
+    <div class="kpi-card ${c.cls}" data-i="${i}"><div class="label">${c.label}</div><div class="value">${c.value}</div>
+      <div class="foot">${c.foot}</div><div class="more">点击查看明细 ▸</div></div>`).join('');
+  document.querySelectorAll('#kpis .kpi-card').forEach((el, i) => {
+    el.addEventListener('click', () => openDrill(cards[i].drill));
+  });
+}
+
+// ===================== 十四五 / 十五五 对比 =====================
+function renderPeriods() {
+  const v145 = sumYears(P145.years), v155 = sumYears(P155.years);
+  const y26 = split2026();
+  const share145 = totalAll() ? (v145 / totalAll() * 100).toFixed(1) : '—';
+  const share155 = totalAll() ? (v155 / totalAll() * 100).toFixed(1) : '—';
+  document.getElementById('periods').innerHTML = `
+    <div class="period-card p145" data-p="p145" style="cursor:pointer">
+      <div class="p-head"><div class="p-name">🟡 十四五（2020-2025）</div><span class="badge-status pending">已完成期间</span></div>
+      <div class="p-total">${fmtWan(v145)}</div>
+      <div class="p-rows">
+        <div>年均确权：<b>${fmtWan(v145 / 6)}</b></div>
+        <div>占累计比重：<b>${share145}%</b></div>
+        <div>覆盖项目：<b>${periodCount(P145)} 个</b></div>
+        <div>峰值年：<b>${peakYear()}（${fmtWan(yearVal(peakYear()))}）</b></div>
+      </div>
+      <div class="p-note">六个完整年度，全部为监理/业主确认的实际完成量。点击查看分项目明细 ▸</div>
+    </div>
+    <div class="period-card p155" data-p="p155" style="cursor:pointer">
+      <div class="p-head"><div class="p-name">🟢 十五五（2026-2030）</div><span class="badge-status done">开局之年</span></div>
+      <div class="p-total">${fmtWan(v155)}</div>
+      <div class="p-rows">
+        <div>2026 全年预计：<b>${fmtWan(yearVal('2026'))}</b></div>
+        <div>占累计比重：<b>${share155}%</b></div>
+        <div>在施项目：<b>${periodCount(P155)} 个</b></div>
+        <div>其中 2026 新接：<b>${DATA.projects.filter(p => p.new2026).length} 个</b></div>
+      </div>
+      <div class="p-note">目前仅含 2026 年：1-7 月实际 ${fmtWan(y26.actual)} ＋ 8-12 月预测 ${fmtWan(y26.forecast)}。点击查看项目明细 ▸</div>
+    </div>`;
+  document.querySelectorAll('.period-card').forEach(el => {
+    el.addEventListener('click', () => openDrill({ type: 'period', key: el.dataset.p }));
+  });
+}
+
+// ===================== 年人均产值 =====================
+function renderPercap() {
+  const tb = document.querySelector('#percap-table tbody');
+  tb.innerHTML = YEARS.map(y => {
+    const pc = perCap(y);
+    const edited = isHcEdited(y);
+    return `<tr>
+      <td>${y}${y === '2026' ? ' <span class="sub-note">含预测</span>' : ''}</td>
+      <td>${fmtNum(yearVal(y))}</td>
+      <td class="${edited ? 'edited-cell' : ''}">${hcEdit
+        ? `<input type="number" class="hc-input" data-year="${y}" value="${N(HC[y])}" min="1" step="1">`
+        : `<span class="hc">${N(HC[y]) || '—'}</span>`}${edited && !hcEdit ? '<span class="modified-dot"></span>' : ''}</td>
+      <td class="pc">${pc === null ? '—' : fmtNum(pc)}</td>
+    </tr>`;
+  }).join('');
+
+  // 图：柱=年产值(亿)，线=人均(万/人)
+  const chart = chartObjs['chart-percap'] || (chartObjs['chart-percap'] = echarts.init(document.getElementById('chart-percap'), 'dark'));
+  chart.setOption({
+    backgroundColor: 'transparent',
+    title: { text: '年产值 vs 年人均产值', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+    tooltip: { trigger: 'axis', backgroundColor: '#1e293b', borderColor: '#334155', textStyle: { color: '#f1f5f9' },
+      formatter: ps => {
+        const y = YEARS[ps[0].dataIndex];
+        const pc = perCap(y);
+        return `${y} 年${y === '2026' ? '（1-7月实际+8-12月预测）' : ''}<br/>年度自施产值含税：<b>${fmtWan(yearVal(y))}</b><br/>年度平均人数：${N(HC[y])} 人<br/>年人均产值：<b>${pc === null ? '—' : fmtNum(pc) + ' 万元/人'}</b>`;
+      } },
+    legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+    grid: { left: 60, right: 60, top: 46, bottom: 60 },
+    xAxis: { type: 'category', data: YEARS, axisLabel: { color: '#cbd5e1' } },
+    yAxis: [
+      { type: 'value', name: '产值(亿元)', axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#334155' } } },
+      { type: 'value', name: '人均(万元/人)', axisLabel: { color: '#14b8a6' }, splitLine: { show: false } },
+    ],
+    series: [
+      { name: '年度自施产值含税', type: 'bar', barWidth: 22,
+        data: YEARS.map(y => ({ value: +(yearVal(y) / 1e4).toFixed(2), itemStyle: { color: y === '2026' ? '#f59e0b' : '#3b82f6', borderRadius: [4, 4, 0, 0] } })) },
+      { name: '年人均产值', type: 'line', yAxisIndex: 1, symbolSize: 7, lineStyle: { width: 3, color: '#14b8a6' }, itemStyle: { color: '#14b8a6' },
+        data: YEARS.map(y => { const pc = perCap(y); return pc === null ? null : +pc.toFixed(1); }),
+        label: { show: true, position: 'top', color: '#14b8a6', fontSize: 10, formatter: p => p.value === null ? '' : fmtNum(p.value) } },
+    ],
+  }, true);
+}
+
+// ---- 人数编辑事件 ----
+document.getElementById('hc-edit').addEventListener('click', () => {
+  hcEdit = !hcEdit;
+  const btn = document.getElementById('hc-edit');
+  btn.textContent = hcEdit ? '✅ 完成校正' : '✏️ 校正人数';
+  btn.classList.toggle('editing', hcEdit);
+  document.getElementById('hc-reset').style.display = hcEdit ? '' : 'none';
+  document.getElementById('hc-hint').textContent = hcEdit
+    ? '校正模式：直接修改各年度平均人数，图表与人均产值实时联动，自动保存在本浏览器'
+    : '当前人数为示例值，请点击「校正人数」填写本区域各年度实际平均人数';
+  renderPercap();
+});
+document.getElementById('hc-reset').addEventListener('click', () => {
+  if (!confirm('确定恢复为示例人数？本浏览器内校正过的人数将被清除。')) return;
+  localStorage.removeItem(LS_HC);
+  HC = loadHC();
+  renderPercap();
+});
+document.querySelector('#percap-table tbody').addEventListener('change', e => {
+  const el = e.target;
+  if (!el.classList.contains('hc-input')) return;
+  const y = el.dataset.year;
+  const v = parseInt(el.value, 10);
+  if (!isNaN(v) && v > 0) {
+    HC[y] = v;
+    const o = JSON.parse(localStorage.getItem(LS_HC) || '{}');
+    o[y] = v;
+    localStorage.setItem(LS_HC, JSON.stringify(o));
+  }
+  renderPercap();
+});
+
+// ===================== 图表 =====================
+const chartObjs = {};
+const axStyle = { axisLabel: { color: '#94a3b8' }, splitLine: { lineStyle: { color: '#334155' } } };
+const shortName = (s, n) => s.length > n ? s.slice(0, n) + '…' : s;
+function mk(id, option) {
+  const el = document.getElementById(id);
+  if (!chartObjs[id]) chartObjs[id] = echarts.init(el, 'dark');
+  chartObjs[id].setOption(Object.assign({
+    backgroundColor: 'transparent',
+    tooltip: { trigger: 'axis', backgroundColor: '#1e293b', borderColor: '#334155', textStyle: { color: '#f1f5f9' } },
+  }, option), true);
+}
+
+function renderCharts() {
+  // 1. 分年度确权（2026 堆叠：实际+预测）
+  (function () {
+    mk('chart-year', {
+      title: { text: '分年度确权产值（万元）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: ps => {
+          const y = YEARS[ps[0].dataIndex];
+          let s = `${y} 年确权：<b>${fmtWan(yearVal(y))}</b><br/>活跃项目：${yearCount(y)} 个`;
+          if (y === '2026') { const sp = split2026(); s += `<br/>├ 1-7月实际：${fmtWan(sp.actual)}<br/>└ 8-12月预测：${fmtWan(sp.forecast)}`; }
+          return s + '<br/><span style="color:#f59e0b">点击查看该年项目明细 ▸</span>';
+        } },
+      legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
+      grid: { left: 80, right: 40, top: 46, bottom: 60 },
+      xAxis: { type: 'category', data: YEARS, axisLabel: { color: '#cbd5e1', fontSize: 12 } },
+      yAxis: Object.assign({ type: 'value', axisLabel: { color: '#94a3b8', formatter: v => (v / 1e4) + ' 亿' } }, { splitLine: axStyle.splitLine }),
+      series: [
+        { name: '实际确权', type: 'bar', stack: 'v', barWidth: 34,
+          data: YEARS.map(y => ({ value: y === '2026' ? split2026().actual : yearVal(y), itemStyle: { color: y === '2026' ? '#3b82f6' : '#3b82f6', borderRadius: y === '2026' ? 0 : [4, 4, 0, 0] } })),
+          label: { show: true, position: 'top', color: '#f1f5f9', fontSize: 11, formatter: p => fmtWan(p.value + (YEARS[p.dataIndex] === '2026' ? split2026().forecast : 0)) } },
+        { name: '8-12月预测', type: 'bar', stack: 'v', barWidth: 34,
+          data: YEARS.map(y => y === '2026' ? { value: split2026().forecast, itemStyle: { color: '#f59e0b', opacity: .75, borderRadius: [4, 4, 0, 0] } } : 0) },
+      ],
+    });
+    chartObjs['chart-year'].off('click');
+    chartObjs['chart-year'].on('click', ps => { const y = YEARS[ps.dataIndex]; if (y) openDrill({ type: 'year', year: y }); });
+  })();
+
+  // 2. 月度确权（年份可选）
+  renderMonthChart();
+
+  // 3. 项目累计确权 TOP15
+  (function () {
+    const arr = DATA.projects.slice(0, 15).reverse();
+    mk('chart-top', {
+      title: { text: '项目累计确权 TOP15（万元，2020至今）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: ps => {
+          const p = arr[ps[0].dataIndex];
+          return `${p.name}<br/>累计确权：<b>${fmtWan(p.total_wan)}</b><br/>状态：${p.status}<br/><span style="color:#f59e0b">点击查看分年明细 ▸</span>`;
+        } },
+      grid: { left: 170, right: 80, top: 40, bottom: 30 },
+      xAxis: Object.assign({ type: 'value', axisLabel: { color: '#94a3b8', formatter: v => (v / 1e4) + ' 亿' } }, { splitLine: axStyle.splitLine }),
+      yAxis: { type: 'category', data: arr.map(p => shortName(p.name, 13)), axisLabel: { color: '#cbd5e1', fontSize: 11 } },
+      series: [{
+        type: 'bar', barWidth: 13,
+        data: arr.map(p => ({ value: p.total_wan, itemStyle: { color: '#8b5cf6', borderRadius: 3 } })),
+        label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: p => fmtWan(p.value) },
+      }],
+    });
+    chartObjs['chart-top'].off('click');
+    chartObjs['chart-top'].on('click', ps => { const p = arr[ps.dataIndex]; if (p) openDrill({ type: 'proj', name: p.name }); });
+  })();
+
+  // 4. 年度活跃项目数
+  (function () {
+    mk('chart-count', {
+      title: { text: '各年度活跃项目数（个）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+        formatter: ps => {
+          const y = YEARS[ps[0].dataIndex];
+          return `${y} 年<br/>活跃项目：<b>${yearCount(y)} 个</b><br/>确权：${fmtWan(yearVal(y))}`;
+        } },
+      grid: { left: 50, right: 30, top: 46, bottom: 40 },
+      xAxis: { type: 'category', data: YEARS, axisLabel: { color: '#cbd5e1' } },
+      yAxis: Object.assign({ type: 'value', minInterval: 1 }, axStyle),
+      series: [
+        { name: '项目数', type: 'bar', barWidth: 26,
+          data: YEARS.map(y => ({ value: yearCount(y), itemStyle: { color: '#14b8a6', borderRadius: [4, 4, 0, 0] } })),
+          label: { show: true, position: 'top', color: '#f1f5f9', fontSize: 11 } },
+        { name: '确权(亿)', type: 'line', symbolSize: 6, lineStyle: { width: 2, color: '#f59e0b', type: 'dashed' }, itemStyle: { color: '#f59e0b' },
+          data: YEARS.map(y => +(yearVal(y) / 1e4).toFixed(1)) },
+      ],
+    });
+    chartObjs['chart-count'].off('click');
+    chartObjs['chart-count'].on('click', ps => { const y = YEARS[ps.dataIndex]; if (y) openDrill({ type: 'year', year: y }); });
+  })();
+}
+
+// ===================== 月度确权（年份可选） =====================
+let monthYear = '2026';
+function renderYearBtns() {
+  const box = document.getElementById('year-btns');
+  box.innerHTML = YEARS.map(y => `<button data-y="${y}" class="${y === monthYear ? 'active' : ''}">${y} 年</button>`).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => {
+    monthYear = b.dataset.y;
+    renderYearBtns();
+    renderMonthChart();
+  });
+  document.getElementById('month-hint').textContent = monthYear === '2026'
+    ? '2026 年：1-7 月蓝色为监理表实际，8-12 月橙色为预测表'
+    : monthYear + ' 年：全部为监理表（系统导出）实际确认完成量';
+}
+
+function renderMonthChart() {
+  const y = monthYear;
+  const vals = [];
+  for (let m = 1; m <= 12; m++) vals.push(monthVal(y, m));
+  const isFc = m => y === '2026' && m >= 8;
+  const option = {
+    title: { text: y + ' 年各月确权金额（万元）' + (y === '2026' ? '｜ 蓝=1-7月实际 橙=8-12月预测' : ''), left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
+      formatter: ps => {
+        const m = ps[0].dataIndex + 1;
+        return `${y} 年 ${m} 月<br/>确权金额：<b>${fmtWan(vals[m - 1])}</b>${isFc(m) ? '（预测表）' : y === '2026' ? '（监理表实际）' : ''}<br/><span style="color:#f59e0b">点击查看当月项目明细 ▸</span>`;
+      } },
+    grid: { left: 70, right: 30, top: 46, bottom: 40 },
+    xAxis: { type: 'category', data: Array.from({ length: 12 }, (_, i) => (i + 1) + '月'), axisLabel: { color: '#cbd5e1' } },
+    yAxis: Object.assign({ type: 'value', axisLabel: { color: '#94a3b8', formatter: v => (v / 1e4) + ' 亿' } }, { splitLine: axStyle.splitLine }),
+    series: [{
+      type: 'bar', barWidth: 30,
+      data: vals.map((v, i) => ({ value: v, itemStyle: { color: isFc(i + 1) ? '#f59e0b' : '#3b82f6', opacity: isFc(i + 1) ? .75 : 1, borderRadius: [4, 4, 0, 0] } })),
+      label: { show: true, position: 'top', color: '#94a3b8', fontSize: 10, formatter: p => p.value ? fmtNum(p.value) : '' },
+    }],
+  };
+  if (y === '2026') {
+    option.series[0].markLine = { symbol: 'none', lineStyle: { color: '#64748b', type: 'dashed' }, label: { color: '#94a3b8', formatter: '实际｜预测' }, data: [{ xAxis: 6.5 }] };
+  }
+  mk('chart-month', option);
+  chartObjs['chart-month'].off('click');
+  chartObjs['chart-month'].on('click', ps => { openDrill({ type: 'month', year: y, m: ps.dataIndex + 1 }); });
+}
+
+// ===================== 明细表 =====================
+const state = { kw: '', status: '', yearF: '全部', sortKey: 'total', sortAsc: false, edit: false };
+const TCOLS = [['name', '项目名称'], ['status', '状态']].concat(YEARS.map(y => [y, y + '年'])).concat([['total', '合计']]);
+
+// ---- 年份筛选按钮 ----
+function renderYearFilter() {
+  const box = document.getElementById('year-filter');
+  const opts = ['全部'].concat(YEARS);
+  box.innerHTML = opts.map(y => `<button data-y="${y}" class="${state.yearF === y ? 'active' : ''}">${y === '全部' ? '全部年份' : y + ' 年'}</button>`).join('');
+  box.querySelectorAll('button').forEach(b => b.onclick = () => {
+    state.yearF = b.dataset.y;
+    if (state.yearF !== '全部') { state.sortKey = state.yearF; state.sortAsc = false; }
+    renderYearFilter();
+    renderTable();
+  });
+}
+
+function rowsNow() {
+  let rows = DATA.projects.slice();
+  if (state.yearF !== '全部') rows = rows.filter(p => N(p.by_year[state.yearF]) !== 0);
+  if (state.kw) rows = rows.filter(p => p.name.toLowerCase().includes(state.kw));
+  if (state.status) rows = rows.filter(p => p.status === state.status);
+  const k = state.sortKey;
+  rows.sort((a, b) => {
+    const va = k === 'name' ? a.name : k === 'status' ? a.status : (k === 'total' ? a.total_wan : N(a.by_year[k]));
+    const vb = k === 'name' ? b.name : k === 'status' ? b.status : (k === 'total' ? b.total_wan : N(b.by_year[k]));
+    const cmp = (typeof va === 'number' && typeof vb === 'number') ? va - vb : String(va).localeCompare(String(vb), 'zh');
+    return state.sortAsc ? cmp : -cmp;
+  });
+  return rows;
+}
+
+function renderTable() {
+  const thead = document.querySelector('#detail-table thead tr');
+  const tbody = document.querySelector('#detail-table tbody');
+  const hl = k => state.yearF === k ? ' style="background:rgba(245,158,11,.08)"' : '';
+  thead.innerHTML = TCOLS.map(([k, label]) =>
+    `<th data-key="${k}"${hl(k)}>${label}${state.sortKey === k ? (state.sortAsc ? ' ▲' : ' ▼') : ''}</th>`).join('');
+  thead.querySelectorAll('th').forEach(th => th.onclick = () => {
+    const k = th.dataset.key;
+    if (state.sortKey === k) state.sortAsc = !state.sortAsc; else { state.sortKey = k; state.sortAsc = false; }
+    renderTable();
+  });
+  tbody.innerHTML = rowsNow().map(p => `<tr>
+    <td>${p.name}${p.new2026 ? ' <span class="badge-status na">新接</span>' : ''}</td>
+    <td><span class="badge-status ${p.status === '竣工' ? 'na' : 'done'}">${p.status}</span></td>
+    ${YEARS.map(y => {
+      const v = p.by_year[y];
+      const edited = isEdited(p.name, y);
+      if (state.edit) {
+        return `<td class="${edited ? 'edited-cell' : ''}"${hl(y)}><input type="number" step="any" class="hc-input" data-name="${p.name.replace(/"/g, '&quot;')}" data-year="${y}" value="${typeof v === 'number' ? v : ''}">${edited ? '<span class="modified-dot"></span>' : ''}</td>`;
+      }
+      return `<td class="num ${edited ? 'edited-cell' : ''}"${hl(y)}>${typeof v === 'number' ? fmtNum(v) : '—'}${edited ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }).join('')}
+    <td class="num"><b>${fmtNum(p.total_wan)}</b></td>
+  </tr>`).join('');
+}
+document.getElementById('search').addEventListener('input', e => { state.kw = e.target.value.trim().toLowerCase(); renderTable(); });
+document.getElementById('status-filter').addEventListener('change', e => { state.status = e.target.value; renderTable(); });
+
+// ---- 编辑模式 ----
+document.getElementById('edit-toggle').addEventListener('click', () => {
+  state.edit = !state.edit;
+  const btn = document.getElementById('edit-toggle');
+  btn.textContent = state.edit ? '✅ 完成编辑' : '✏️ 编辑模式';
+  btn.classList.toggle('editing', state.edit);
+  document.getElementById('reset-data').style.display = state.edit ? '' : 'none';
+  document.getElementById('edit-hint').style.display = state.edit ? '' : 'none';
+  renderTable();
+});
+document.getElementById('reset-data').addEventListener('click', () => {
+  if (!confirm('确定恢复为原始数据？本浏览器内的全部修改将被清除。')) return;
+  localStorage.removeItem(LS_EDITS);
+  location.reload();
+});
+document.querySelector('#detail-table tbody').addEventListener('change', e => {
+  const el = e.target;
+  const name = el.dataset.name, y = el.dataset.year;
+  if (!name || !y) return;
+  const p = DATA.projects.find(x => x.name === name);
+  if (!p) return;
+  const num = parseFloat(el.value);
+  if (el.value === '' || isNaN(num)) {
+    delete p.by_year[y];
+    EDITS[name] = Object.assign({}, EDITS[name], { [y]: null });
+  } else {
+    p.by_year[y] = Math.round(num * 100) / 100;
+    EDITS[name] = Object.assign({}, EDITS[name], { [y]: p.by_year[y] });
+  }
+  p.total_wan = Object.values(p.by_year).reduce((s, v) => s + N(v), 0);
+  saveEdits(EDITS);
+  renderAll();
+});
+
+// ===================== 钻取弹窗 =====================
+function closeDrill() { document.getElementById('drill-mask').classList.remove('show'); }
+document.getElementById('drill-mask').addEventListener('click', e => { if (e.target.id === 'drill-mask') closeDrill(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrill(); });
+
+function drillTable(heads, rowsHtml, totalHtml) {
+  return `<table class="drill-table"><thead><tr>${heads.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>${rowsHtml}${totalHtml || ''}</tbody></table>`;
+}
+const tdN = (v, bold) => `<td class="num">${typeof v === 'number' ? (bold ? '<b>' : '') + fmtNum(v) + (bold ? '</b>' : '') : '—'}</td>`;
+
+function yearProjectRows(ys) {
+  return DATA.projects
+    .map(p => ({ p, v: ys.reduce((s, y) => s + N(p.by_year[y]), 0) }))
+    .filter(x => x.v > 0)
+    .sort((a, b) => b.v - a.v);
+}
+
+function openDrill(spec) {
+  let title = '', sum = '', table = '';
+  if (spec.type === 'year') {
+    if (spec.year) {
+      const y = spec.year, sp26 = y === '2026' ? split2026() : null;
+      const rows = yearProjectRows([y]);
+      title = `${y} 年确权项目明细 <small>${rows.length} 个项目 · 合计 ${fmtWan(yearVal(y))}</small>`;
+      sum = y === '2026'
+        ? `2026 年 = 1-7 月实际 <b>${fmtWan(sp26.actual)}</b>（监理表）＋ 8-12 月预测 <b>${fmtWan(sp26.forecast)}</b>（预测表）。`
+        : `${y} 年全部为监理/业主确认的实际完成量（系统导出）。`;
+      table = drillTable(['#', '项目名称', '状态', y + '年确权(万元)', '占该年比重'],
+        rows.map((x, i) => `<tr><td>${i + 1}</td><td>${x.p.name}</td><td><span class="badge-status ${x.p.status === '竣工' ? 'na' : 'done'}">${x.p.status}</span></td>${tdN(x.v)}<td class="num">${(x.v / yearVal(y) * 100).toFixed(1)}%</td></tr>`).join(''),
+        `<tr class="total"><td></td><td>合计</td><td></td>${tdN(yearVal(y), 1)}<td></td></tr>`);
+    } else {
+      const rows = DATA.projects.slice().sort((a, b) => b.total_wan - a.total_wan);
+      title = `累计确权项目总表（2020至今） <small>${rows.length} 个项目 · 合计 ${fmtWan(totalAll())}</small>`;
+      table = drillTable(['#', '项目名称', '状态', '累计确权(万元)', '占比'],
+        rows.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td><td><span class="badge-status ${p.status === '竣工' ? 'na' : 'done'}">${p.status}</span></td>${tdN(p.total_wan)}<td class="num">${(p.total_wan / totalAll() * 100).toFixed(1)}%</td></tr>`).join(''),
+        `<tr class="total"><td></td><td>合计</td><td></td>${tdN(totalAll(), 1)}<td></td></tr>`);
+    }
+  } else if (spec.type === 'period') {
+    const per = spec.key === 'p145' ? P145 : P155;
+    const v = sumYears(per.years);
+    const rows = yearProjectRows(per.years);
+    title = `${per.label} 确权项目明细 <small>${rows.length} 个项目 · 合计 ${fmtWan(v)}</small>`;
+    sum = spec.key === 'p145'
+      ? `十四五期间（2020-2025）六个完整年度实际确权合计 <b>${fmtWan(v)}</b>，年均 <b>${fmtWan(v / 6)}</b>。`
+      : `十五五开局之年 2026：1-7 月实际 <b>${fmtWan(DATA.yearly['2026'].actual_wan)}</b> ＋ 8-12 月预测 <b>${fmtWan(DATA.yearly['2026'].forecast_wan)}</b>。`;
+    table = drillTable(['#', '项目名称', '状态', '期间确权(万元)', '占比'],
+      rows.map((x, i) => `<tr><td>${i + 1}</td><td>${x.p.name}</td><td><span class="badge-status ${x.p.status === '竣工' ? 'na' : 'done'}">${x.p.status}</span></td>${tdN(x.v)}<td class="num">${(x.v / v * 100).toFixed(1)}%</td></tr>`).join(''),
+      `<tr class="total"><td></td><td>合计</td><td></td>${tdN(v, 1)}<td></td></tr>`);
+  } else if (spec.type === 'm2026') {
+    const sp = split2026();
+    const ms = [];
+    for (let m = 1; m <= 12; m++) ms.push({ m, actual: m <= 7 ? monthVal('2026', m) : null, forecast: m > 7 ? monthVal('2026', m) : null });
+    title = `2026 年月度确权构成 <small>全年预计 ${fmtWan(yearVal('2026'))}</small>`;
+    sum = `1-7 月以监理表（系统导出）为准合计 <b>${fmtWan(sp.actual)}</b>；8-12 月按预测表合计 <b>${fmtWan(sp.forecast)}</b>。`;
+    table = drillTable(['月份', '确权(万元)', '口径'],
+      ms.map(d => `<tr><td>${d.m} 月</td>${tdN(d.actual !== null ? d.actual : d.forecast)}<td>${d.actual !== null ? '<span class="badge-status done">实际·监理表</span>' : '<span class="badge-status pending">预测·台账</span>'}</td></tr>`).join(''),
+      `<tr class="total"><td>全年</td>${tdN(yearVal('2026'), 1)}<td></td></tr>`);
+  } else if (spec.type === 'month') {
+    const y = spec.year || '2026', m = spec.m;
+    const rows = monthProjects(y, m);
+    const total = rows.reduce((s, r) => s + r.value, 0);
+    title = `${y} 年 ${m} 月确权项目明细 <small>${rows.length} 个项目 · 合计 ${fmtWan(total)}</small>`;
+    sum = y === '2026'
+      ? (m <= 7 ? '该月为监理表（系统导出）实际确认完成量。' : '该月为预测表数据。')
+      : '该月为监理表（系统导出）实际确认完成量。';
+    table = drillTable(['#', '项目名称', '确权(万元)', '占当月比重'],
+      rows.map((r, i) => `<tr><td>${i + 1}</td><td>${r.name}</td>${tdN(r.value)}<td class="num">${total ? (r.value / total * 100).toFixed(1) : '—'}%</td></tr>`).join(''),
+      `<tr class="total"><td></td><td>合计</td>${tdN(total, 1)}<td></td></tr>`);
+  } else if (spec.type === 'proj') {
+    const p = DATA.projects.find(x => x.name === spec.name);
+    if (!p) return;
+    title = `单项目分年确权 <small>${p.name} ｜ ${p.status} ｜ 累计 ${fmtWan(p.total_wan)}</small>`;
+    table = drillTable(['年份', '确权(万元)', '占该项目比重'],
+      YEARS.filter(y => p.by_year[y]).map(y => `<tr><td>${y}</td>${tdN(p.by_year[y])}<td class="num">${(p.by_year[y] / p.total_wan * 100).toFixed(1)}%</td></tr>`).join(''),
+      `<tr class="total"><td>合计</td>${tdN(p.total_wan, 1)}<td></td></tr>`);
+  }
+  document.getElementById('drill-title').innerHTML = title;
+  document.getElementById('drill-body').innerHTML = (sum ? `<div class="m-sum">${sum}</div>` : '') + table;
+  document.getElementById('drill-mask').classList.add('show');
+}
+
+// ===================== 初始化 =====================
+function renderAll() {
+  renderKPIs();
+  renderPeriods();
+  renderPercap();
+  renderYearBtns();
+  renderCharts();
+  renderYearFilter();
+  renderTable();
+}
+renderAll();
+window.addEventListener('resize', () => Object.values(chartObjs).forEach(c => c.resize()));
+</script>
+</body>
+</html>
