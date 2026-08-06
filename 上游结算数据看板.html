@@ -189,7 +189,7 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
     <div class="chart-box" id="chart-indicator"></div>
   </div>
 
-  <div class="section-title">🏢 客户类型分析 <small>按客户类型汇总（已竣未结项目）· 点击柱子 / 折线可筛选下方明细表，再点一次取消筛选</small></div>
+  <div class="section-title">🏢 客户类型分析 <small>按客户类型汇总（已竣未结 ＋ 已竣已结）· 点击柱子 / 折线可筛选下方明细表，再点一次取消筛选 · 合计视图见「全部项目」页签</small></div>
   <div class="chart-grid">
     <div class="chart-box wide" id="chart-custype"></div>
   </div>
@@ -199,6 +199,7 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
     <div class="seg-btns" id="seg-btns">
       <button class="active" data-sec="已竣未结">已竣未结</button>
       <button data-sec="已竣已结">已竣已结</button>
+      <button data-sec="全部项目">全部项目（未结+已结合计）</button>
       <button data-sec="指标表">26年结算指标</button>
     </div>
     <input type="text" id="search" placeholder="搜索项目名称 / 商务经理…">
@@ -225,7 +226,7 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
     ②预计自施收益额 = 预计自施结算额 − 预计自施成本，预计收益率 = 收益额 ÷ 自施结算额，随收入/成本修改实时重算；
     ③编辑模式下可新增/删除项目行、修改措施文本，修改记录保存在本浏览器（localStorage），点「恢复默认」全部还原；「⬇️ 下载数据」可导出当前页签最新数据（含本地修改）；
     ④「26年结算指标」页签中序号 13-17 为内控结算指标项目；⑤图表的柱子 / 扇区均可点击，弹窗查看该数据由哪些项目构成；⑥数据更新口径：8.5 版 Excel（礼鼎指标值已按新表调整为 132000 万）；
-    ⑦客户类型取自 8.5 版 Excel「客户类型」列（地产类 / 产业类 / 市工务署 / 国有企业/政府 / 区工务署 / 机场），三个页签均可筛选，编辑模式下可修改（含指标表）；明细表末行「合计」对当前筛选结果的可加和列实时求和，收益率为加权口径（合计收益 ÷ 合计自施结算额）。
+    ⑦客户类型取自 8.5 版 Excel「客户类型」列（地产类 / 产业类 / 市工务署 / 国有企业/政府 / 区工务署 / 机场），各页签均可筛选，编辑模式下可修改（含指标表）；明细表末行「合计」对当前筛选结果的可加和列实时求和，收益率为加权口径（合计收益 ÷ 合计自施结算额）；「全部项目」页签把已竣未结与已竣已结合并列示，配合客户类型筛选可一次看到两板块的合并合计。
   </div>
 </div>
 
@@ -593,32 +594,37 @@ function renderCharts() {
     });
   })();
 
-  // 7b. 客户类型分析（已竣未结：指标/已完成/保底 + 项目数）
+  // 7b. 客户类型分析（已竣未结：指标/已完成/保底；已竣已结：自施结算额；项目数=两板块合计）
   (function () {
     const agg = {};
+    const ensure = k => agg[k] || (agg[k] = { target: 0, done: 0, floor: 0, profit: 0, n: 0, settled: 0, n2: 0 });
     P1.forEach(p => {
-      const k = p.cust_type || '未分类';
-      if (!agg[k]) agg[k] = { target: 0, done: 0, floor: 0, profit: 0, n: 0 };
-      agg[k].target += N(p.target); agg[k].done += N(p.done); agg[k].floor += N(p.floor);
-      agg[k].profit += profitOf(p); agg[k].n++;
+      const a = ensure(p.cust_type || '未分类');
+      a.target += N(p.target); a.done += N(p.done); a.floor += N(p.floor);
+      a.profit += profitOf(p); a.n++;
     });
-    const types = Object.keys(agg).sort((a, b) => agg[b].target - agg[a].target);
+    P2.forEach(p => {
+      const a = ensure(p.cust_type || '未分类');
+      a.settled += N(p.self_settle); a.n2++;
+    });
+    const types = Object.keys(agg).sort((a, b) => (agg[b].target + agg[b].settled) - (agg[a].target + agg[a].settled));
     mk('chart-custype', {
-      title: { text: '按客户类型汇总（已竣未结项目）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
+      title: { text: '按客户类型汇总（已竣未结 ＋ 已竣已结）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 14 } },
       tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' },
         formatter: ps => {
           const t = ps[0].name, a = agg[t];
-          return `${t}（${a.n} 个项目）<br/>指标值：<b>${fmtWan(a.target)}</b><br/>已完成金额：${fmtWan(a.done)}<br/>保底预计：${fmtWan(a.floor)}<br/>预计收益：${fmtWan(a.profit)}<br/><span style="color:#f59e0b">点击筛选该类型项目明细 ▸</span>`;
+          return `${t}（未结 ${a.n} 个 · 已结 ${a.n2} 个）<br/>指标值（未结）：<b>${fmtWan(a.target)}</b><br/>已完成金额（未结）：${fmtWan(a.done)}<br/>保底预计（未结）：${fmtWan(a.floor)}<br/>预计收益（未结）：${fmtWan(a.profit)}<br/>已结自施结算额：${fmtWan(a.settled)}<br/><span style="color:#f59e0b">点击筛选该类型项目明细 ▸</span>`;
         } },
       legend: { bottom: 0, textStyle: { color: '#94a3b8' } },
       grid: { left: 70, right: 60, top: 46, bottom: 60 },
       xAxis: { type: 'category', data: types, axisLabel: { color: '#cbd5e1', interval: 0, fontSize: 12 } },
       yAxis: [Object.assign({ type: 'value', name: '亿元' }, axStyle), Object.assign({ type: 'value', name: '项目数', minInterval: 1 }, axStyle)],
       series: [
-        { name: '指标值', type: 'bar', barWidth: 22, data: types.map(t => yi(agg[t].target)), itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] } },
-        { name: '已完成金额', type: 'bar', barWidth: 22, data: types.map(t => yi(agg[t].done)), itemStyle: { color: '#14b8a6', borderRadius: [4, 4, 0, 0] } },
-        { name: '保底预计', type: 'bar', barWidth: 22, data: types.map(t => yi(agg[t].floor)), itemStyle: { color: '#f59e0b', borderRadius: [4, 4, 0, 0] } },
-        { name: '项目数', type: 'line', yAxisIndex: 1, data: types.map(t => agg[t].n), symbolSize: 8, lineStyle: { width: 2, color: '#c084fc', type: 'dashed' }, itemStyle: { color: '#c084fc' }, label: { show: true, position: 'top', color: '#c084fc' } }
+        { name: '指标值（未结）', type: 'bar', barWidth: 18, data: types.map(t => yi(agg[t].target)), itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] } },
+        { name: '已完成金额（未结）', type: 'bar', barWidth: 18, data: types.map(t => yi(agg[t].done)), itemStyle: { color: '#14b8a6', borderRadius: [4, 4, 0, 0] } },
+        { name: '保底预计（未结）', type: 'bar', barWidth: 18, data: types.map(t => yi(agg[t].floor)), itemStyle: { color: '#f59e0b', borderRadius: [4, 4, 0, 0] } },
+        { name: '已结自施结算额', type: 'bar', barWidth: 18, data: types.map(t => yi(agg[t].settled)), itemStyle: { color: '#8b5cf6', borderRadius: [4, 4, 0, 0] } },
+        { name: '项目数', type: 'line', yAxisIndex: 1, data: types.map(t => agg[t].n + agg[t].n2), symbolSize: 8, lineStyle: { width: 2, color: '#c084fc', type: 'dashed' }, itemStyle: { color: '#c084fc' }, label: { show: true, position: 'top', color: '#c084fc' } }
       ]
     });
   })();
@@ -840,6 +846,13 @@ const COLS = {
     ['total_settle', '整体结算额'], ['self_settle', '自施结算额'], ['profit', '自施收益'],
     ['profit_rate', '收益率'], ['received', '已收款'], ['turned_in', '已上缴收益'],
   ],
+  '全部项目': [
+    ['name', '项目名称'], ['cust_type', '客户类型'], ['section', '所属'], ['manager', '商务经理'],
+    ['settle_date', '结算完成日期'], ['target', '指标值'], ['done', '已完成金额'],
+    ['total_settle', '整体结算额'], ['self_settle', '自施结算额'], ['self_cost', '自施成本'],
+    ['profit', '自施收益'], ['profit_rate', '收益率'],
+    ['received', '已收款'], ['remaining', '剩余回款'], ['turned_in', '已上缴收益'], ['sub_owed', '下游欠款'],
+  ],
   '指标表': [
     ['name', '项目名称'], ['cust_type', '客户类型'], ['kind', '内/外控'], ['segment', '所属版块'], ['manager', '商务经理'],
     ['target', '指标值'], ['self_settle_plan', '自施预计结算'], ['approved_rate', '核定收益率'],
@@ -857,7 +870,9 @@ function valOf(r, k) {
 }
 
 function currentRows() {
-  let rows = state.sec === '指标表' ? DATA.indicators.slice() : DATA.projects.filter(p => p.section === state.sec);
+  let rows = state.sec === '指标表' ? DATA.indicators.slice()
+    : state.sec === '全部项目' ? DATA.projects.slice()
+    : DATA.projects.filter(p => p.section === state.sec);
   if (state.kw) rows = rows.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(state.kw)));
   if (state.cat && state.sec !== '指标表') rows = rows.filter(r => String(r.category || '') === state.cat);
   if (state.ct) rows = rows.filter(r => String(r.cust_type || '未分类') === state.ct);
@@ -947,6 +962,7 @@ function renderTable() {
     }
     if (k === 'months' || k === 'overdue_months') return `<td class="num">${typeof v === 'number' ? v.toFixed(1) : '—'}</td>`;
     if (k === 'kind') return `<td>${v === '内控' ? '<span class="badge-status pending">内控</span>' : '<span class="badge-status done">外控</span>'}</td>`;
+    if (k === 'section') return `<td><span class="badge-status ${v === '已竣已结' ? 'done' : 'pending'}">${v}</span></td>`;
     if (k === 'category') return `<td>${v || '—'}</td>`;
     if (k === 'measure' && v) return `<td title="${String(v).replace(/"/g, '&quot;')}">${String(v).slice(0, 18)}${String(v).length > 18 ? '…' : ''}${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
     return `<td>${v ?? '—'}</td>`;
