@@ -106,6 +106,15 @@ table.data-table tr:hover td { background: rgba(59,130,246,.06); }
 table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 table.data-table .neg { color: var(--red); }
 table.data-table tfoot td { padding: 9px 12px; border-top: 2px solid #3b82f6; font-weight: 700; background: rgba(59,130,246,.08); white-space: nowrap; }
+.ms-wrap { position: relative; display: inline-block; }
+.ms-btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 14px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.ms-btn:hover { border-color: #3b82f6; }
+.ms-panel { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 80; background: #1e293b; border: 1px solid var(--border); border-radius: 10px; padding: 6px; min-width: 190px; box-shadow: 0 12px 32px rgba(0,0,0,.55); }
+.ms-panel.show { display: block; }
+.ms-item { display: flex; align-items: center; gap: 8px; padding: 7px 10px; font-size: 12.5px; color: var(--text); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.ms-item:hover { background: rgba(59,130,246,.12); }
+.ms-item input { accent-color: #3b82f6; width: 14px; height: 14px; cursor: pointer; }
+.ms-all { border-bottom: 1px solid var(--border); margin-bottom: 4px; font-weight: 700; }
 .badge-status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
 .badge-status.done { background: rgba(16,185,129,.15); color: var(--green); }
 .badge-status.pending { background: rgba(245,158,11,.15); color: var(--gold); }
@@ -204,7 +213,13 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
     </div>
     <input type="text" id="search" placeholder="搜索项目名称 / 商务经理…">
     <select id="cat-filter"><option value="">全部类别</option><option>A</option><option>B</option><option>C</option><option>D</option></select>
-    <select id="ct-filter"><option value="">全部客户类型</option></select>
+    <div class="ms-wrap" id="ct-ms">
+      <button type="button" class="ms-btn" id="ct-ms-btn">全部客户类型 ▾</button>
+      <div class="ms-panel" id="ct-ms-panel">
+        <label class="ms-item ms-all"><input type="checkbox" id="ct-all" checked> 全选</label>
+        <div id="ct-items"></div>
+      </div>
+    </div>
     <button class="btn" id="edit-toggle">✏️ 编辑模式</button>
     <button class="btn ghost" id="download-data">⬇️ 下载数据</button>
     <button class="btn ghost" id="add-row" style="display:none">＋ 新增项目</button>
@@ -226,7 +241,7 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
     ②预计自施收益额 = 预计自施结算额 − 预计自施成本，预计收益率 = 收益额 ÷ 自施结算额，随收入/成本修改实时重算；
     ③编辑模式下可新增/删除项目行、修改措施文本，修改记录保存在本浏览器（localStorage），点「恢复默认」全部还原；「⬇️ 下载数据」可导出当前页签最新数据（含本地修改）；
     ④「26年结算指标」页签中序号 13-17 为内控结算指标项目；⑤图表的柱子 / 扇区均可点击，弹窗查看该数据由哪些项目构成；⑥数据更新口径：8.5 版 Excel（礼鼎指标值已按新表调整为 132000 万）；
-    ⑦客户类型取自 8.5 版 Excel「客户类型」列（地产类 / 产业类 / 市工务署 / 国有企业/政府 / 区工务署 / 机场），各页签均可筛选，编辑模式下可修改（含指标表）；明细表末行「合计」对当前筛选结果的可加和列实时求和，收益率为加权口径（合计收益 ÷ 合计自施结算额）；「全部项目」页签把已竣未结与已竣已结合并列示，配合客户类型筛选可一次看到两板块的合并合计。
+    ⑦客户类型取自 8.5 版 Excel「客户类型」列（地产类 / 产业类 / 市工务署 / 国有企业/政府 / 区工务署 / 机场），各页签均可筛选（复选框多选，可勾 1 个 / 多个 / 全部，组合结果合并加总），编辑模式下可修改（含指标表）；明细表末行「合计」对当前筛选结果的可加和列实时求和，收益率为加权口径（合计收益 ÷ 合计自施结算额）；「全部项目」页签把已竣未结与已竣已结合并列示，配合客户类型多选可一次看到两板块、多类型的合并合计。
   </div>
 </div>
 
@@ -788,7 +803,11 @@ function bindDrill() {
   on('chart-custype', ps => {
     const t = ps.name;
     if (!t) return;
-    state.ct = (state.ct === t) ? '' : t;
+    const types = getCustTypes();
+    if (state.ctAll) { state.ctAll = false; state.cts = types.slice(); }
+    const i = state.cts.indexOf(t);
+    if (i >= 0) state.cts.splice(i, 1); else state.cts.push(t);
+    if (state.cts.length === types.length) { state.ctAll = true; state.cts = []; }
     renderCtFilter();
     renderTable();
     document.getElementById('detail-table').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -827,7 +846,7 @@ document.getElementById('download-data').addEventListener('click', () => {
 });
 
 // ===================== 明细表 =====================
-const state = { sec: '已竣未结', kw: '', cat: '', ct: '', sortKey: null, sortAsc: true, edit: false };
+const state = { sec: '已竣未结', kw: '', cat: '', ctAll: true, cts: [], sortKey: null, sortAsc: true, edit: false };
 // 编辑模式下可修改的数值列（已竣未结页签）
 const EDITABLE_NUM = ['done', 'target', 'floor', 'strive', 'stretch', 'self_settle', 'self_cost', 'received', 'remaining', 'sub_owed'];
 
@@ -875,7 +894,7 @@ function currentRows() {
     : DATA.projects.filter(p => p.section === state.sec);
   if (state.kw) rows = rows.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(state.kw)));
   if (state.cat && state.sec !== '指标表') rows = rows.filter(r => String(r.category || '') === state.cat);
-  if (state.ct) rows = rows.filter(r => String(r.cust_type || '未分类') === state.ct);
+  if (!state.ctAll) rows = rows.filter(r => state.cts.includes(r.cust_type || '未分类'));
   if (state.sortKey) {
     const k = state.sortKey;
     rows.sort((a, b) => {
@@ -893,8 +912,13 @@ const isEdited = (name, field) => !!(EDITS[name] && EDITS[name][field] !== undef
 // ---- 客户类型：动态类型清单 + 筛选下拉 ----
 const getCustTypes = () => [...new Set(DATA.projects.concat(DATA.indicators).map(x => x.cust_type).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh'));
 function renderCtFilter() {
-  const sel = document.getElementById('ct-filter');
-  sel.innerHTML = '<option value="">全部客户类型</option>' + getCustTypes().map(t => `<option value="${t}" ${state.ct === t ? 'selected' : ''}>${t}</option>`).join('');
+  const types = getCustTypes();
+  const btn = document.getElementById('ct-ms-btn');
+  btn.textContent = state.ctAll ? '全部客户类型 ▾' : `已选 ${state.cts.length} 类 ▾`;
+  btn.title = state.ctAll ? '点击选择客户类型（可多选组合）' : (state.cts.join('、') || '未选择任何类型');
+  document.getElementById('ct-all').checked = state.ctAll;
+  document.getElementById('ct-items').innerHTML = types.map(t =>
+    `<label class="ms-item"><input type="checkbox" data-t="${t}" ${state.ctAll || state.cts.includes(t) ? 'checked' : ''}> ${t}</label>`).join('');
 }
 
 function renderTable() {
@@ -1060,7 +1084,25 @@ document.getElementById('seg-btns').addEventListener('click', e => {
 });
 document.getElementById('search').addEventListener('input', e => { state.kw = e.target.value.trim().toLowerCase(); renderTable(); });
 document.getElementById('cat-filter').addEventListener('change', e => { state.cat = e.target.value; renderTable(); });
-document.getElementById('ct-filter').addEventListener('change', e => { state.ct = e.target.value; renderTable(); });
+// 客户类型多选下拉：按钮开合 / 点外部关闭 / 复选框变化
+document.getElementById('ct-ms-btn').addEventListener('click', e => { e.stopPropagation(); document.getElementById('ct-ms-panel').classList.toggle('show'); });
+document.addEventListener('click', e => { if (!e.target.closest('#ct-ms')) document.getElementById('ct-ms-panel').classList.remove('show'); });
+document.getElementById('ct-ms-panel').addEventListener('change', e => {
+  const types = getCustTypes();
+  if (e.target.id === 'ct-all') {
+    // 勾选全选=全部；取消全选=清空（可再逐个勾选）
+    state.ctAll = e.target.checked;
+    state.cts = [];
+  } else {
+    if (state.ctAll) { state.ctAll = false; state.cts = types.slice(); } // 全部态先展开为全选再减项
+    const t = e.target.dataset.t, i = state.cts.indexOf(t);
+    if (e.target.checked && i < 0) state.cts.push(t);
+    if (!e.target.checked && i >= 0) state.cts.splice(i, 1);
+    if (state.cts.length === types.length) { state.ctAll = true; state.cts = []; } // 重新全选 = 全部
+  }
+  renderCtFilter();
+  renderTable();
+});
 
 document.getElementById('edit-toggle').addEventListener('click', () => {
   state.edit = !state.edit;
