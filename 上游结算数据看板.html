@@ -203,6 +203,35 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
     <div class="chart-box wide" id="chart-custype"></div>
   </div>
 
+  <div class="section-title">📆 历年结算对比（十四五 → 十五五） <small>2021-2025 为已结定格数据（只读）· 2026 列与上方项目明细实时联动 · 点击卡片 / 柱子 / 年份页签均可钻取项目</small></div>
+  <div class="kpi-row" id="hist-kpi"></div>
+  <div class="insight-grid" id="hist-insight" style="margin-bottom:14px"></div>
+  <div class="chart-grid">
+    <div class="chart-box wide" id="chart-hist"></div>
+    <div class="chart-box wide" id="chart-shrink" style="height:560px"></div>
+  </div>
+  <div class="toolbar" style="margin-top:14px">
+    <div class="seg-btns" id="hist-year-btns">
+      <button class="active" data-y="全部">全部年份</button>
+      <button data-y="2021">2021</button>
+      <button data-y="2022">2022</button>
+      <button data-y="2023">2023</button>
+      <button data-y="2024">2024</button>
+      <button data-y="2025">2025</button>
+      <button data-y="2026">2026</button>
+    </div>
+    <span class="edit-hint" style="color:var(--text-muted)">历史年份（2021-2025）为已结定格数据，只读；2026 年取自上方项目明细，编辑后此处实时联动 · 点击表行查看项目详情</span>
+  </div>
+  <div class="data-table-wrap">
+    <div class="table-scroll">
+      <table class="data-table" id="hist-table">
+        <thead><tr></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
   <div class="section-title">📋 项目明细 <small>开启「编辑模式」后可直接修改数据，整板实时联动 · 末行合计对当前筛选结果实时加和</small></div>
   <div class="toolbar">
     <div class="seg-btns" id="seg-btns">
@@ -240,7 +269,7 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
     注：①「当前已完成」计入全部已竣未结项目（含力争/备选项目，完成结算即计入 70 亿总指标）；看板所有合计均由项目行实时汇总，编辑任一数据即全板联动；
     ②预计自施收益额 = 预计自施结算额 − 预计自施成本，预计收益率 = 收益额 ÷ 自施结算额，随收入/成本修改实时重算；
     ③编辑模式下可新增/删除项目行、修改措施文本，修改记录保存在本浏览器（localStorage），点「恢复默认」全部还原；「⬇️ 下载数据」可导出当前页签最新数据（含本地修改）；
-    ④「26年结算指标」页签中序号 13-17 为内控结算指标项目；⑤图表的柱子 / 扇区均可点击，弹窗查看该数据由哪些项目构成；⑥数据更新口径：8.5 版 Excel（礼鼎指标值已按新表调整为 132000 万）；
+    ④「26年结算指标」页签中序号 13-17 为内控结算指标项目；⑤图表的柱子 / 扇区均可点击，弹窗查看该数据由哪些项目构成；⑥数据更新口径：8.5 版 Excel（礼鼎指标值已按新表调整为 132000 万）；⑧「历年结算对比」板块中 2021-2025 来自《十四五、十五五期间华南区域结算项目情况》（已结定格、只读），2026 列实时取自上方项目明细（含本地编辑）；结算偏差 = 实际自施收益率 − 核定收益率；
     ⑦客户类型取自 8.5 版 Excel「客户类型」列（地产类 / 产业类 / 市工务署 / 国有企业/政府 / 区工务署 / 机场），各页签均可筛选（复选框多选，可勾 1 个 / 多个 / 全部，组合结果合并加总），编辑模式下可修改（含指标表）；明细表末行「合计」对当前筛选结果的可加和列实时求和，收益率为加权口径（合计收益 ÷ 合计自施结算额）；「全部项目」页签把已竣未结与已竣已结合并列示，配合客户类型多选可一次看到两板块、多类型的合并合计。
   </div>
 </div>
@@ -1139,6 +1168,251 @@ document.getElementById('reset-data').addEventListener('click', () => {
 });
 
 // ===================== 全量渲染 =====================
+
+// ===================== 📆 历年结算对比（十四五→十五五） =====================
+// 2021-2025：已结定格数据（只读）；2026：live26() 从 DATA.projects 实时取数，编辑上方明细即联动
+const HIST = [{"y": 2021, "name": "海口塔", "st": "已结", "ss": 7030, "ts": 7030, "sc": 6643.35, "tc": 6643.35, "pf": 386.65, "rt": 0.05499999999999999, "ap": 0.055}, {"y": 2021, "name": "三亚海棠湾国际购物中心物流基地", "st": "已结", "ss": 8496.61, "ts": 8496.61, "sc": 8156.7456, "tc": 8156.7456, "pf": 339.8644, "rt": 0.039999999999999994, "ap": 0.04}, {"y": 2022, "name": "深圳前海十单元3小镇", "st": "已结", "ss": 2625.679971, "ts": 2625.679971, "sc": 2448.514798, "tc": 2448.514798, "pf": 177.165173, "rt": 0.06747401623836358, "ap": 0.0665}, {"y": 2022, "name": "佛山市原干部家属区部分政府旧物业修缮改造", "st": "已结", "ss": 1920.01657, "ts": 1920.01657, "sc": 1920.01657, "tc": 1920.01657, "pf": 0, "rt": 0.0, "ap": 0.08}, {"y": 2022, "name": "海南中国石化自贸大厦", "st": "已结", "ss": 142.2902, "ts": 142.2902, "sc": 131.461393, "tc": 131.461393, "pf": 10.828807, "rt": 0.0761036740407983, "ap": 0.075}, {"y": 2022, "name": "佛山顺德光正实验学校", "st": "已结", "ss": 18404.06018, "ts": 18404.06018, "sc": 17351.756786, "tc": 17351.756786, "pf": 1052.303394, "rt": 0.05717778488594358, "ap": 0.056}, {"y": 2022, "name": "广东惠州金融街巽寮湾海世界", "st": "已结", "ss": 46202.289242, "ts": 46202.289242, "sc": 45977.35546, "tc": 45977.35546, "pf": 224.933782, "rt": 0.004868455344752157, "ap": 0.045}, {"y": 2022, "name": "深圳嘉里商务中心（一期）", "st": "已结", "ss": 959.76593, "ts": 959.76593, "sc": 906.019038, "tc": 906.019038, "pf": 53.746892, "rt": 0.055999999916646344, "ap": 0.056}, {"y": 2022, "name": "深圳柔宇国际柔性显示产业园机电", "st": "已结", "ss": 3649.482947, "ts": 6406.520043, "sc": 3430.5112, "tc": 6187.548296, "pf": 218.971747, "rt": 0.06000075906095198, "ap": 0.06}, {"y": 2022, "name": "三亚海棠湾河心岛", "st": "已结", "ss": 29401.162548, "ts": 29401.162548, "sc": 27772.02, "tc": 27772.02, "pf": 1629.142548, "rt": 0.05541082075718198, "ap": 0.055}, {"y": 2022, "name": "广州黄石路白云汇广场影城", "st": "已结", "ss": 1792.5273, "ts": 1792.5273, "sc": 1663.595272, "tc": 1663.595272, "pf": 128.932028, "rt": 0.07192751150847186, "ap": 0.06}, {"y": 2023, "name": "广东阿里巴巴云计算数据中心河源源城区三期机电", "st": "已结", "ss": 8369.448079, "ts": 11188.278729, "sc": 7780.382946, "tc": 10599.008682, "pf": 589.065133, "rt": 0.07038279315908998, "ap": 0.0606}, {"y": 2023, "name": "东莞小天才生产中心", "st": "已结", "ss": 30354.831094, "ts": 30354.831094, "sc": 30349.41, "tc": 30349.41, "pf": 5.42109400000118, "rt": 0.00017859081420066686, "ap": 0.0572}, {"y": 2023, "name": "深圳石厦村综合管廊", "st": "已结", "ss": 5974.879155, "ts": 5974.879155, "sc": 5615.850606, "tc": 5615.850606, "pf": 359.028549, "rt": 0.06008967540365258, "ap": 0.06}, {"y": 2023, "name": "深圳大学西丽校区", "st": "已结", "ss": 44916.174435, "ts": 44916.174435, "sc": 49508.55, "tc": 49508.55, "pf": -4592.375565, "rt": -0.10224324806748204, "ap": 0.063}, {"y": 2023, "name": "广州金融街海珠区石岗路", "st": "已结", "ss": 45998.957893, "ts": 45998.957893, "sc": 48023.93, "tc": 48023.93, "pf": -2024.972107, "rt": -0.04402213006021501, "ap": 0.045}, {"y": 2024, "name": "佛山市东亚项目西区EPC", "st": "已结", "ss": 25169.933339, "ts": 26375.622139, "sc": 25157.47, "tc": 26363.1589, "pf": 12.4633389999981, "rt": 0.0004951677397049979, "ap": 0.0727}, {"y": 2024, "name": "深圳职业技术学院留仙洞校区", "st": "已结", "ss": 36629.732847, "ts": 44382.706776, "sc": 36628.536074, "tc": 44381.510003, "pf": 1.19677299999603, "rt": 3.2672173859276356e-05, "ap": 0.0623}, {"y": 2024, "name": "上海黄金交易所深圳运营中心", "st": "已结", "ss": 14284.403807, "ts": 20031.989998, "sc": 14284.403807, "tc": 20031.989998, "pf": 0, "rt": 0.0, "ap": 0.0561}, {"y": 2024, "name": "深圳机场开发区西区", "st": "已结", "ss": 28877.011698, "ts": 28877.011698, "sc": 28877.011698, "tc": 28877.011698, "pf": 0, "rt": 0.0, "ap": 0.056}, {"y": 2024, "name": "深圳市皇岗公园改造", "st": "已结", "ss": 3946.977829, "ts": 3946.977829, "sc": 4984.977829, "tc": 4984.977829, "pf": -1038, "rt": -0.2629860224634163, "ap": 0.0503}, {"y": 2024, "name": "深圳市创新创业无障碍服务中心", "st": "已结", "ss": 10604.206482, "ts": 10604.206482, "sc": 10599, "tc": 10599, "pf": 5.2064819999996, "rt": 0.0004909827066115025, "ap": 0.0606}, {"y": 2024, "name": "海口空港综合保税区监管设施", "st": "已结", "ss": 5820, "ts": 5820, "sc": 6211, "tc": 6211, "pf": -391, "rt": -0.06718213058419244, "ap": 0.08}, {"y": 2024, "name": "佛山国际体育文化演艺中心", "st": "已结", "ss": 40904.631987, "ts": 43983.766574, "sc": 38654.87738, "tc": 41734.011967, "pf": 2249.754607, "rt": 0.05499999627707199, "ap": 0.055}, {"y": 2024, "name": "深圳联想创新科技园综合机电", "st": "已结", "ss": 14928.600044, "ts": 27978.309228, "sc": 14691.181421, "tc": 27740.890605, "pf": 237.418623000001, "rt": 0.01590360933377826, "ap": 0.065}, {"y": 2024, "name": "深圳职业技术学院学生公寓拆建", "st": "已结", "ss": 23411.062912, "ts": 23411.062912, "sc": 26200, "tc": 26200, "pf": -2788.937088, "rt": -0.11912902453354443, "ap": 0.07}, {"y": 2024, "name": "深圳小米国际总部", "st": "已结", "ss": 8621.960196, "ts": 9184.642435, "sc": 7864.82, "tc": 8416.984588, "pf": 757.140196, "rt": 0.08781532027383532, "ap": 0.0606}, {"y": 2025, "name": "深圳国深博物馆", "st": "已结", "ss": 23235.878672, "ts": 23235.878672, "sc": 21827.784424, "tc": 21827.784424, "pf": 1408.094248, "rt": 0.060600000020519997, "ap": 0.0606}, {"y": 2025, "name": "深圳前湾信息枢纽中心", "st": "已结", "ss": 53531.978749, "ts": 53531.978749, "sc": 51664.2679, "tc": 51664.2679, "pf": 1867.710849, "rt": 0.034889628454746587, "ap": 0.056}, {"y": 2025, "name": "深圳香港中文大学二期II标", "st": "已结", "ss": 79883.816668, "ts": 91456.17411, "sc": 90807.38774, "tc": 102379.745182, "pf": -10923.571072, "rt": -0.13674322945032474, "ap": 0.0606}, {"y": 2025, "name": "深圳鹏鼎时代大厦机电", "st": "已结", "ss": 13122.586973, "ts": 16144.544, "sc": 13879.940545, "tc": 16901.897572, "pf": -757.353572, "rt": -0.05771373994763921, "ap": 0.07}, {"y": 2025, "name": "佛山建鑫乐家花园", "st": "已结", "ss": 655.175264, "ts": 655.175264, "sc": 645.02, "tc": 645.02, "pf": 10.155264, "rt": 0.015500072359264164, "ap": 0.0606}, {"y": 2025, "name": "深圳平安财险大厦", "st": "已结", "ss": 10691.423978, "ts": 10691.423978, "sc": 11910.916496, "tc": 11910.916496, "pf": -1219.492518, "rt": -0.11406268430747663, "ap": 0.06}, {"y": 2025, "name": "深圳职业技术学院北校区", "st": "已结", "ss": 43944.413188, "ts": 43944.413188, "sc": 45375, "tc": 45375, "pf": -1430.586812, "rt": -0.032554463883264544, "ap": 0.0624}, {"y": 2025, "name": "湛江华发新城花园", "st": "已结", "ss": 39285.290559, "ts": 39285.290559, "sc": 41450.71, "tc": 41450.71, "pf": -2165.419441, "rt": -0.05512036210468899, "ap": 0.0606}, {"y": 2025, "name": "深圳首创商务大厦", "st": "已结", "ss": 11691.690645, "ts": 11691.690645, "sc": 14232.15, "tc": 14232.15, "pf": -2540.459355, "rt": -0.21728759613447673, "ap": 0.06}, {"y": 2025, "name": "广州市增城区房地产开发", "st": "已结", "ss": 52752.6, "ts": 91013.5193, "sc": 52752.6, "tc": 91013.5193, "pf": 0, "rt": 0.0, "ap": 0.0528}, {"y": 2025, "name": "深圳SZX-GF01字节跳动后海中心", "st": "已结", "ss": 38684.85, "ts": 64467.46, "sc": 36130.45, "tc": 47025.28, "pf": 2554.4, "rt": 0.06603101731039412, "ap": 0.06}, {"y": 2025, "name": "珠海正威科创中心", "st": "已结", "ss": 27000, "ts": 28600, "sc": 24600, "tc": 26200, "pf": 2400, "rt": 0.08888888888888889, "ap": 0.0702}];
+const HIST26 = [{"name": "深圳前海深港青年梦工场北区(二期)", "st": "已竣未结", "target": 28400, "ss": 14500, "ts": 28400, "sc": 15299.913, "tc": 29199.913, "pf": -799.913, "rt": -0.05516641379310345, "ap": 0.0548}, {"name": "深圳礼鼎高端集成电路载板及先进封装基地", "st": "已竣未结", "target": 132000, "ss": 131941.16696, "ts": 131941.16696, "sc": 127546.057293, "tc": 127546.057293, "pf": 4395.109667, "rt": 0.03331113228923043, "ap": 0.0566}, {"name": "广州保利三元里", "st": "已竣未结", "target": 50000, "ss": 49286.59, "ts": 50000, "sc": 57086.59, "tc": 57800, "pf": -7800, "rt": -0.1582580576177009, "ap": 0.0601}, {"name": "东莞OPPO滨海湾数据中心机电", "st": "已竣已结", "target": 15582.16, "ss": 13845.144369, "ts": 15582.157669, "sc": 13706.393219, "tc": 15443.41, "pf": 138.75115, "rt": 0.01002164703393567, "ap": 0.065}, {"name": "江门华发四季", "st": "已竣未结", "target": 38300, "ss": 38300, "ts": 38300, "sc": 44068.29, "tc": 44068.29, "pf": -5768.29, "rt": -0.15060809399477806, "ap": 0.0563}, {"name": "深圳光明区金融街", "st": "已竣未结", "target": 36300, "ss": 36300, "ts": 36300, "sc": 41330.15, "tc": 41330.15, "pf": -5030.15, "rt": -0.1385716253443526, "ap": 0.057}, {"name": "珠海华发广场", "st": "已竣未结", "target": 22800, "ss": 22800, "ts": 22800, "sc": 28938.4192575, "tc": 28938.4192575, "pf": -6138.4192575, "rt": -0.26922891480263156, "ap": 0.0561}, {"name": "深圳嘉里商务中心(三期)", "st": "已竣未结", "target": 88693.89, "ss": 41225.07, "ts": 88693.888769, "sc": 40000, "tc": 87468.818769, "pf": 1225.07, "rt": 0.029716626315006864, "ap": 0.0506}, {"name": "深圳南山中国电子科技园", "st": "已竣未结", "target": 86000, "ss": 70000, "ts": 86000, "sc": 69997.77, "tc": 85997.77, "pf": 2.22999999999593, "rt": 3.185714285708471e-05, "ap": 0.055}, {"name": "深圳中山大学附属七院二期", "st": "已竣未结", "target": 105478, "ss": 105478, "ts": 105478, "sc": 99840.5, "tc": 99840.5, "pf": 5637.5, "rt": 0.053447164337586985, "ap": 0.0534}, {"name": "深圳市坪地北地块场平工程", "st": "已竣未结", "target": 13500, "ss": 13650, "ts": 13650, "sc": 13450.62, "tc": 13450.62, "pf": 199.379999999999, "rt": 0.014606593406593333, "ap": 0.08}, {"name": "深圳新皇岗口岸综合业务楼项目", "st": "已竣未结", "target": 85500.015942, "ss": 68439.89, "ts": 85500.02, "sc": 62639.44, "tc": 79699.56, "pf": 5800.45, "rt": 0.08475247403232238, "ap": 0.0614}, {"name": "佛山怡翠尊堤嘉园D2区", "st": "已竣已结", "target": null, "ss": 17748.43, "ts": 30248.436, "sc": 18305.16, "tc": 30805.166, "pf": -556.73, "rt": -0.03136784493050935, "ap": null}];
+state.histYear = '全部';
+
+function live26() {
+  return HIST26.map(h => {
+    const p = DATA.projects.find(x => x.name === h.name);
+    if (!p) return Object.assign({ y: 2026, live: false }, h);
+    return {
+      y: 2026, name: p.name, st: p.section, live: true,
+      target: typeof p.target === 'number' ? p.target : h.target,
+      ss: N(p.self_settle), ts: N(p.total_settle), sc: N(p.self_cost), tc: N(p.total_cost),
+      pf: profitOf(p), rt: rateOf(p),
+      ap: typeof p.approved_rate === 'number' ? p.approved_rate : h.ap
+    };
+  });
+}
+function histAgg(rows) {
+  const a = { n: rows.length, ss: 0, ts: 0, pf: 0, target: 0 };
+  rows.forEach(r => { a.ss += N(r.ss); a.ts += N(r.ts); a.pf += N(r.pf); a.target += N(r.target); });
+  a.rt = a.ss > 0 ? a.pf / a.ss : null;
+  let w = 0, s = 0;
+  rows.forEach(r => { if (typeof r.ap === 'number' && N(r.ss) > 0) { w += r.ap * r.ss; s += r.ss; } });
+  a.ap = s > 0 ? w / s : null;
+  a.dev = (a.rt !== null && a.ap !== null) ? (a.rt - a.ap) : null;
+  return a;
+}
+const yearRows = y => y === '全部' ? HIST.concat(live26()) : String(y) === '2026' ? live26() : HIST.filter(h => h.y === +y);
+const devOf = r => (typeof r.rt === 'number' && typeof r.ap === 'number') ? (r.rt - r.ap) * 100 : null;
+const fmtPP = v => typeof v === 'number' ? (Math.abs(v) < 0.05 ? '0.0 pp' : (v > 0 ? '+' : '') + v.toFixed(1) + ' pp') : '—';
+
+// ---- 卡片 ----
+function renderHistKPIs() {
+  const a145 = histAgg(HIST);
+  const l26 = live26();
+  const a26 = histAgg(l26);
+  const avgY = { n: a145.n / 5, ss: a145.ss / 5 };
+  const mult = a145.ss > 0 ? a26.target / a145.ss : 0;
+  const multY = avgY.ss > 0 ? a26.target / avgY.ss : 0;
+  const cards = [
+    { cls: '', label: '十四五合计（2021-2025）', value: yi(a145.ss) + ' 亿', foot: `${a145.n} 个项目 · 自施收益 ${fmtNum(a145.pf)} 万 · 加权收益率 <span class="${a145.rt < 0 ? 'bad' : 'good'}">${fmtPct(a145.rt)}</span>`, drill: ['十四五（2021-2025）结算项目', HIST] },
+    { cls: 'purple', label: '十四五年均', value: yi(avgY.ss) + ' 亿/年', foot: `${avgY.n.toFixed(1)} 个/年 · 年均收益 ${fmtNum(a145.pf / 5)} 万`, drill: ['十四五（2021-2025）结算项目', HIST] },
+    { cls: 'gold', label: '2026 结算指标（联动）', value: yi(a26.target) + ' 亿', foot: `12 个指标项目 · ≈ 十四五 5 年合计的 ${(mult * 100).toFixed(0)}% · 年均的 ${multY.toFixed(1)} 倍`, drill: ['2026 年结算指标项目', l26.filter(r => N(r.target) > 0)] },
+    { cls: a26.rt < 0 ? 'red' : 'green', label: '2026 预计自施（联动）', value: yi(a26.ss) + ' 亿', foot: `预计自施收益 ${fmtNum(a26.pf)} 万 · 收益率 <span class="${a26.rt < 0 ? 'bad' : 'good'}">${fmtPct(a26.rt)}</span> · 随上方编辑实时变`, drill: ['2026 年结算项目（联动）', l26] },
+  ];
+  const row = document.getElementById('hist-kpi');
+  row.innerHTML = cards.map((c, i) => `
+    <div class="kpi-card ${c.cls}" data-i="${i}">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+      <div class="foot">${c.foot}</div>
+      <div class="more">点击查看明细 ↗</div>
+    </div>`).join('');
+  row.querySelectorAll('.kpi-card').forEach(el => el.addEventListener('click', () => {
+    const c = cards[+el.dataset.i];
+    openDrill(c.drill[0], `共 ${c.drill[1].length} 个项目 · 自施结算 ${fmtNum(histAgg(c.drill[1]).ss)} 万`, histProjTable(c.drill[1]));
+  }));
+}
+
+// ---- 深度结论 ----
+function renderHistInsights() {
+  const years = [2021, 2022, 2023, 2024, 2025].map(y => ({ y, a: histAgg(HIST.filter(h => h.y === y)) }));
+  const l26 = live26(); const a26 = histAgg(l26); const a145 = histAgg(HIST);
+  const shrink = HIST.concat(l26).filter(r => devOf(r) !== null).sort((x, y) => devOf(x) - devOf(y));
+  const shrinkCnt = shrink.filter(r => devOf(r) < 0).length;
+  const avgDev = shrink.length ? shrink.reduce((s, r) => s + devOf(r), 0) / shrink.length : 0;
+  const worst3 = shrink.slice(0, 3);
+  const turnYear = years.find(x => x.a.rt < 0);
+  const cards = [
+    { head: '📈 结算规模趋势', tag: ['ok', '逐年放大'], items: [
+      `各年自施结算额：${years.map(x => `<b>${x.y}</b> ${yi(x.a.ss)}亿`).join(' → ')}`,
+      `2026 指标 <b>${yi(a26.target)} 亿</b> ≈ 十四五 5 年合计（${yi(a145.ss)} 亿）的 <b>${(a26.target / a145.ss * 100).toFixed(0)}%</b>、年均的 <b>${(a26.target / (a145.ss / 5)).toFixed(1)} 倍</b>`,
+      `若 12 个指标项目全部落地，单年结算规模将大幅刷新区域历史峰值（历史最高年 2025：${yi(years[4].a.ss)} 亿）`]},
+    { head: '📉 收益率趋势', tag: ['warn', '2023 由盈转亏'], items: [
+      `加权自施收益率：${years.map(x => `<b>${x.y}</b> <span class="${x.a.rt < 0 ? 'neg' : 'pos'}">${fmtPct(x.a.rt)}</span>`).join(' → ')}`,
+      `${turnYear ? `<b>${turnYear.y}</b> 年起由盈转亏，连续 ${2025 - turnYear.y + 1} 年未能回正` : ''}；2026 预计 <span class="${a26.rt < 0 ? 'neg' : 'pos'}">${fmtPct(a26.rt)}</span>（联动），较 2025 收窄 ${fmtPP((a26.rt - years[4].a.rt) * 100)}`,
+      `十四五 39 个项目合计自施收益 <b class="neg">${fmtNum(a145.pf)} 万</b>（收益率 ${fmtPct(a145.rt)}）`]},
+    { head: '🌀 结算缩水分析（实际 vs 核定）', tag: ['risk', `缩水 ${shrinkCnt}/${shrink.length} 个`], items: [
+      `${shrink.length} 个可比项目中 <b class="neg">${shrinkCnt} 个</b>实际收益率低于核定（占 ${(shrinkCnt / shrink.length * 100).toFixed(0)}%），平均偏差 <b class="neg">${fmtPP(avgDev)}</b>`,
+      `缩水最重：${worst3.map(r => `<b>${r.name.slice(0, 12)}</b>（${fmtPP(devOf(r))}）`).join('、')}`,
+      `仅 ${shrink.length - shrinkCnt} 个项目结算收益率达到或超过核定水平，详见下方缩水排行榜（可点柱子钻取）`]},
+    { head: '🎯 2026 展望（联动）', tag: ['ok', '指标口径'], items: [
+      `12 个指标项目指标额合计 <b>${yi(a26.target)} 亿</b>，预计自施结算 <b>${yi(a26.ss)} 亿</b>`,
+      `按当前预计自施收益 <b class="${a26.pf < 0 ? 'neg' : 'pos'}">${fmtNum(a26.pf)} 万</b>（${fmtPct(a26.rt)}），绝对亏损额相当于十四五 39 个项目合计亏损（${fmtNum(a145.pf)} 万）的 <b>${a145.pf !== 0 ? (Math.abs(a26.pf) / Math.abs(a145.pf) * 100).toFixed(0) + '%' : '—'}</b>`,
+      `上方项目明细中修改任一 26 年项目数据，本卡片与全板块实时重算`]},
+  ];
+  document.getElementById('hist-insight').innerHTML = cards.map(c => `
+    <div class="insight">
+      <div class="head">${c.head}<span class="tag ${c.tag[0]}">${c.tag[1]}</span></div>
+      <ul>${c.items.map(i => `<li>${i}</li>`).join('')}</ul>
+    </div>`).join('');
+}
+
+// ---- 图表 ----
+function renderHistCharts() {
+  const years = [2021, 2022, 2023, 2024, 2025].map(y => ({ y, a: histAgg(HIST.filter(h => h.y === y)) }));
+  const l26 = live26(); const a26 = histAgg(l26);
+  const labels = years.map(x => String(x.y)).concat(['2026(指标)']);
+  const barData = years.map(x => ({ value: yi(x.a.ss), itemStyle: { color: '#3b82f6', borderRadius: [6, 6, 0, 0] } }))
+    .concat([{ value: yi(a26.target), itemStyle: { color: '#f59e0b', borderRadius: [6, 6, 0, 0] } }]);
+  const lineData = years.map(x => +(x.a.rt * 100).toFixed(1)).concat([a26.rt !== null ? +(a26.rt * 100).toFixed(1) : null]);
+  mk('chart-hist', {
+    title: { text: '各年度结算规模与加权自施收益率（柱：自施结算额·亿，2026 为指标额；线：加权收益率%）', left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => {
+      const i = ps[0].dataIndex;
+      const is26 = i === 5;
+      const a = is26 ? a26 : years[i].a;
+      return `<b>${labels[i]}年</b><br/>项目数：${a.n} 个<br/>${is26 ? '结算指标' : '自施结算额'}：${yi(is26 ? a.target : a.ss)} 亿元<br/>自施结算额：${yi(a.ss)} 亿元<br/>自施收益：${fmtNum(a.pf)} 万元<br/>加权收益率：${fmtPct(a.rt)}<br/><i>点击柱子钻取该年项目</i>`;
+    } },
+    legend: { bottom: 4, textStyle: { color: '#94a3b8' }, data: ['结算额（亿）', '加权收益率（%）'] },
+    grid: { left: 56, right: 56, top: 52, bottom: 46 },
+    xAxis: { type: 'category', data: labels, axisLabel: { color: '#94a3b8' } },
+    yAxis: [
+      Object.assign({ type: 'value', name: '亿元', nameTextStyle: { color: '#94a3b8' } }, axStyle),
+      Object.assign({ type: 'value', name: '%', nameTextStyle: { color: '#94a3b8' }, splitLine: { show: false } }, axStyle)
+    ],
+    series: [
+      { name: '结算额（亿）', type: 'bar', barWidth: 42, data: barData, label: { show: true, position: 'top', color: '#f1f5f9', formatter: p => p.value.toFixed(1) } },
+      { name: '加权收益率（%）', type: 'line', yAxisIndex: 1, data: lineData, smooth: true, symbolSize: 8,
+        lineStyle: { color: '#10b981', width: 2.5 }, itemStyle: { color: '#10b981' },
+        label: { show: true, position: 'top', color: '#10b981', formatter: p => p.value + '%' } }
+    ]
+  });
+
+  // 结算缩水排行（实际收益率 − 核定收益率，pp）
+  const shrink = HIST.concat(l26).filter(r => devOf(r) !== null)
+    .map(r => Object.assign({ dev: devOf(r) }, r))
+    .sort((a, b) => b.dev - a.dev); // 好→差，最差的显示在顶部
+  mk('chart-shrink', {
+    title: { text: `结算缩水排行榜：实际收益率 − 核定收益率（pp）· 共 ${shrink.length} 个可比项目，红=缩水 / 绿=超核定 · 点击钻取`, left: 'center', textStyle: { color: '#94a3b8', fontSize: 13 } },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => {
+      const r = shrink[ps[0].dataIndex];
+      return `<b>${r.name}</b>（${r.y}年）<br/>偏差：<b>${fmtPP(r.dev)}</b><br/>实际收益率：${fmtPct(r.rt)}<br/>核定收益率：${fmtPct(r.ap)}<br/>自施结算额：${fmtNum(r.ss)} 万元<br/><i>点击钻取项目详情</i>`;
+    } },
+    grid: { left: 8, right: 70, top: 44, bottom: 10, containLabel: true },
+    dataZoom: [
+      { type: 'inside', yAxisIndex: 0 },
+      { type: 'slider', yAxisIndex: 0, right: 6, width: 14, borderColor: '#334155', backgroundColor: 'rgba(30,41,59,.6)', fillerColor: 'rgba(59,130,246,.25)', textStyle: { color: '#94a3b8' } }
+    ],
+    xAxis: Object.assign({ type: 'value', name: 'pp', nameTextStyle: { color: '#94a3b8' } }, axStyle),
+    yAxis: { type: 'category', data: shrink.map(r => r.name), axisLabel: { color: '#cbd5e1', fontSize: 10.5, formatter: v => v.length > 13 ? v.slice(0, 12) + '…' : v }, axisLine: { lineStyle: { color: '#334155' } } },
+    series: [{
+      type: 'bar', barWidth: '58%',
+      data: shrink.map(r => ({ value: +r.dev.toFixed(1), name: r.name, itemStyle: { color: r.dev < 0 ? '#ef4444' : '#10b981', borderRadius: r.dev < 0 ? [0, 4, 4, 0] : [0, 4, 4, 0] } })),
+      label: { show: true, position: 'right', color: '#94a3b8', fontSize: 9.5, formatter: p => p.value }
+    }]
+  });
+}
+
+// ---- 钻取 ----
+function histProjTable(rows) {
+  const a = histAgg(rows);
+  const body = rows.map((r, i) => `<tr data-hi="${i}">
+    <td>${i + 1}</td><td>${r.name}</td><td>${r.y}年</td><td>${r.st || '—'}</td>
+    <td class="num">${fmtNum(r.ss)}</td><td class="num">${fmtNum(r.ts)}</td>
+    <td class="num ${N(r.pf) < 0 ? 'neg' : 'pos'}">${fmtNum(r.pf)}</td>
+    <td class="num ${N(r.rt) < 0 ? 'neg' : ''}">${fmtPct(r.rt)}</td>
+    <td class="num">${fmtPct(r.ap)}</td>
+    <td class="num ${N(devOf(r)) < 0 ? 'neg' : 'pos'}">${fmtPP(devOf(r))}</td></tr>`).join('');
+  return `<table class="drill-table"><thead><tr><th>#</th><th>项目名称</th><th>年份</th><th>状态</th><th class="num">自施结算额(万)</th><th class="num">整体结算额(万)</th><th class="num">自施收益(万)</th><th class="num">实际收益率</th><th class="num">核定收益率</th><th class="num">偏差</th></tr></thead>
+    <tbody>${body}<tr class="total"><td></td><td>合计（${a.n} 个）</td><td></td><td></td><td class="num">${fmtNum(a.ss)}</td><td class="num">${fmtNum(a.ts)}</td><td class="num ${a.pf < 0 ? 'neg' : 'pos'}">${fmtNum(a.pf)}</td><td class="num">${fmtPct(a.rt)}</td><td class="num">${fmtPct(a.ap)}</td><td class="num">${fmtPP(a.dev !== null ? a.dev * 100 : null)}</td></tr></tbody></table>`;
+}
+function histDetail(r) {
+  const rows = [
+    ['结算年度', r.y + ' 年'], ['项目状态', r.st || '—'], ['数据来源', r.live ? '2026 联动（与上方项目明细一致）' : '历史定格（只读）'],
+    ['自施结算额', fmtNum(r.ss) + ' 万元'], ['整体结算额', fmtNum(r.ts) + ' 万元'],
+    ['自施完全成本', fmtNum(r.sc) + ' 万元'], ['整体成本', fmtNum(r.tc) + ' 万元'],
+    ['自施收益额', `<b class="${N(r.pf) < 0 ? 'neg' : 'pos'}">${fmtNum(r.pf)}</b> 万元`],
+    ['实际自施收益率', `<b class="${N(r.rt) < 0 ? 'neg' : 'pos'}">${fmtPct(r.rt)}</b>`],
+    ['核定收益率', fmtPct(r.ap)],
+    ['结算偏差（实际−核定）', `<b class="${N(devOf(r)) < 0 ? 'neg' : 'pos'}">${fmtPP(devOf(r))}</b>`],
+  ];
+  if (typeof r.target === 'number' && r.target > 0) rows.splice(3, 0, ['26年结算指标', fmtNum(r.target) + ' 万元']);
+  return `<table class="drill-table"><tbody>${rows.map(x => `<tr><td style="color:var(--text-muted);width:170px">${x[0]}</td><td>${x[1]}</td></tr>`).join('')}</tbody></table>`;
+}
+function bindHistDrill() {
+  const c1 = chartObjs['chart-hist'];
+  if (c1) {
+    c1.off('click');
+    c1.on('click', params => {
+      const labels = ['2021', '2022', '2023', '2024', '2025', '2026'];
+      const y = labels[params.dataIndex];
+      const rows = yearRows(y);
+      const a = histAgg(rows);
+      openDrill(`${y} 年结算项目明细`, `共 ${a.n} 个项目 · 自施结算 ${fmtNum(a.ss)} 万 · 加权收益率 ${fmtPct(a.rt)}`, histProjTable(rows));
+    });
+  }
+  const c2 = chartObjs['chart-shrink'];
+  if (c2) {
+    c2.off('click');
+    c2.on('click', params => {
+      const all = HIST.concat(live26()).filter(r => devOf(r) !== null).map(r => Object.assign({ dev: devOf(r) }, r)).sort((a, b) => b.dev - a.dev);
+      const r = all[params.dataIndex];
+      if (r) openDrill(r.name, `${r.y} 年 · 偏差 ${fmtPP(r.dev)}`, histDetail(r));
+    });
+  }
+}
+
+// ---- 年份页签明细表（只读） ----
+const HIST_COLS = [
+  ['y', '年份'], ['name', '项目名称'], ['st', '状态'], ['ss', '自施结算额'], ['ts', '整体结算额'],
+  ['pf', '自施收益额'], ['rt', '实际收益率'], ['ap', '核定收益率'], ['dev', '偏差(pp)'],
+];
+function renderHistTable() {
+  const rows = yearRows(state.histYear);
+  const thead = document.querySelector('#hist-table thead tr');
+  const tbody = document.querySelector('#hist-table tbody');
+  thead.innerHTML = HIST_COLS.map(([k, label]) => `<th>${label}</th>`).join('');
+  tbody.innerHTML = rows.map((r, i) => '<tr data-i="' + i + '" style="cursor:pointer" title="点击查看项目详情">' + HIST_COLS.map(([k]) => {
+    if (k === 'y') return `<td>${r.y}</td>`;
+    if (k === 'name') return `<td>${r.name}${r.live ? ' <span class="tag ok" style="font-size:9px">联动</span>' : ''}</td>`;
+    if (k === 'st') return `<td>${r.st || '—'}</td>`;
+    if (k === 'ss' || k === 'ts') return `<td class="num">${fmtNum(r[k])}</td>`;
+    if (k === 'pf') return `<td class="num ${N(r.pf) < 0 ? 'neg' : 'pos'}">${fmtNum(r.pf)}</td>`;
+    if (k === 'rt') return `<td class="num ${N(r.rt) < 0 ? 'neg' : ''}">${fmtPct(r.rt)}</td>`;
+    if (k === 'ap') return `<td class="num">${fmtPct(r.ap)}</td>`;
+    if (k === 'dev') { const d = devOf(r); return `<td class="num ${N(d) < 0 ? 'neg' : 'pos'}">${fmtPP(d)}</td>`; }
+    return '<td></td>';
+  }).join('') + '</tr>').join('');
+  tbody.querySelectorAll('tr[data-i]').forEach(tr => tr.addEventListener('click', () => {
+    const r = rows[+tr.dataset.i];
+    openDrill(r.name, `${r.y} 年 · ${r.st || ''}`, histDetail(r));
+  }));
+  const a = histAgg(rows);
+  document.querySelector('#hist-table tfoot').innerHTML = rows.length ? '<tr>' + HIST_COLS.map(([k]) => {
+    if (k === 'y') return `<td>合计（${a.n} 个）</td>`;
+    if (k === 'ss' || k === 'ts') return `<td class="num">${fmtNum(a[k])}</td>`;
+    if (k === 'pf') return `<td class="num ${a.pf < 0 ? 'neg' : 'pos'}">${fmtNum(a.pf)}</td>`;
+    if (k === 'rt') return `<td class="num">${fmtPct(a.rt)}<span style="font-weight:400;color:var(--text-muted);font-size:10px"> 加权</span></td>`;
+    if (k === 'ap') return `<td class="num">${fmtPct(a.ap)}<span style="font-weight:400;color:var(--text-muted);font-size:10px"> 加权</span></td>`;
+    if (k === 'dev') return `<td class="num ${N(a.dev) < 0 ? 'neg' : 'pos'}">${fmtPP(a.dev !== null ? a.dev * 100 : null)}</td>`;
+    return '<td></td>';
+  }).join('') + '</tr>' : '';
+}
+document.getElementById('hist-year-btns').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#hist-year-btns button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.histYear = e.target.dataset.y;
+  renderHistTable();
+});
+
 function renderAll() {
   renderKPIs();
   renderInsights();
@@ -1146,6 +1420,11 @@ function renderAll() {
   bindDrill();
   renderCtFilter();
   renderTable();
+  renderHistKPIs();
+  renderHistInsights();
+  renderHistCharts();
+  bindHistDrill();
+  renderHistTable();
 }
 renderAll();
 
