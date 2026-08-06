@@ -382,7 +382,7 @@ function renderModeBtns() {
     const box = document.getElementById(id);
     if (!box) return;
     box.innerHTML = [['total', '合计'], ['zs', '自施'], ['zd', '指定']].map(x => `<button data-m="${x[0]}" class="${valMode === x[0] ? 'active' : ''}">${x[1]}</button>`).join('');
-    box.querySelectorAll('button').forEach(b => b.onclick = () => { valMode = b.dataset.m; renderModeBtns(); renderYearBtns(); renderCharts(); });
+    box.querySelectorAll('button').forEach(b => b.onclick = () => { valMode = b.dataset.m; renderModeBtns(); renderKPIs(); renderYearBtns(); renderCharts(); });
   });
 }
 
@@ -399,14 +399,22 @@ const isHcEdited = y => { try { const o = JSON.parse(localStorage.getItem(LS_HC)
 
 // ===================== KPI =====================
 function renderKPIs() {
-  const v145 = sumYears(P145.years), v155 = sumYears(P155.years);
-  const y26 = split2026();
+  const v145 = P145.years.reduce((s, y) => s + yearValM(y), 0);
+  const v155 = P155.years.reduce((s, y) => s + yearValM(y), 0);
+  const totM = YEARS.reduce((s, y) => s + yearValM(y), 0);
+  const y26 = split2026(), zd26 = zdWan('2026');
+  const pk = YEARS.filter(y => y !== '2026').reduce((a, b) => yearValM(a) >= yearValM(b) ? a : b);
+  const foot26 = valMode === 'zd'
+    ? `指定仅 1-7 月实际 ${fmtWan(zd26)} · 8-12 月待补充`
+    : (valMode === 'total'
+      ? `实际(1-7月) ${fmtWan(y26.actual + zd26)} ＋ 预测(8-12月) ${fmtWan(y26.forecast)}`
+      : `实际(1-7月) ${fmtWan(y26.actual)} ＋ 预测(8-12月) ${fmtWan(y26.forecast)}`);
   const cards = [
-    { cls: 'purple', drill: { type: 'year', year: null }, label: '累计确权（2021至今）', value: fmtWan(totalAll()), foot: `${DATA.projects.length} 个项目 · 6 个年度` },
-    { cls: 'gold', drill: { type: 'period', key: 'p145' }, label: '十四五确权（2021-2025）', value: fmtWan(v145), foot: `年均 ${fmtWan(v145 / 5)} · ${periodCount(P145)} 个项目` },
-    { cls: 'green', drill: { type: 'period', key: 'p155' }, label: '十五五确权（2026起）', value: fmtWan(v155), foot: `仅 2026 年 · 含 8-12 月预测` },
-    { cls: '', drill: { type: 'm2026' }, label: '2026 全年预计', value: fmtWan(yearVal('2026')), foot: `实际(1-7月) ${fmtWan(y26.actual)} ＋ 预测(8-12月) ${fmtWan(y26.forecast)}` },
-    { cls: 'red', drill: { type: 'year', year: peakYear() }, label: `峰值年份 ${peakYear()}`, value: fmtWan(yearVal(peakYear())), foot: `七年中确权最高的一年` },
+    { cls: 'purple', drill: { type: 'year', year: null }, label: '累计确权（2021至今）', value: fmtWan(totM), foot: `${DATA.projects.length} 个项目 · 6 个年度 · ${MODE_LABEL[valMode]}` },
+    { cls: 'gold', drill: { type: 'period', key: 'p145' }, label: '十四五确权（2021-2025）', value: fmtWan(v145), foot: `年均 ${fmtWan(v145 / 5)} · ${periodCount(P145)} 个项目 · ${MODE_LABEL[valMode]}` },
+    { cls: 'green', drill: { type: 'period', key: 'p155' }, label: '十五五确权（2026起）', value: fmtWan(v155), foot: (valMode === 'zd' ? `仅 2026 年 1-7 月实际 · 指定口径` : `仅 2026 年 · 含 8-12 月预测 · ${MODE_LABEL[valMode]}`) },
+    { cls: '', drill: { type: 'm2026' }, label: '2026 全年预计', value: fmtWan(yearValM('2026')), foot: foot26 },
+    { cls: 'red', drill: { type: 'year', year: pk }, label: `峰值年份 ${pk}`, value: fmtWan(yearValM(pk)), foot: `五个完整年度中确权最高（${MODE_LABEL[valMode]}）` },
     { cls: '', drill: { type: 'year', year: null }, label: '涉及项目', value: `${DATA.projects.length} 个`, foot: `2026 年新接 ${DATA.projects.filter(p => p.new2026).length} 个` },
   ];
   document.getElementById('kpis').innerHTML = cards.map((c, i) => `
@@ -420,29 +428,35 @@ function renderKPIs() {
 // ===================== 十四五 / 十五五 对比 =====================
 function renderPeriods() {
   const v145 = sumYears(P145.years), v155 = sumYears(P155.years);
+  const zd145 = P145.years.reduce((s, y) => s + zdWan(y), 0), tot145 = v145 + zd145;
+  const zd155 = P155.years.reduce((s, y) => s + zdWan(y), 0), tot155 = v155 + zd155;
   const y26 = split2026();
   const share145 = totalAll() ? (v145 / totalAll() * 100).toFixed(1) : '—';
   const share155 = totalAll() ? (v155 / totalAll() * 100).toFixed(1) : '—';
   document.getElementById('periods').innerHTML = `
     <div class="period-card p145" data-p="p145" style="cursor:pointer">
       <div class="p-head"><div class="p-name">🟡 十四五（2021-2025）</div><span class="badge-status pending">已完成期间</span></div>
-      <div class="p-total">${fmtWan(v145)}</div>
+      <div class="p-total">${fmtWan(v145)}<span style="font-size:13px;color:var(--text-muted);font-weight:400">（自施）</span></div>
       <div class="p-rows">
         <div>年均确权：<b>${fmtWan(v145 / 5)}</b></div>
         <div>占累计比重：<b>${share145}%</b></div>
         <div>覆盖项目：<b>${periodCount(P145)} 个</b></div>
         <div>峰值年：<b>${peakYear()}（${fmtWan(yearVal(peakYear()))}）</b></div>
+        <div>其中指定：<b>${fmtWan(zd145)}</b></div>
+        <div>含指定合计：<b>${fmtWan(tot145)}</b></div>
       </div>
-      <div class="p-note">六个完整年度，全部为监理/业主确认的实际完成量。点击查看分项目明细 ▸</div>
+      <div class="p-note">五个完整年度 · 主数为自施口径，含指定合计见上。点击查看分项目明细 ▸</div>
     </div>
     <div class="period-card p155" data-p="p155" style="cursor:pointer">
       <div class="p-head"><div class="p-name">🟢 十五五（2026-2030）</div><span class="badge-status done">开局之年</span></div>
-      <div class="p-total">${fmtWan(v155)}</div>
+      <div class="p-total">${fmtWan(v155)}<span style="font-size:13px;color:var(--text-muted);font-weight:400">（自施）</span></div>
       <div class="p-rows">
         <div>2026 全年预计：<b>${fmtWan(yearVal('2026'))}</b></div>
         <div>占累计比重：<b>${share155}%</b></div>
         <div>在施项目：<b>${periodCount(P155)} 个</b></div>
         <div>其中 2026 新接：<b>${DATA.projects.filter(p => p.new2026).length} 个</b></div>
+        <div>其中指定：<b>${fmtWan(zd155)}</b></div>
+        <div>含指定合计：<b>${fmtWan(tot155)}</b></div>
       </div>
       <div class="p-note">目前仅含 2026 年：1-7 月实际 ${fmtWan(y26.actual)} ＋ 8-12 月预测 ${fmtWan(y26.forecast)}。点击查看项目明细 ▸</div>
     </div>`;
@@ -841,20 +855,27 @@ function openDrill(spec) {
         rows.map((x, i) => `<tr><td>${i + 1}</td><td>${x.p.name}</td><td><span class="badge-status ${x.p.status === '竣工' ? 'na' : 'done'}">${x.p.status}</span></td>${tdN(x.v)}<td class="num">${totY ? (x.v / totY * 100).toFixed(1) : '—'}%</td></tr>`).join(''),
         `<tr class="total"><td></td><td>合计</td><td></td>${tdN(totY, 1)}<td></td></tr>`);
     } else {
-      const rows = DATA.projects.slice().sort((a, b) => b.total_wan - a.total_wan);
-      title = `累计确权项目总表（2021至今） <small>${rows.length} 个项目 · 合计 ${fmtWan(totalAll())}</small>`;
+      const totMD = YEARS.reduce((s, y) => s + yearValM(y), 0);
+      const rows = DATA.projects.map(p => {
+        const zs = YEARS.reduce((s, y) => s + N(p.by_year[y]), 0);
+        const zd = YEARS.reduce((s, y) => s + N((p.by_year_zd || {})[y]), 0);
+        return { p, v: valMode === 'zd' ? zd : (valMode === 'total' ? zs + zd : zs) };
+      }).filter(x => x.v !== 0).sort((a, b) => b.v - a.v);
+      title = `累计确权项目总表（2021至今 · ${MODE_LABEL[valMode]}） <small>${rows.length} 个项目 · 合计 ${fmtWan(totMD)}</small>`;
       table = drillTable(['#', '项目名称', '状态', '累计确权(万元)', '占比'],
-        rows.map((p, i) => `<tr><td>${i + 1}</td><td>${p.name}</td><td><span class="badge-status ${p.status === '竣工' ? 'na' : 'done'}">${p.status}</span></td>${tdN(p.total_wan)}<td class="num">${(p.total_wan / totalAll() * 100).toFixed(1)}%</td></tr>`).join(''),
-        `<tr class="total"><td></td><td>合计</td><td></td>${tdN(totalAll(), 1)}<td></td></tr>`);
+        rows.map((x, i) => `<tr><td>${i + 1}</td><td>${x.p.name}</td><td><span class="badge-status ${x.p.status === '竣工' ? 'na' : 'done'}">${x.p.status}</span></td>${tdN(x.v)}<td class="num">${totMD ? (x.v / totMD * 100).toFixed(1) : '—'}%</td></tr>`).join(''),
+        `<tr class="total"><td></td><td>合计</td><td></td>${tdN(totMD, 1)}<td></td></tr>`);
     }
   } else if (spec.type === 'period') {
     const per = spec.key === 'p145' ? P145 : P155;
     const v = per.years.reduce((s2, y) => s2 + yearValM(y), 0);
     const rows = yearProjectRows(per.years);
     title = `${per.label} 确权项目明细（${MODE_LABEL[valMode]}） <small>${rows.length} 个项目 · 合计 ${fmtWan(v)}</small>`;
+    const vZs = per.years.reduce((s2, y) => s2 + yearVal(y), 0);
+    const vZd = per.years.reduce((s2, y) => s2 + zdWan(y), 0);
     sum = spec.key === 'p145'
-      ? `十四五期间（2021-2025）五个完整年度实际确权合计 <b>${fmtWan(v)}</b>，年均 <b>${fmtWan(v / 5)}</b>。`
-      : `十五五开局之年 2026：1-7 月实际 <b>${fmtWan(DATA.yearly['2026'].actual_wan)}</b> ＋ 8-12 月预测 <b>${fmtWan(DATA.yearly['2026'].forecast_wan)}</b>。`;
+      ? `十四五期间（2021-2025）五个完整年度实际确权：自施 <b>${fmtWan(vZs)}</b> ＋ 指定 <b>${fmtWan(vZd)}</b> ＝ 合计 <b>${fmtWan(vZs + vZd)}</b>；年均自施 <b>${fmtWan(vZs / 5)}</b>。当前列表按「${MODE_LABEL[valMode]}」口径列示。`
+      : `十五五开局之年 2026：1-7 月实际 <b>${fmtWan(DATA.yearly['2026'].actual_wan)}</b> ＋ 8-12 月预测 <b>${fmtWan(DATA.yearly['2026'].forecast_wan)}</b>；另有指定（1-7 月）<b>${fmtWan(vZd)}</b>。当前列表按「${MODE_LABEL[valMode]}」口径列示。`;
     table = drillTable(['#', '项目名称', '状态', '期间确权(万元)', '占比'],
       rows.map((x, i) => `<tr><td>${i + 1}</td><td>${x.p.name}</td><td><span class="badge-status ${x.p.status === '竣工' ? 'na' : 'done'}">${x.p.status}</span></td>${tdN(x.v)}<td class="num">${(x.v / v * 100).toFixed(1)}%</td></tr>`).join(''),
       `<tr class="total"><td></td><td>合计</td><td></td>${tdN(v, 1)}<td></td></tr>`);
