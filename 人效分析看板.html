@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人效分析看板 · 华南分公司在施项目</title>
+<script src="./echarts.min.js"></script>
+<script>if (typeof echarts === 'undefined') document.write('<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><\/script>');</script>
+<style>
+:root {
+  --bg: #0f172a; --bg-card: #1e293b; --border: #334155;
+  --text: #f1f5f9; --text-muted: #94a3b8;
+  --accent: #3b82f6; --gold: #f59e0b; --green: #10b981;
+  --purple: #8b5cf6; --teal: #14b8a6; --red: #ef4444;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
+}
+.page { max-width: 1440px; margin: 0 auto; padding: 20px 24px 48px; }
+
+.topbar {
+  background: linear-gradient(135deg, #0c4a6e 0%, #155e75 50%, #0e7490 100%);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 18px 22px; display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 10px;
+}
+.topbar h1 { font-size: 20px; letter-spacing: 1px; }
+.topbar .sub { font-size: 12px; opacity: .75; margin-top: 4px; }
+.topbar .meta { font-size: 12px; color: #cffafe; text-align: right; line-height: 1.7; }
+
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin: 18px 0; }
+.kpi-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 16px 18px; position: relative; overflow: hidden;
+}
+.kpi-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(var(--accent), var(--teal)); }
+.kpi-card.gold::before { background: linear-gradient(var(--gold), var(--red)); }
+.kpi-card.green::before { background: linear-gradient(var(--green), var(--teal)); }
+.kpi-card.purple::before { background: linear-gradient(var(--purple), var(--accent)); }
+.kpi-card.red::before { background: linear-gradient(var(--red), var(--gold)); }
+.kpi-card.teal::before { background: linear-gradient(var(--teal), var(--accent)); }
+.kpi-card .label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.kpi-card .value { font-size: 24px; font-weight: 700; }
+.kpi-card .value small { font-size: 13px; font-weight: 400; color: var(--text-muted); }
+.kpi-card .foot { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.kpi-card .foot .bad { color: var(--red); font-weight: 600; }
+.kpi-card .foot .good { color: var(--green); font-weight: 600; }
+
+.section-title { font-size: 16px; font-weight: 600; margin: 26px 0 14px; padding-left: 12px; border-left: 4px solid var(--teal); }
+.section-title small { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
+
+.insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.insight { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.insight .head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.insight ul { list-style: none; }
+.insight li { font-size: 13px; color: #cbd5e1; line-height: 1.8; padding-left: 14px; position: relative; }
+.insight li::before { content: "•"; position: absolute; left: 0; color: var(--teal); }
+.insight li b { color: var(--text); }
+.insight li .neg { color: var(--red); font-weight: 600; }
+.insight li .pos { color: var(--green); font-weight: 600; }
+.tag { font-size: 10px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+.tag.risk { background: rgba(239,68,68,.15); color: var(--red); }
+.tag.warn { background: rgba(245,158,11,.15); color: var(--gold); }
+.tag.ok { background: rgba(16,185,129,.15); color: var(--green); }
+
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.chart-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; height: 380px; }
+.chart-box.wide { grid-column: 1 / -1; height: 560px; }
+.chart-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+
+.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.toolbar input[type="text"], .toolbar input[type="number"], .toolbar select {
+  background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 12px; border-radius: 8px; font-size: 13px; outline: none;
+}
+.toolbar input:focus, .toolbar select:focus { border-color: var(--accent); }
+table.data-table tfoot td { padding: 9px 12px; border-top: 2px solid var(--teal); font-weight: 700; background: rgba(20,184,166,.08); white-space: nowrap; }
+.seg-btns { display: flex; gap: 6px; }
+.seg-btns button {
+  background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+  padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+}
+.seg-btns button.active { background: var(--teal); border-color: var(--teal); color: #0f172a; font-weight: 600; }
+.seg-btns.small button { padding: 4px 10px; font-size: 12px; }
+.btn {
+  background: var(--accent); color: #fff; border: none; padding: 8px 16px;
+  border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.btn:hover { opacity: .9; }
+.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+.btn.editing { background: var(--gold); color: #0f172a; }
+.edit-hint { font-size: 12px; color: var(--gold); }
+
+.data-table-wrap { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.table-scroll { overflow: auto; max-height: 560px; }
+.table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+table.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.data-table th {
+  background: #0f172a; color: var(--text-muted); padding: 10px 12px; text-align: left;
+  font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap;
+  position: sticky; top: 0; z-index: 1;
+}
+table.data-table td { padding: 8px 12px; border-bottom: 1px solid rgba(51,65,85,.4); white-space: nowrap; }
+table.data-table tr:hover td { background: rgba(20,184,166,.06); }
+table.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data-table .neg { color: var(--red); }
+table.data-table .pos { color: var(--green); }
+.badge-status { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.badge-status.done { background: rgba(16,185,129,.15); color: var(--green); }
+.badge-status.pending { background: rgba(245,158,11,.15); color: var(--gold); }
+.badge-status.risk { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-status.na { background: rgba(139,92,246,.18); color: var(--purple); }
+
+.edit-input, .edit-select {
+  background: #0f172a; border: 1px solid var(--gold); color: var(--text);
+  border-radius: 6px; padding: 4px 8px; font-size: 12.5px; outline: none;
+}
+.edit-input { width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
+.edit-input.edit-text { width: 170px; text-align: left; }
+.edit-select { width: 110px; }
+.edit-input:focus, .edit-select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(59,130,246,.25); }
+.row-del { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); cursor: pointer; padding: 3px 8px; font-size: 12px; }
+.row-del:hover { border-color: var(--red); color: var(--red); }
+td.edited-cell { position: relative; }
+td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gold); }
+.modified-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); margin-left: 6px; vertical-align: middle; }
+
+.kpi-card { cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.kpi-card:hover { transform: translateY(-2px); border-color: var(--teal); box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+.kpi-card .more { font-size: 10px; color: var(--teal); margin-top: 8px; opacity: .85; }
+.modal-mask {
+  position: fixed; inset: 0; background: rgba(2,6,23,.72); z-index: 60;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-mask.show { display: flex; }
+.modal {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
+  max-width: 980px; width: 100%; max-height: 84vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.modal .m-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.modal .m-title { font-size: 16px; font-weight: 600; }
+.modal .m-title small { font-size: 12px; color: var(--text-muted); font-weight: 400; margin-left: 8px; }
+.modal .m-close { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; padding: 5px 14px; cursor: pointer; font-size: 13px; }
+.modal .m-close:hover { border-color: var(--red); color: var(--red); }
+.modal .m-body { padding: 16px 20px; overflow-y: auto; }
+.modal .m-sum { font-size: 13px; color: #cbd5e1; margin-bottom: 12px; line-height: 1.9; }
+.modal .m-sum b { color: var(--text); }
+.modal .m-sum .neg { color: var(--red); font-weight: 600; }
+.modal .m-sum .pos { color: var(--green); }
+table.drill-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+table.drill-table th { text-align: left; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.drill-table td { padding: 7px 10px; border-bottom: 1px solid rgba(51,65,85,.4); white-space: nowrap; }
+table.drill-table tr:hover td { background: rgba(20,184,166,.06); }
+table.drill-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.drill-table .neg { color: var(--red); }
+table.drill-table .pos { color: var(--green); }
+table.drill-table tr.total td { border-top: 2px solid var(--border); font-weight: 700; background: rgba(20,184,166,.08); }
+
+.footnote { font-size: 12px; color: var(--text-muted); margin-top: 14px; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <div>
+      <h1>👷 人效分析看板 · 在施项目管理人员效率</h1>
+      <div class="sub">华南分公司 · 数据源《在施项目人效统计表》· 年化人均产值 = 累计产值合计 ÷ 统计月数 × 12 ÷ 管理人员数量</div>
+    </div>
+    <div class="meta">
+      数据截止：2026-08-06（1-7月累计）<br>
+      口径：与原表公式 <b>=V/7*12/W</b> 逐行核对一致
+    </div>
+  </div>
+
+  <div class="kpi-row" id="kpi-row"></div>
+
+  <div class="section-title">🧠 核心结论分析 <small>随编辑与统计月数实时重算 · 点击图表可钻取项目明细</small></div>
+  <div class="insight-grid" id="insight-grid"></div>
+
+  <div class="section-title">📊 人效图表 <small>主图按年化人均产值排序，虚线为区域加权均值 · 点击柱子 / 扇区钻取对应项目</small></div>
+  <div class="chart-grid">
+    <div class="chart-box wide">
+      <div class="chart-head">
+        <div class="seg-btns small" id="sort-btns">
+          <button class="active" data-s="annual_desc">人效降序</button>
+          <button data-s="annual_asc">人效升序</button>
+          <button data-s="output_desc">产值降序</button>
+          <button data-s="staff_desc">人数降序</button>
+        </div>
+      </div>
+      <div id="chart-rank" style="width:100%;height:calc(100% - 36px)"></div>
+    </div>
+    <div class="chart-box" id="chart-stage"></div>
+    <div class="chart-box" id="chart-pie"></div>
+  </div>
+
+  <div class="section-title">📋 项目人效明细 <small>表头点击排序（默认年化人效降序）· 开启「编辑模式」可改产值 / 人数 / 阶段等，整板实时联动</small></div>
+  <div class="toolbar">
+    <div class="seg-btns" id="stage-btns">
+      <button class="active" data-sec="全部">全部阶段</button>
+      <button data-sec="正常施工">正常施工</button>
+      <button data-sec="收尾阶段">收尾阶段</button>
+      <button data-sec="起步阶段">起步阶段</button>
+      <button data-sec="停工阶段">停工阶段</button>
+    </div>
+    <input type="text" id="search" placeholder="搜索项目名称…">
+    <select id="risk-filter"><option value="">全部风险</option><option>高风险</option><option>中风险</option><option>低风险</option><option>无风险</option></select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)" title="累计产值的统计月数（如1-7月填7），修改后年化人均产值全板重算">统计月数
+      <input type="number" id="months-input" min="1" max="12" step="1" value="7" style="width:58px">
+    </label>
+    <button class="btn" id="edit-toggle">✏️ 编辑模式</button>
+    <button class="btn ghost" id="add-row" style="display:none">＋ 新增项目</button>
+    <button class="btn ghost" id="reset-data" style="display:none">↩️ 恢复默认</button>
+    <span class="edit-hint" id="edit-hint" style="display:none">编辑中：金框单元格可直接修改；客户类型 / 阶段 / 风险 / 盈亏状态为下拉选择；年化人均产值自动重算</span>
+  </div>
+  <div class="data-table-wrap">
+    <div class="table-scroll">
+      <table class="data-table" id="detail-table">
+        <thead><tr></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="footnote">
+    注：①「年化人均产值(推算)」= 累计产值合计 ÷ 统计月数 × 12 ÷ 管理人员数量，与原表 <b>=V/7*12/W</b> 同口径；统计月数默认 7（对应 1-7 月），后续改为 8 / 9… 即按 1-8 月、1-9 月口径推算全年；
+    ②「1-N月产值合计」「管理人员」「月人均产值」等可在编辑模式下修改，KPI、结论、图表、合计行全部实时联动，修改保存在本浏览器（localStorage），点「恢复默认」全部还原；
+    ③阶段划分沿用原表汇总口径：收尾阶段 5 个（龙飞学校 / 西丽修缮 / 骏鼎达 / 吉华医院 / 滨海湾）、起步阶段 2 个（抖音二期 / 机场B4）、停工阶段 1 个（深港智汇风华），其余 11 个为正常施工；
+    ④区域加权年化人均产值 = Σ累计产值 ÷ 统计月数 × 12 ÷ Σ管理人员；末行「合计」对当前筛选结果求和（金额与人数加和、月人均产值简单平均标注「均」、年化人效加权标注「加权」）；
+    ⑤点击 KPI 卡、排序图柱子、阶段图柱子或饼图扇区，均可查看对应项目级明细；东莞小天才智能科技中心一期原表无管理人员数据，年化人效显示「—」，可在编辑模式补录人数后自动计算。
+  </div>
+</div>
+
+<!-- 钻取弹窗 -->
+<div class="modal-mask" id="drill-mask">
+  <div class="modal">
+    <div class="m-head">
+      <div class="m-title" id="drill-title">明细</div>
+      <button class="m-close" id="drill-close">关闭 ✕</button>
+    </div>
+    <div class="m-body" id="drill-body"></div>
+  </div>
+</div>
+
+<script>
+// ===================== 数据（《在施项目人效统计表》2026.8.6，与原表逐行核对） =====================
+const DATA = {"updated":"2026-08-06","months_default":7,"projects":[
+{"name":"深圳深港智汇风华产业园项目一期工程II标段EPC","cust_type":"国有企业/政府","level":"III级","start_date":"2024-12-30","contract":87462.493842,"income":56967.409753,"monthly_pc":0,"eff_output":0,"staff":8,"progress":0.2003,"risk":"低风险","pl_status":"完全成本亏损","stage":"停工阶段","note":"停工阶段：停工阶段无产值"},
+{"name":"深圳龙城街道龙飞学校新建工程（二期）","cust_type":"区工务署","level":"II级","start_date":"2023-10-20","contract":30460.51934,"income":15603.55516,"monthly_pc":0,"eff_output":0,"staff":8,"progress":0.8647,"risk":"无风险","pl_status":"超额成本降低","stage":"收尾阶段","note":"收尾及结算阶段：仅剩收尾消缺及结算，管理人员仍需留守，无新增产值。"},
+{"name":"深圳职业技术大学西丽校区修缮改造","cust_type":"市工务署","level":"IV级","start_date":"2024-05-10","contract":10558.66076,"income":7941.082054,"monthly_pc":39.12,"eff_output":952.941464,"staff":13,"progress":0.9611,"risk":"高风险","pl_status":"完全成本亏损","stage":"收尾阶段","note":"收尾阶段：仅剩收尾消缺，管理人员仍需留守，但新增产值极少。"},
+{"name":"东莞骏鼎达功能性保护材料生产建设","cust_type":"产业类","level":"II级","start_date":"2025-01-15","contract":12202.396642,"income":9531.915322,"monthly_pc":0,"eff_output":1345.795208,"staff":10,"progress":0.9035,"risk":"低风险","pl_status":"制造成本亏损","stage":"收尾阶段","note":"收尾阶段：仅剩收尾消缺，管理人员仍需留守，但新增产值极少。"},
+{"name":"深圳市吉华医院","cust_type":"市工务署","level":"III级","start_date":"2022-02-25","contract":89839.6,"income":79709.6,"monthly_pc":34.33,"eff_output":1821.344135,"staff":9,"progress":0.9046,"risk":"高风险","pl_status":"制造成本亏损","stage":"收尾阶段","note":"收尾阶段：仅剩收尾消缺，管理人员仍需留守，但新增产值极少。"},
+{"name":"东莞小天才滨海湾","cust_type":"产业类","level":"II级","start_date":"2022-11-11","contract":68958.779437,"income":68958.779437,"monthly_pc":35.09,"eff_output":2942.792934,"staff":13,"progress":0.9428,"risk":"无风险","pl_status":"超额成本降低","stage":"收尾阶段","note":"收尾阶段：仅剩收尾消缺，管理人员仍需留守，但新增产值极少。"},
+{"name":"深圳抖音二期基坑","cust_type":"产业类","level":"IV级","start_date":"2026-03-25","contract":18598,"income":18342.899886,"monthly_pc":31.49,"eff_output":1069.030481,"staff":16,"progress":0.0256,"risk":"高风险","pl_status":"完全成本亏损","stage":"起步阶段","note":"起步阶段：项目部人员已到位，但产值尚未大规模确权。"},
+{"name":"深圳机场B4货站","cust_type":"机场","level":"IV级","start_date":"2026-04-03","contract":12697.066666,"income":11434.616037,"monthly_pc":101.02,"eff_output":1952.31921,"staff":17,"progress":0.071,"risk":"高风险","pl_status":"完全成本亏损","stage":"起步阶段","note":"起步阶段：项目部人员已到位，但产值尚未大规模确权。"},
+{"name":"深圳市药品检验研究院光明分院建设","cust_type":"市工务署","level":"II级","start_date":"2023-12-31","contract":30886,"income":15818.187268,"monthly_pc":7.78,"eff_output":2988.555385,"staff":18,"progress":0.5606,"risk":"中风险","pl_status":"完全成本亏损","stage":"正常施工","note":""},
+{"name":"东莞市先进阿秒激光设施","cust_type":"国有企业/政府","level":"II级","start_date":"2024-12-31","contract":28193.129373,"income":28193.129373,"monthly_pc":81.63,"eff_output":5610.028107,"staff":23,"progress":0.4534,"risk":"中风险","pl_status":"完全成本亏损","stage":"正常施工","note":""},
+{"name":"深圳市人才研修院配电设施建设","cust_type":"市工务署","level":"I级","start_date":"2026-03-28","contract":2481.593624,"income":2351.533424,"monthly_pc":58.89,"eff_output":1976.011242,"staff":6,"progress":0.6854,"risk":"中风险","pl_status":"制造成本亏损","stage":"正常施工","note":""},
+{"name":"深圳医学科学院及深圳湾实验室I标","cust_type":"市工务署","level":"II级","start_date":"2024-09-01","contract":35450.8,"income":28174.044303,"monthly_pc":31.43,"eff_output":11996.357752,"staff":35,"progress":0.5849,"risk":"高风险","pl_status":"完全成本亏损","stage":"正常施工","note":""},
+{"name":"深圳香港中文大学医学院","cust_type":"市工务署","level":"II级","start_date":"2024-04-01","contract":84465.324804,"income":61505.932066,"monthly_pc":48.68,"eff_output":15311.369117,"staff":44,"progress":0.6757,"risk":"中风险","pl_status":"完全成本亏损","stage":"正常施工","note":""},
+{"name":"广东工商职业技术大学国际学术交流中心、音乐厅建设","cust_type":"产业类","level":"II级","start_date":"2024-08-01","contract":50000,"income":26000,"monthly_pc":45.66,"eff_output":7238.712162,"staff":17,"progress":0.6511,"risk":"低风险","pl_status":"制造成本亏损","stage":"正常施工","note":""},
+{"name":"广州从化国际赛马发展中心","cust_type":"产业类","level":"II级","start_date":"2024-07-16","contract":24582.495546,"income":22399.495546,"monthly_pc":85.5428571428571,"eff_output":9618,"staff":21,"progress":0.6759,"risk":"中风险","pl_status":"完全成本亏损","stage":"正常施工","note":""},
+{"name":"深圳科学城体育中心EPCO机电","cust_type":"产业类","level":"II级","start_date":"2025-12-15","contract":14839.437838,"income":14839.437838,"monthly_pc":80.17,"eff_output":5735.922856,"staff":12,"progress":0.2976,"risk":"低风险","pl_status":"制造成本亏损","stage":"正常施工","note":""},
+{"name":"深圳电子科技大学高等研究院","cust_type":"市工务署","level":"II级","start_date":"2024-12-28","contract":95264.211215,"income":88932.211215,"monthly_pc":102.66,"eff_output":20010.833522,"staff":40,"progress":0.4841,"risk":"中风险","pl_status":"完全成本亏损","stage":"正常施工","note":""},
+{"name":"深圳过沥路市政工程","cust_type":"区工务署","level":"II级","start_date":"2025-12-06","contract":13101.262596,"income":9275.440193,"monthly_pc":40.2054545454545,"eff_output":6531.458997,"staff":11,"progress":0.6422,"risk":"低风险","pl_status":"制造成本亏损","stage":"正常施工","note":""},
+{"name":"东莞小天才智能科技中心一期","cust_type":"产业类","level":"II级","start_date":"2023-05-20","contract":4974.539726,"income":4974.539726,"monthly_pc":0,"eff_output":0,"staff":null,"progress":0.7099,"risk":"无风险","pl_status":"超额成本降低","stage":"正常施工","note":""}
+]};
+
+// ===================== 基础 =====================
+const N = v => (typeof v === 'number' && !isNaN(v)) ? v : 0;
+const fmtNum = v => N(v).toLocaleString('zh-CN', { maximumFractionDigits: 1 });
+const fmtPct = v => (typeof v === 'number' ? (v * 100).toFixed(2) + '%' : '—');
+const yi = v => (v / 10000).toFixed(2) + ' 亿';
+
+const LS_KEY = 'eff_edits_v1', LS_ROWS = 'eff_rows_v1', LS_MONTHS = 'eff_months_v1';
+const loadEdits = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch (e) { return {}; } };
+const saveEdits = o => localStorage.setItem(LS_KEY, JSON.stringify(o));
+const loadRows = () => { try { return JSON.parse(localStorage.getItem(LS_ROWS) || '{"added":[],"deleted":[]}'); } catch (e) { return { added: [], deleted: [] }; } };
+const loadMonths = () => { const m = parseInt(localStorage.getItem(LS_MONTHS), 10); return (m >= 1 && m <= 12) ? m : 7; };
+const saveRows = () => localStorage.setItem(LS_ROWS, JSON.stringify(ROWEDITS));
+let EDITS = loadEdits();
+let ROWEDITS = loadRows();
+
+const P = DATA.projects;
+ROWEDITS.deleted.forEach(n => { const i = P.findIndex(p => p.name === n); if (i >= 0) P.splice(i, 1); });
+ROWEDITS.added.forEach(obj => { obj._custom = true; if (!obj.stage) obj.stage = '正常施工'; P.push(obj); });
+Object.keys(EDITS).forEach(name => { const p = P.find(x => x.name === name); if (p) Object.assign(p, EDITS[name]); });
+
+const state = {
+  sec: '全部', kw: '', risk: '', sortKey: 'eff_annual', sortAsc: false,
+  edit: false, months: loadMonths(), chartSort: 'annual_desc'
+};
+
+// 年化人均产值(推算) = 累计产值合计 ÷ 统计月数 × 12 ÷ 管理人员数量（与原表 =V/7*12/W 同口径）
+const effAnnualOf = r => (typeof r.eff_output === 'number' && typeof r.staff === 'number' && r.staff > 0 && state.months > 0) ? r.eff_output / state.months * 12 / r.staff : null;
+
+const STAGES = ['正常施工', '收尾阶段', '起步阶段', '停工阶段'];
+const stageBadge = s => s === '正常施工' ? 'done' : s === '收尾阶段' ? 'pending' : s === '起步阶段' ? 'na' : 'risk';
+const riskBadge = v => v === '高风险' ? 'risk' : v === '中风险' ? 'pending' : 'done';
+const plBadge = v => String(v).includes('亏损') ? (v === '完全成本亏损' ? 'risk' : 'pending') : 'done';
+
+// ===================== 汇总口径 =====================
+function getT(rows) {
+  rows = rows || P;
+  const t = {};
+  t.count = rows.length;
+  t.output = rows.reduce((s, p) => s + N(p.eff_output), 0);
+  t.staff = rows.reduce((s, p) => s + N(p.staff), 0);
+  t.contract = rows.reduce((s, p) => s + N(p.contract), 0);
+  t.income = rows.reduce((s, p) => s + N(p.income), 0);
+  // 区域加权年化人效 = Σ产值 ÷ 月数 × 12 ÷ Σ人数
+  t.weighted = (t.staff > 0 && state.months > 0) ? t.output / state.months * 12 / t.staff : null;
+  // 简单平均（剔除无人员项目）
+  const va = rows.map(effAnnualOf).filter(x => typeof x === 'number');
+  t.simpleAvg = va.length ? va.reduce((s, x) => s + x, 0) / va.length : null;
+  return t;
+}
+const byStage = st => P.filter(p => p.stage === st);
+
+// ===================== KPI =====================
+function renderKPIs() {
+  const T = getT();
+  const ranked = P.map(p => ({ p, a: effAnnualOf(p) })).filter(x => typeof x.a === 'number' && x.a > 0).sort((x, y) => y.a - x.a);
+  const top = ranked[0], bottom = ranked[ranked.length - 1];
+  const zeroCnt = P.filter(p => N(p.eff_output) === 0).length;
+  const cards = [
+    { cls: '', label: '在施项目数', value: T.count + ' <small>个</small>', foot: `正常施工 ${byStage('正常施工').length} · 收尾 ${byStage('收尾阶段').length} · 起步 ${byStage('起步阶段').length} · 停工 ${byStage('停工阶段').length}`, drill: { kind: 'rows', title: '全部在施项目', rows: P } },
+    { cls: 'teal', label: `1-${state.months}月累计产值合计`, value: fmtNum(T.output) + ' <small>万元</small>', foot: '点击看产值构成', drill: { kind: 'rows', title: `1-${state.months}月累计产值明细`, rows: P.slice().sort((a, b) => N(b.eff_output) - N(a.eff_output)) } },
+    { cls: 'purple', label: '管理人员合计', value: fmtNum(T.staff) + ' <small>人</small>', foot: `有 ${P.filter(p => typeof p.staff !== 'number').length} 个项目人数待补录`, drill: { kind: 'rows', title: '管理人员分布明细', rows: P.slice().sort((a, b) => N(b.staff) - N(a.staff)) } },
+    { cls: 'green', label: '区域加权年化人均产值', value: (T.weighted === null ? '—' : fmtNum(T.weighted)) + ' <small>万元/人/年</small>', foot: `Σ产值 ÷ ${state.months} × 12 ÷ Σ人数 · 简单平均 ${T.simpleAvg === null ? '—' : fmtNum(T.simpleAvg)}`, drill: { kind: 'rows', title: '年化人均产值排名', rows: P.slice().sort((a, b) => (effAnnualOf(b) ?? -1) - (effAnnualOf(a) ?? -1)) } },
+    { cls: 'gold', label: '人效最高项目', value: top ? fmtNum(top.a) : '—', foot: top ? top.p.name : '', drill: top ? { kind: 'one', name: top.p.name } : null },
+    { cls: 'red', label: '人效最低项目（有产值）', value: bottom ? fmtNum(bottom.a) : '—', foot: (bottom ? bottom.p.name : '') + (zeroCnt ? ` · 另有 ${zeroCnt} 个项目产值为 0` : ''), drill: bottom ? { kind: 'one', name: bottom.p.name } : null },
+  ];
+  const row = document.getElementById('kpi-row');
+  row.innerHTML = cards.map((c, i) => `
+    <div class="kpi-card ${c.cls}" data-i="${i}">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+      <div class="foot">${c.foot}</div>
+      ${c.drill ? '<div class="more">点击查看明细 ↗</div>' : ''}
+    </div>`).join('');
+  row.querySelectorAll('.kpi-card').forEach(el => el.addEventListener('click', () => {
+    const c = cards[+el.dataset.i];
+    if (!c.drill) return;
+    if (c.drill.kind === 'one') openProjectDrill(c.drill.name);
+    else openRowsDrill(c.drill.title, c.drill.rows);
+  }));
+}
+
+// ===================== 核心结论 =====================
+function renderInsights() {
+  const T = getT();
+  const ranked = P.map(p => ({ p, a: effAnnualOf(p) })).filter(x => typeof x.a === 'number').sort((x, y) => y.a - x.a);
+  const wAvg = T.weighted;
+  const below = ranked.filter(x => wAvg !== null && x.a < wAvg);
+  const zeros = P.filter(p => N(p.eff_output) === 0);
+  const top3 = ranked.slice(0, 3);
+  const top3Out = top3.reduce((s, x) => s + N(x.p.eff_output), 0);
+  const stageItems = STAGES.map(st => {
+    const rows = byStage(st);
+    const t = getT(rows);
+    return `<b>${st}</b> ${rows.length} 个项目 · ${fmtNum(t.staff)} 人 · 产值 ${fmtNum(t.output)} 万元 · 加权年化人效 <b>${t.weighted === null ? '—' : fmtNum(t.weighted)}</b> 万元/人/年`;
+  });
+  const warnItems = below.slice(0, 5).map(x => `<b>${x.p.name}</b>：<span class="neg">${fmtNum(x.a)}</span> 万元/人/年（差均值 ${wAvg ? fmtNum(wAvg - x.a) : '—'}）`);
+  if (below.length > 5) warnItems.push(`…另有 ${below.length - 5} 个低于均值，详见明细表排序`);
+  if (zeros.length) warnItems.push(`产值为 0 仍占用人员：${zeros.map(z => `<b>${z.name}</b>（${z.staff ?? '?'}人）`).join('、')}`);
+  if (!warnItems.length) warnItems.push('全部项目均不低于区域加权均值');
+  const cards = [
+    { head: '📊 区域人效总览', tag: ['ok', '加权口径'], items: [
+      `区域加权年化人均产值 <b>${wAvg === null ? '—' : fmtNum(wAvg)}</b> 万元/人/年（Σ产值 ÷ ${state.months} × 12 ÷ Σ人数）`,
+      `1-${state.months}月累计产值 <b>${fmtNum(T.output)}</b> 万元，管理人员 <b>${fmtNum(T.staff)}</b> 人`,
+      `项目简单平均人效 <b>${T.simpleAvg === null ? '—' : fmtNum(T.simpleAvg)}</b> 万元/人/年（剔除无人数项目）`,
+      `加权低于简单平均时，说明<b>大体量团队人效偏低</b>；反之小团队拉低平均`]},
+    { head: '🏆 人效领先', tag: ['ok', 'TOP3'], items: top3.map((x, i) =>
+      `第${['一', '二', '三'][i]}名 <b>${x.p.name}</b>：<span class="pos">${fmtNum(x.a)}</span> 万元/人/年（${fmtNum(x.p.eff_output)} 万元 / ${x.p.staff} 人）`
+    ).concat([`TOP3 产值合计 <b>${fmtNum(top3Out)}</b> 万元，占区域 <b>${T.output ? (top3Out / T.output * 100).toFixed(1) + '%' : '—'}</b>`])},
+    { head: '⚠️ 人效预警', tag: ['warn', '低于区域均值 ' + below.length + ' 个'], items: warnItems },
+    { head: '🧭 阶段特征（与原表汇总口径一致）', tag: ['ok', '四阶段'], items: stageItems },
+  ];
+  document.getElementById('insight-grid').innerHTML = cards.map(c => `
+    <div class="insight">
+      <div class="head">${c.head}<span class="tag ${c.tag[0]}">${c.tag[1]}</span></div>
+      <ul>${c.items.map(i => `<li>${i}</li>`).join('')}</ul>
+    </div>`).join('');
+}
+
+// ===================== 图表 =====================
+let chartRank = null, chartStage = null, chartPie = null;
+const axStyle = () => ({
+  axisLabel: { color: '#94a3b8' }, axisLine: { lineStyle: { color: '#334155' } },
+  splitLine: { lineStyle: { color: 'rgba(51,65,85,.4)' } }
+});
+const shortName = n => n.length > 14 ? n.slice(0, 13) + '…' : n;
+
+function renderCharts() {
+  const T = getT();
+  const wAvg = T.weighted;
+  // ---- 主图：排序条形图 ----
+  const rows = P.slice();
+  const keyFn = state.chartSort === 'output_desc' ? (r => N(r.eff_output)) : state.chartSort === 'staff_desc' ? (r => N(r.staff)) : (r => effAnnualOf(r) ?? -1);
+  rows.sort((a, b) => keyFn(a) - keyFn(b)); // 横向条形图自下而上
+  const isAnnual = state.chartSort.startsWith('annual');
+  if (!chartRank) chartRank = echarts.init(document.getElementById('chart-rank'));
+  chartRank.setOption({
+    backgroundColor: 'transparent',
+    title: { text: `各项目${isAnnual ? '年化人均产值（万元/人/年）' : state.chartSort === 'output_desc' ? `1-${state.months}月累计产值（万元）` : '管理人员数量（人）'}排名`, textStyle: { color: '#f1f5f9', fontSize: 14 }, left: 8, top: 4 },
+    grid: { left: 8, right: 60, top: 40, bottom: 28, containLabel: true },
+    tooltip: {
+      trigger: 'axis', axisPointer: { type: 'shadow' },
+      formatter: ps => {
+        const p = P.find(x => x.name === ps[0].name);
+        const a = effAnnualOf(p);
+        return `<b>${p.name}</b><br/>年化人均产值：${a === null ? '—' : fmtNum(a) + ' 万元/人/年'}<br/>1-${state.months}月产值：${fmtNum(p.eff_output)} 万元<br/>管理人员：${p.staff ?? '—'} 人<br/>阶段：${p.stage}`;
+      }
+    },
+    xAxis: { type: 'value', ...axStyle() },
+    yAxis: { type: 'category', data: rows.map(r => r.name), axisLabel: { color: '#cbd5e1', fontSize: 11, formatter: shortName }, axisLine: { lineStyle: { color: '#334155' } } },
+    series: [{
+      type: 'bar', barWidth: '55%',
+      data: rows.map(r => {
+        const v = isAnnual ? (effAnnualOf(r) ?? 0) : keyFn(r);
+        const a = effAnnualOf(r);
+        const color = !isAnnual ? '#14b8a6' : (wAvg !== null && a !== null && a < wAvg) ? '#ef4444' : '#10b981';
+        return { name: r.name, value: +v.toFixed(2), itemStyle: { color, borderRadius: [0, 4, 4, 0] } };
+      }),
+      label: { show: true, position: 'right', color: '#94a3b8', fontSize: 10, formatter: p => fmtNum(p.value) },
+      markLine: isAnnual && wAvg !== null ? {
+        symbol: 'none', label: { color: '#f59e0b', formatter: `区域加权均值 ${fmtNum(wAvg)}`, fontSize: 11 },
+        lineStyle: { color: '#f59e0b', type: 'dashed', width: 1.5 },
+        data: [{ xAxis: +wAvg.toFixed(2) }]
+      } : undefined
+    }]
+  }, true);
+  chartRank.off('click');
+  chartRank.on('click', params => { if (params.name) openProjectDrill(params.name); });
+
+  // ---- 阶段加权人效对比 ----
+  if (!chartStage) chartStage = echarts.init(document.getElementById('chart-stage'));
+  const stData = STAGES.map(st => ({ st, t: getT(byStage(st)) }));
+  chartStage.setOption({
+    backgroundColor: 'transparent',
+    title: { text: '各阶段加权年化人均产值（万元/人/年）', textStyle: { color: '#f1f5f9', fontSize: 14 }, left: 8, top: 4 },
+    grid: { left: 8, right: 20, top: 44, bottom: 30, containLabel: true },
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: ps => {
+      const d = stData[ps[0].dataIndex];
+      return `<b>${d.st}</b><br/>加权年化人效：${d.t.weighted === null ? '—' : fmtNum(d.t.weighted)}<br/>项目 ${d.t.count} 个 · ${fmtNum(d.t.staff)} 人 · 产值 ${fmtNum(d.t.output)} 万元<br/><i>点击钻取项目明细</i>`;
+    } },
+    xAxis: { type: 'category', data: STAGES, ...axStyle() },
+    yAxis: { type: 'value', ...axStyle() },
+    series: [{
+      type: 'bar', barWidth: '46%',
+      data: stData.map((d, i) => ({ value: d.t.weighted === null ? 0 : +d.t.weighted.toFixed(2), itemStyle: { color: ['#10b981', '#f59e0b', '#8b5cf6', '#ef4444'][i], borderRadius: [4, 4, 0, 0] } })),
+      label: { show: true, position: 'top', color: '#cbd5e1', formatter: p => fmtNum(p.value) },
+      markLine: wAvg !== null ? {
+        symbol: 'none', label: { color: '#f59e0b', formatter: '区域 ' + fmtNum(wAvg), fontSize: 10 },
+        lineStyle: { color: '#f59e0b', type: 'dashed' }, data: [{ yAxis: +wAvg.toFixed(2) }]
+      } : undefined
+    }]
+  }, true);
+  chartStage.off('click');
+  chartStage.on('click', params => openRowsDrill(`${params.name} · 项目明细`, byStage(params.name)));
+
+  // ---- 饼图：阶段管理人员分布 ----
+  if (!chartPie) chartPie = echarts.init(document.getElementById('chart-pie'));
+  chartPie.setOption({
+    backgroundColor: 'transparent',
+    title: { text: '管理人员阶段分布（人）', textStyle: { color: '#f1f5f9', fontSize: 14 }, left: 8, top: 4 },
+    tooltip: { trigger: 'item', formatter: p => `${p.name}<br/>${p.value} 人（${p.percent}%）<br/><i>点击钻取项目明细</i>` },
+    legend: { bottom: 6, textStyle: { color: '#94a3b8', fontSize: 11 } },
+    series: [{
+      type: 'pie', radius: ['38%', '62%'], center: ['50%', '52%'],
+      itemStyle: { borderColor: '#0f172a', borderWidth: 2 },
+      label: { color: '#cbd5e1', fontSize: 11, formatter: '{b}\n{c} 人' },
+      data: stData.map((d, i) => ({ name: d.st, value: d.t.staff, itemStyle: { color: ['#10b981', '#f59e0b', '#8b5cf6', '#ef4444'][i] } }))
+    }]
+  }, true);
+  chartPie.off('click');
+  chartPie.on('click', params => openRowsDrill(`${params.name} · 项目明细`, byStage(params.name)));
+}
+
+// ===================== 明细表 =====================
+const EDITABLE_NUM = ['monthly_pc', 'staff', 'eff_output', 'contract', 'income'];
+const EDITABLE_PCT = ['progress'];
+const COLS = [
+  ['name', '项目名称'], ['cust_type', '客户类型'], ['stage', '阶段'],
+  ['monthly_pc', '月人均产值'], ['staff', '管理人员'], ['eff_output', '1-7月产值合计'], ['eff_annual', '年化人均产值(推算)'],
+  ['contract', '合同额'], ['income', '累计合同收入'], ['progress', '完工%'],
+  ['risk', '风险情况'], ['pl_status', '盈亏状态'], ['note', '阶段备注'],
+];
+const RISKS = ['高风险', '中风险', '低风险', '无风险'];
+const PL_STATUS = ['完全成本亏损', '制造成本亏损', '超额成本降低', '盈利'];
+
+function valOf(r, k) { return k === 'eff_annual' ? effAnnualOf(r) : r[k]; }
+function currentRows() {
+  let rows = P.slice();
+  if (state.sec !== '全部') rows = rows.filter(p => p.stage === state.sec);
+  if (state.kw) rows = rows.filter(r => Object.values(r).some(v => String(v ?? '').toLowerCase().includes(state.kw)));
+  if (state.risk) rows = rows.filter(r => r.risk === state.risk);
+  if (state.sortKey) {
+    const k = state.sortKey;
+    rows.sort((a, b) => {
+      const va = valOf(a, k), vb = valOf(b, k);
+      const na = typeof va === 'number', nb = typeof vb === 'number';
+      if (na !== nb) return na ? -1 : 1; // 无数据（—）恒垫底
+      const cmp = (na && nb) ? va - vb : String(va ?? '').localeCompare(String(vb ?? ''), 'zh');
+      return state.sortAsc ? cmp : -cmp;
+    });
+  }
+  return rows;
+}
+const isEdited = (name, field) => !!(EDITS[name] && EDITS[name][field] !== undefined);
+const getCustTypes = () => [...new Set(P.map(x => x.cust_type).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh'));
+
+function renderTable() {
+  const thead = document.querySelector('#detail-table thead tr');
+  const tbody = document.querySelector('#detail-table tbody');
+  const editable = state.edit;
+
+  thead.innerHTML = COLS.map(([k, label]) => {
+    const lbl = k === 'eff_output' ? `1-${state.months}月产值合计` : label;
+    return `<th data-key="${k}" style="cursor:pointer" title="点击排序">${lbl}${state.sortKey === k ? (state.sortAsc ? ' ▲' : ' ▼') : ''}</th>`;
+  }).join('') + (editable ? '<th>操作</th>' : '');
+  thead.querySelectorAll('th[data-key]').forEach(th => th.onclick = () => {
+    const k = th.dataset.key;
+    if (state.sortKey === k) state.sortAsc = !state.sortAsc; else { state.sortKey = k; state.sortAsc = k === 'name' || k === 'stage' || k === 'cust_type'; }
+    renderTable();
+  });
+
+  tbody.innerHTML = currentRows().map(r => '<tr>' + COLS.map(([k]) => {
+    const v = valOf(r, k);
+    if (editable && k === 'name' && r._custom) {
+      return `<td><input type="text" class="edit-input edit-text" data-name="${r.name}" data-field="name" value="${String(r.name).replace(/"/g, '&quot;')}"></td>`;
+    }
+    if (editable && k === 'cust_type') {
+      const opts = getCustTypes().concat(v && !getCustTypes().includes(v) ? [v] : []);
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="cust_type" style="width:104px">
+        <option value="">—</option>${opts.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && k === 'stage') {
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="stage" style="width:96px">
+        ${STAGES.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && k === 'risk') {
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="risk">
+        ${RISKS.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && k === 'pl_status') {
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}"><select class="edit-select" data-name="${r.name}" data-field="pl_status">
+        ${PL_STATUS.map(o => `<option ${v === o ? 'selected' : ''}>${o}</option>`).join('')}</select>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && EDITABLE_NUM.includes(k)) {
+      const val = typeof v === 'number' ? v : '';
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}">
+        <input type="number" step="any" class="edit-input" data-name="${r.name}" data-field="${k}" value="${val}">${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (editable && EDITABLE_PCT.includes(k)) {
+      const val = typeof v === 'number' ? +(v * 100).toFixed(2) : '';
+      return `<td class="${isEdited(r.name, k) ? 'edited-cell' : ''}">
+        <input type="number" step="any" class="edit-input" data-name="${r.name}" data-field="${k}" data-pct="1" value="${val}" style="width:72px">${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    // ---- 展示模式 ----
+    if (k === 'progress') return `<td class="num">${fmtPct(v)}${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    if (['monthly_pc', 'eff_output', 'contract', 'income'].includes(k)) {
+      return `<td class="num">${typeof v === 'number' ? fmtNum(v) : '—'}${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    }
+    if (k === 'eff_annual') {
+      const wAvg = getT().weighted;
+      const cls = (typeof v === 'number' && wAvg !== null && v < wAvg) ? 'neg' : (typeof v === 'number' ? 'pos' : '');
+      return `<td class="num ${cls}"><b>${typeof v === 'number' ? fmtNum(v) : '—'}</b></td>`;
+    }
+    if (k === 'staff') return `<td class="num">${typeof v === 'number' ? v : '—'}${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    if (k === 'stage') return `<td><span class="badge-status ${stageBadge(v)}">${v || '—'}</span>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    if (k === 'risk') return `<td><span class="badge-status ${riskBadge(v)}">${v || '—'}</span>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    if (k === 'pl_status') return `<td><span class="badge-status ${plBadge(v)}">${v || '—'}</span>${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    if (k === 'note') return `<td style="white-space:normal;min-width:200px;max-width:280px;font-size:11.5px;color:var(--text-muted)">${v || '—'}</td>`;
+    return `<td>${v ?? '—'}</td>`;
+  }).join('') + (editable ? `<td><button class="row-del" data-name="${r.name}" title="删除该项目">🗑</button></td>` : '') + '</tr>').join('');
+
+  // ---- 合计行 ----
+  const rows2 = currentRows();
+  const sums = {};
+  ['monthly_pc', 'staff', 'eff_output', 'contract', 'income'].forEach(k => { sums[k] = rows2.reduce((s, r) => s + N(valOf(r, k)), 0); });
+  const mpcAvg = (() => { const vs = rows2.map(r => r.monthly_pc).filter(x => typeof x === 'number'); return vs.length ? vs.reduce((s, x) => s + x, 0) / vs.length : null; })();
+  const wAvg = (sums.staff > 0 && state.months > 0) ? sums.eff_output / state.months * 12 / sums.staff : null;
+  document.querySelector('#detail-table tfoot').innerHTML = rows2.length ? '<tr>' + COLS.map(([k]) => {
+    if (k === 'name') return `<td>合计（${rows2.length} 个项目）</td>`;
+    if (k === 'monthly_pc') return `<td class="num">${mpcAvg === null ? '—' : fmtNum(mpcAvg)}<span style="font-weight:400;color:var(--text-muted);font-size:10px"> 均</span></td>`;
+    if (k === 'eff_annual') return `<td class="num">${wAvg === null ? '—' : fmtNum(wAvg)}<span style="font-weight:400;color:var(--text-muted);font-size:10px"> 加权</span></td>`;
+    if (['staff', 'eff_output', 'contract', 'income'].includes(k)) return `<td class="num">${fmtNum(sums[k])}</td>`;
+    return '<td></td>';
+  }).join('') + (editable ? '<td></td>' : '') + '</tr>' : '';
+}
+
+// ===================== 钻取 =====================
+let drillState = null;
+function rowsDrillHtml(title, rows) {
+  const t = getT(rows);
+  const body = rows.slice().sort((a, b) => (effAnnualOf(b) ?? -1) - (effAnnualOf(a) ?? -1)).map(r => {
+    const a = effAnnualOf(r);
+    return `<tr>
+      <td>${r.name}</td>
+      <td><span class="badge-status ${stageBadge(r.stage)}">${r.stage}</span></td>
+      <td class="num">${fmtNum(r.eff_output)}</td>
+      <td class="num">${r.staff ?? '—'}</td>
+      <td class="num">${a === null ? '—' : fmtNum(a)}</td>
+      <td class="num">${fmtNum(r.monthly_pc)}</td>
+      <td><span class="badge-status ${riskBadge(r.risk)}">${r.risk}</span></td>
+    </tr>`;
+  }).join('');
+  return `
+    <div class="m-sum">
+      ${title}：共 <b>${rows.length}</b> 个项目 · 1-${state.months}月累计产值 <b>${fmtNum(t.output)}</b> 万元 · 管理人员 <b>${fmtNum(t.staff)}</b> 人 ·
+      加权年化人均产值 <b>${t.weighted === null ? '—' : fmtNum(t.weighted)}</b> 万元/人/年
+    </div>
+    <table class="drill-table">
+      <thead><tr><th>项目名称</th><th>阶段</th><th class="num">1-${state.months}月产值(万元)</th><th class="num">管理人员</th><th class="num">年化人均产值</th><th class="num">月人均产值</th><th>风险</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
+}
+function openRowsDrill(title, rows) {
+  drillState = { kind: 'rows', title, rows };
+  document.getElementById('drill-title').innerHTML = `${title}<small>共 ${rows.length} 个项目</small>`;
+  document.getElementById('drill-body').innerHTML = rowsDrillHtml(title, rows);
+  document.getElementById('drill-mask').classList.add('show');
+}
+function openProjectDrill(name) {
+  const r = P.find(x => x.name === name);
+  if (!r) return;
+  drillState = { kind: 'one', name };
+  const a = effAnnualOf(r);
+  const wAvg = getT().weighted;
+  const rows = [
+    ['客户类型', r.cust_type || '—'], ['项目分类', r.level || '—'], ['阶段', `<span class="badge-status ${stageBadge(r.stage)}">${r.stage}</span>`],
+    ['开工日期', r.start_date || '—'], ['合同额', fmtNum(r.contract) + ' 万元'], ['累计合同收入', fmtNum(r.income) + ' 万元'],
+    [`1-${state.months}月累计产值`, `<b>${fmtNum(r.eff_output)}</b> 万元`], ['管理人员', (r.staff ?? '—') + ' 人'],
+    ['月人均产值', fmtNum(r.monthly_pc) + ' 万元'],
+    ['年化人均产值(推算)', `<b>${a === null ? '—（人数待补录）' : fmtNum(a) + ' 万元/人/年'}</b>${typeof a === 'number' && wAvg !== null ? (a >= wAvg ? ` <span class="pos">高于区域均值 ${fmtNum(a - wAvg)}</span>` : ` <span class="neg">低于区域均值 ${fmtNum(wAvg - a)}</span>`) : ''}`],
+    ['完工百分比', fmtPct(r.progress)], ['风险情况', `<span class="badge-status ${riskBadge(r.risk)}">${r.risk}</span>`],
+    ['盈亏状态', `<span class="badge-status ${plBadge(r.pl_status)}">${r.pl_status}</span>`],
+    ['阶段备注', r.note || '—'],
+  ];
+  document.getElementById('drill-title').innerHTML = `${r.name}<small>${r.stage}</small>`;
+  document.getElementById('drill-body').innerHTML = `
+    <div class="m-sum">年化人均产值 = ${fmtNum(r.eff_output)} ÷ ${state.months} × 12 ÷ ${r.staff ?? '—'}${a === null ? '' : ' = <b>' + fmtNum(a) + '</b> 万元/人/年'}</div>
+    <table class="drill-table"><tbody>${rows.map(x => `<tr><td style="color:var(--text-muted);width:170px">${x[0]}</td><td style="white-space:normal">${x[1]}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('drill-mask').classList.add('show');
+}
+function closeDrill() { drillState = null; document.getElementById('drill-mask').classList.remove('show'); }
+document.getElementById('drill-close').addEventListener('click', closeDrill);
+document.getElementById('drill-mask').addEventListener('click', e => { if (e.target.id === 'drill-mask') closeDrill(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrill(); });
+
+// ===================== 编辑事件 =====================
+document.querySelector('#detail-table tbody').addEventListener('change', e => {
+  const el = e.target;
+  const name = el.dataset.name, field = el.dataset.field;
+  if (!name || !field) return;
+  const p = P.find(x => x.name === name);
+  if (!p) return;
+  if (field === 'name') {
+    const newName = el.value.trim() || name;
+    p.name = newName;
+    if (EDITS[name]) { EDITS[newName] = EDITS[name]; delete EDITS[name]; }
+  } else if (['risk', 'pl_status', 'stage', 'cust_type'].includes(field)) {
+    p[field] = el.value;
+    EDITS[name] = Object.assign({}, EDITS[name], { [field]: p[field] });
+  } else if (el.dataset.pct === '1') {
+    const num = parseFloat(el.value);
+    p[field] = isNaN(num) ? null : num / 100;
+    EDITS[name] = Object.assign({}, EDITS[name], { [field]: p[field] });
+  } else {
+    const num = parseFloat(el.value);
+    p[field] = isNaN(num) ? null : num;
+    EDITS[name] = Object.assign({}, EDITS[name], { [field]: p[field] });
+  }
+  saveEdits(EDITS); saveRows();
+  renderAll();
+});
+document.querySelector('#detail-table tbody').addEventListener('click', e => {
+  const btn = e.target.closest('.row-del');
+  if (!btn) return;
+  const name = btn.dataset.name;
+  const p = P.find(x => x.name === name);
+  if (!p) return;
+  if (!confirm(`确定删除「${name}」？该操作会同步从全部图表中移除。`)) return;
+  const i = P.findIndex(x => x.name === name);
+  if (i >= 0) P.splice(i, 1);
+  if (p._custom) ROWEDITS.added = ROWEDITS.added.filter(x => x !== p && x.name !== name);
+  else if (!ROWEDITS.deleted.includes(name)) ROWEDITS.deleted.push(name);
+  delete EDITS[name];
+  saveEdits(EDITS); saveRows();
+  renderAll();
+});
+
+// ===================== 工具栏事件 =====================
+document.getElementById('stage-btns').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#stage-btns button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.sec = e.target.dataset.sec;
+  renderTable();
+});
+document.getElementById('sort-btns').addEventListener('click', e => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#sort-btns button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  state.chartSort = e.target.dataset.s;
+  renderCharts();
+});
+document.getElementById('search').addEventListener('input', e => { state.kw = e.target.value.trim().toLowerCase(); renderTable(); });
+document.getElementById('risk-filter').addEventListener('change', e => { state.risk = e.target.value; renderTable(); });
+const monthsInput = document.getElementById('months-input');
+monthsInput.value = state.months;
+monthsInput.addEventListener('change', e => {
+  let m = parseInt(e.target.value, 10);
+  if (isNaN(m) || m < 1) m = 1;
+  if (m > 12) m = 12;
+  state.months = m; e.target.value = m;
+  localStorage.setItem(LS_MONTHS, String(m));
+  renderAll();
+});
+document.getElementById('edit-toggle').addEventListener('click', () => {
+  state.edit = !state.edit;
+  const b = document.getElementById('edit-toggle');
+  b.textContent = state.edit ? '✅ 完成编辑' : '✏️ 编辑模式';
+  b.classList.toggle('editing', state.edit);
+  document.getElementById('add-row').style.display = state.edit ? '' : 'none';
+  document.getElementById('reset-data').style.display = state.edit ? '' : 'none';
+  document.getElementById('edit-hint').style.display = state.edit ? '' : 'none';
+  renderTable();
+});
+document.getElementById('add-row').addEventListener('click', () => {
+  const name = '新项目-' + (ROWEDITS.added.length + 1) + '-' + Date.now().toString(36);
+  const obj = { name, cust_type: '产业类', level: 'II级', start_date: '', contract: 0, income: 0, monthly_pc: 0, eff_output: 0, staff: 1, progress: 0, risk: '无风险', pl_status: '盈利', stage: state.sec !== '全部' ? state.sec : '正常施工', note: '', _custom: true };
+  P.push(obj);
+  ROWEDITS.added.push(obj);
+  saveRows();
+  renderAll();
+});
+document.getElementById('reset-data').addEventListener('click', () => {
+  if (!confirm('恢复默认将清除全部修改、删除与新增，确定？')) return;
+  localStorage.removeItem(LS_KEY); localStorage.removeItem(LS_ROWS); localStorage.removeItem(LS_MONTHS);
+  location.reload();
+});
+
+// ===================== 总渲染 =====================
+function renderAll() {
+  renderKPIs();
+  renderInsights();
+  renderCharts();
+  renderTable();
+  if (drillState) { // 弹窗打开时编辑数据，明细同步刷新
+    if (drillState.kind === 'one') openProjectDrill(drillState.name);
+    else openRowsDrill(drillState.title, drillState.rows);
+  }
+}
+renderAll();
+window.addEventListener('resize', () => [chartRank, chartStage, chartPie].forEach(c => c && c.resize()));
+</script>
+</body>
+</html>
