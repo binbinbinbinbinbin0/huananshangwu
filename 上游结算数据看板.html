@@ -153,6 +153,52 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
 .modal .m-body .num { text-align: right; font-variant-numeric: tabular-nums; }
 .modal .m-body tfoot td { font-weight: 700; background: rgba(15,23,42,.6); border-top: 2px solid var(--border); }
 .chart-box { cursor: pointer; }
+
+/* ===== 周进展追踪模块 ===== */
+.wk-chips { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.wk-chip { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; min-width: 160px; flex: 1; }
+.wk-chip .v { font-size: 22px; font-weight: 700; margin: 4px 0 2px; }
+.wk-chip .l { font-size: 12px; color: var(--text-muted); }
+.wk-warn { margin-bottom: 12px; line-height: 2; }
+.wk-badge { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 11px; font-weight: 600; }
+.wk-badge.stall { background: rgba(239,68,68,.15); color: #f87171; }
+.wk-badge.slow { background: rgba(245,158,11,.15); color: #fbbf24; }
+.wk-badge.ok { background: rgba(16,185,129,.15); color: #34d399; }
+.wk-badge.extra { background: rgba(139,92,246,.15); color: #a78bfa; }
+.prog-cell { cursor: pointer; color: var(--accent); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prog-cell:hover { text-decoration: underline; }
+tr.wk-row { cursor: pointer; }
+.tl-table { width: 100%; border-collapse: collapse; }
+.tl-table th, .tl-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; text-align: left; font-size: 13px; }
+.tl-table th { color: var(--text-muted); font-weight: 600; }
+.tl-table td.w { color: var(--text-muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tl-area { width: 100%; min-height: 58px; background: var(--bg); border: 1px solid var(--accent); border-radius: 8px; color: var(--text); padding: 8px; font-size: 13px; font-family: inherit; resize: vertical; }
+.wk-input { width: 100%; min-width: 170px; background: var(--bg); border: 1px solid var(--accent); border-radius: 6px; color: var(--text); padding: 4px 6px; font-size: 12px; font-family: inherit; }
+.wk-bar { margin-top: 10px; }
+
+/* 周进展 v2 */
+.wk-sum { cursor: pointer; }
+.wk-sum:hover { color: var(--accent); }
+tr.wk-detail td { background: rgba(59,130,246,.07); padding: 12px 16px; font-size: 13px; line-height: 1.8; }
+.wk-weekmgr { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; margin-top: 10px; }
+.wk-weekmgr .wtag { display: inline-block; margin: 0 8px 8px 0; padding: 4px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; }
+.wk-weekmgr .wtag button { background: none; border: none; color: #f87171; cursor: pointer; margin-left: 6px; font-size: 12px; padding: 0; }
+.wk-weekmgr .wtag button.rs { color: #34d399; }
+.wk-weekmgr .wtag.removed { opacity: .45; text-decoration: line-through; }
+#wk-edit-toggle { margin-right: 8px; }
+
+/* 周进展 v3：方形小弹窗 + 内联新增 */
+.wk-pop-mask { position: fixed; inset: 0; background: rgba(2,6,23,.62); display: none; align-items: center; justify-content: center; z-index: 1300; }
+.wk-pop-mask.show { display: flex; }
+.wk-pop { width: 520px; max-width: 92vw; height: 400px; max-height: 82vh; background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.wk-pop .p-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 14px; }
+.wk-pop .p-body { padding: 16px 18px; overflow-y: auto; font-size: 14px; line-height: 1.9; flex: 1; }
+.wk-pop .p-close { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; flex: none; }
+.wk-pop .p-close:hover { color: var(--text); }
+.wk-addbar { display: inline-flex; gap: 6px; align-items: center; margin-left: 8px; }
+.wk-addbar input { background: var(--bg); border: 1px solid var(--accent); border-radius: 6px; color: var(--text); padding: 5px 8px; font-size: 12px; width: 96px; font-family: inherit; }
+.wk-addbar .err { color: #f87171; font-size: 12px; }
+.wk-weekmgr .wtag button.cf { color: #f87171; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -265,6 +311,34 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
     </div>
   </div>
 
+  <div class="section-title">📅 周进展追踪 <small>数据源：结算推进会台账（26.8.14 版，含 26.8.18 周）· 点项目看逐周时间线 · 开启「编辑模式」可填本周进展、新增周次，全板联动</small></div>
+  <div class="wk-chips" id="wk-chips"></div>
+  <div class="wk-warn" id="wk-warn"></div>
+  <div class="data-table-wrap">
+    <div class="table-scroll">
+      <table class="data-table" id="wk-table">
+        <thead><tr></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="wk-bar">
+    <button class="btn" id="wk-edit-toggle">✏️ 编辑进展</button>
+    <button class="btn ghost" id="wk-add-week" style="display:none">＋ 新增一周</button>
+    <span class="wk-addbar" id="wk-addbar" style="display:none"><input id="wk-newlabel" placeholder="如 26.8.25"><button class="btn" id="wk-add-ok" style="padding:5px 12px">确定</button><button class="btn ghost" id="wk-add-cancel" style="padding:5px 10px">取消</button><span class="err" id="wk-add-err"></span></span>
+    <button class="btn ghost" id="wk-del-week" style="display:none">🗑 周次管理</button>
+    <span class="edit-hint" id="wk-hint" style="display:none">进展编辑中：「本周进展」列直接填写；点项目行可改历史各周；「周次管理」可删除/恢复任意周；改动保存在本浏览器并即时联动</span>
+  </div>
+  <div class="wk-weekmgr" id="wk-weekmgr" style="display:none"></div>
+
+  <!-- 完整进展小弹窗 -->
+  <div class="wk-pop-mask" id="wk-pop-mask">
+    <div class="wk-pop">
+      <div class="p-head"><span id="wk-pop-title"></span><button class="p-close" id="wk-pop-close">✕</button></div>
+      <div class="p-body" id="wk-pop-body"></div>
+    </div>
+  </div>
+
   <div class="footnote">
     注：①「当前已完成」计入全部已竣未结项目（含力争/备选项目，完成结算即计入 70 亿总指标）；看板所有合计均由项目行实时汇总，编辑任一数据即全板联动；
     ②预计自施收益额 = 预计自施结算额 − 预计自施成本，预计收益率 = 收益额 ÷ 自施结算额，随收入/成本修改实时重算；
@@ -289,6 +363,486 @@ td.edited-cell::after { content: ""; position: absolute; left: 0; top: 0; bottom
 const DATA = {"updated": "2026-08-05", "projects": [{"section": "已竣未结", "subsection": null, "name": "深圳前海深港青年梦工场北区(二期)", "mode": "兼职", "is_target": "是", "hq_deadline": "2026-09-30", "settle_date": null, "months": 34.833333, "manager": "李浩", "status": "已竣未结", "category": "C", "target": 28400, "done": null, "floor": 28400, "strive": 28400, "stretch": 28400, "self_settle": 14500, "total_settle": 28400, "self_cost": 15299.913, "total_cost": 29199.913, "profit": -799.913, "profit_rate": -0.055166, "approved_rate": 0.0548, "received": 24450.75, "self_received": 12616, "loan_gap": -2378.98, "remaining": 1884, "house_offset": null, "loan": 2527.11, "interest": 39.758853, "turned_in": 637.125352, "sub_total": 27328.06, "sub_paid": 24542.198, "sub_owed": 2785.862, "pay_gap": -901.862, "reason": "加快结算，若有高风险包商需贷款支付", "measure": "10月份送造价站", "cust_type": "国有企业/政府"}, {"section": "已竣未结", "subsection": null, "name": "深圳礼鼎高端集成电路载板及先进封装基地", "mode": "兼职", "is_target": "是", "hq_deadline": "2026-06-30", "settle_date": null, "months": 33.666667, "manager": "龙郑浩", "status": "已竣未结", "category": "B", "target": 132000, "done": 134000, "floor": 134000, "strive": 134000, "stretch": 134000, "self_settle": 131941.16696, "total_settle": 131941.16696, "self_cost": 127546.057293, "total_cost": 127546.057293, "profit": 4395.109667, "profit_rate": 0.033311, "approved_rate": 0.0566, "received": 116111.47, "self_received": 116111.47, "loan_gap": -10973.089935, "remaining": 15829.69696, "house_offset": null, "loan": 11091.359994, "interest": 4.28, "turned_in": 5449.87, "sub_total": 121438.417004, "sub_paid": 114520.92, "sub_owed": 6917.497004, "pay_gap": 8912.199956, "reason": "预计结算完收款在26年1月份，考虑风险分包贷款支付", "measure": "北京博新天华科", "cust_type": "产业类"}, {"section": "已竣未结", "subsection": null, "name": "广州保利三元里", "mode": "兼职", "is_target": "是", "hq_deadline": "2026-05-31", "settle_date": null, "months": 39.766667, "manager": "张培培", "status": "已竣未结", "category": "C", "target": 50000, "done": null, "floor": 0, "strive": 0, "stretch": 0, "self_settle": 49286.59, "total_settle": 50000, "self_cost": 57086.59, "total_cost": 57800, "profit": -7800, "profit_rate": -0.158258, "approved_rate": 0.0601, "received": 41974.92, "self_received": 41974.92, "loan_gap": -16464.09, "remaining": 7311.67, "house_offset": 3000, "loan": 16460.94, "interest": 527.98, "turned_in": 2722.29, "sub_total": 51523.13, "sub_paid": 50473.28, "sub_owed": 1049.85, "pay_gap": 6261.82, "reason": "加快结算，结算后优先抵房，抵完前若有高风险包商需贷款支付", "measure": null, "cust_type": "地产类"}, {"section": "已竣未结", "subsection": null, "name": "东莞OPPO滨海湾数据中心机电", "mode": "兼职", "is_target": "是", "hq_deadline": "2026-03-31", "settle_date": "2026-05-06", "months": 44.8, "manager": "张旭柱", "status": "已竣已结", "category": "B", "target": 15582.16, "done": 15582.16, "floor": 15582.16, "strive": 15582.16, "stretch": 15582.16, "self_settle": 13845.144369, "total_settle": 15582.157669, "self_cost": 13706.393219, "total_cost": 15443.41, "profit": 138.75115, "profit_rate": 0.010022, "approved_rate": 0.065, "received": 15582.157669, "self_received": 13845.144369, "loan_gap": 236.11, "remaining": 0, "house_offset": null, "loan": null, "interest": 75.54, "turned_in": 682.97, "sub_total": 14435.78, "sub_paid": 13704.66, "sub_owed": 731.12, "pay_gap": -731.12, "reason": null, "measure": null, "cust_type": "产业类"}, {"section": "已竣未结", "subsection": null, "name": "江门华发四季", "mode": "集中", "is_target": "是", "hq_deadline": "2026-06-30", "settle_date": null, "months": 58.033333, "manager": "吴鹂莹", "status": "已竣未结", "category": "D", "target": 38300, "done": 38100, "floor": 38300, "strive": 38300, "stretch": 38300, "self_settle": 38300, "total_settle": 38300, "self_cost": 44068.29, "total_cost": 44068.29, "profit": -5768.29, "profit_rate": -0.150608, "approved_rate": 0.0563, "received": 34394.79, "self_received": 34394.79, "loan_gap": -9478.803407, "remaining": 3905.21, "house_offset": null, "loan": 9486.542969, "interest": 2451.8, "turned_in": 2034.3944, "sub_total": 38491.23, "sub_paid": 37491.592448, "sub_owed": 999.637552, "pay_gap": 2905.572448, "reason": "加快结算，结算后优先抵房，抵完前若有高风险包商需贷款支付", "measure": null, "cust_type": "地产类"}, {"section": "已竣未结", "subsection": null, "name": "深圳光明区金融街", "mode": "集中", "is_target": "是", "hq_deadline": "2026-09-30", "settle_date": null, "months": 50.933333, "manager": "石福生", "status": "已竣未结", "category": "C", "target": 36300, "done": null, "floor": null, "strive": 36300, "stretch": 36300, "self_settle": 36300, "total_settle": 36300, "self_cost": 41330.15, "total_cost": 41330.15, "profit": -5030.15, "profit_rate": -0.138572, "approved_rate": 0.057, "received": 31048.86, "self_received": 31048.86, "loan_gap": -10019.15, "remaining": 5251.14, "house_offset": null, "loan": 10020.62, "interest": 2939.09, "turned_in": 1912.85, "sub_total": 35196.61, "sub_paid": 34753.1, "sub_owed": 443.51, "pay_gap": 4807.63, "reason": "加快结算，若有高风险包商需贷款支付", "measure": null, "cust_type": "地产类"}, {"section": "已竣未结", "subsection": null, "name": "珠海华发广场", "mode": "集中", "is_target": "是", "hq_deadline": "2026-06-30", "settle_date": null, "months": 46.833333, "manager": "程玉琦", "status": "已竣未结", "category": "D", "target": 22800, "done": null, "floor": 20000, "strive": 20000, "stretch": 20000, "self_settle": 22800, "total_settle": 22800, "self_cost": 28938.419258, "total_cost": 28938.419258, "profit": -6138.419257, "profit_rate": -0.269229, "approved_rate": 0.0561, "received": 18106.75, "self_received": 18106.75, "loan_gap": -11302.59, "remaining": 4693.25, "house_offset": 2815.95, "loan": 11208.01, "interest": 2689.22, "turned_in": 1620.225222, "sub_total": 24748.019258, "sub_paid": 24513.82, "sub_owed": 234.199257, "pay_gap": 4459.050742, "reason": "加快结算，结算后优先抵房，抵完前若有高风险包商需贷款支付", "measure": null, "cust_type": "地产类"}, {"section": "已竣未结", "subsection": null, "name": "深圳嘉里商务中心(三期)", "mode": "集中", "is_target": "是", "hq_deadline": "2026-12-31", "settle_date": null, "months": 20.433333, "manager": "沈志斌", "status": "已竣未结", "category": "C", "target": 88693.89, "done": null, "floor": 88693.899, "strive": 88693.899, "stretch": 88693.899, "self_settle": 41225.07, "total_settle": 88693.888769, "self_cost": 40000, "total_cost": 87468.818769, "profit": 1225.07, "profit_rate": 0.029717, "approved_rate": 0.0506, "received": 83948.85, "self_received": 36528.45, "loan_gap": -2093.7, "remaining": 4696.62, "house_offset": null, "loan": 2093.48, "interest": 68, "turned_in": 1687.42, "sub_total": 34784.72, "sub_paid": 32833.6, "sub_owed": 1951.12, "pay_gap": 2745.5, "reason": "加快结算回款", "measure": null, "cust_type": "地产类"}, {"section": "已竣未结", "subsection": null, "name": "深圳南山中国电子科技园", "mode": null, "is_target": "是", "hq_deadline": "2026-09-30", "settle_date": null, "months": 16.6, "manager": "桑海鹏", "status": "已竣未结", "category": "D", "target": 86000, "done": null, "floor": null, "strive": null, "stretch": 86000, "self_settle": 70000, "total_settle": 86000, "self_cost": 69997.77, "total_cost": 85997.77, "profit": 2.23, "profit_rate": 3.2e-05, "approved_rate": 0.055, "received": 75838.85, "self_received": 60944.29, "loan_gap": -7272.92, "remaining": 9055.71, "house_offset": null, "loan": 7414.23, "interest": 212.39, "turned_in": 2620.52, "sub_total": 62785.71, "sub_paid": 58868.04, "sub_owed": 3917.67, "pay_gap": 5138.04, "reason": "1.分阶段加快结算回款;", "measure": "2.重点风险分包贷款支付", "cust_type": "国有企业/政府"}, {"section": "已竣未结", "subsection": null, "name": "深圳中山大学附属七院二期", "mode": "兼职", "is_target": "是", "hq_deadline": "2026-10-31", "settle_date": null, "months": 13.366667, "manager": "许亚男", "status": "已竣未结", "category": "C", "target": 105478, "done": null, "floor": 105478, "strive": 105478, "stretch": 105478, "self_settle": 105478, "total_settle": 105478, "self_cost": 99840.5, "total_cost": 99840.5, "profit": 5637.5, "profit_rate": 0.053447, "approved_rate": 0.0534, "received": 93156.31, "self_received": 93156.31, "loan_gap": 10869.16, "remaining": 12321.69, "house_offset": null, "loan": 0, "interest": 0, "turned_in": 2291.047, "sub_total": 94905.75, "sub_paid": 77806.482, "sub_owed": 17099.268, "pay_gap": -4777.578, "reason": "加快结算回款", "measure": null, "cust_type": "市工务署"}, {"section": "已竣未结", "subsection": null, "name": "深圳市坪地北地块场平工程", "mode": "兼职", "is_target": "是", "hq_deadline": "2026-06-30", "settle_date": null, "months": 16.366667, "manager": "周文", "status": "已竣未结", "category": "C", "target": 13500, "done": null, "floor": 13500, "strive": 13500, "stretch": 13500, "self_settle": 13650, "total_settle": 13650, "self_cost": 13450.62, "total_cost": 13450.62, "profit": 199.38, "profit_rate": 0.014607, "approved_rate": 0.08, "received": 11039.3, "self_received": 11039.3, "loan_gap": -1291.83, "remaining": 2610.7, "house_offset": null, "loan": 1009.96, "interest": 110.94, "turned_in": 804.04, "sub_total": 11916.83, "sub_paid": 10372.25, "sub_owed": 1544.58, "pay_gap": 1066.12, "reason": null, "measure": null, "cust_type": "区工务署"}, {"section": "已竣未结", "subsection": null, "name": "深圳新皇岗口岸综合业务楼项目", "mode": null, "is_target": "是", "hq_deadline": "2026-12-31", "settle_date": null, "months": 7.533333, "manager": "周坚", "status": "已竣未结", "category": "C", "target": 85500.015942, "done": null, "floor": 85500.02, "strive": 85500.02, "stretch": 85500.02, "self_settle": 68439.89, "total_settle": 85500.02, "self_cost": 62639.44, "total_cost": 79699.56, "profit": 5800.45, "profit_rate": 0.084752, "approved_rate": 0.0614, "received": 74543, "self_received": 57982.89, "loan_gap": 3486.837333, "remaining": 10457, "house_offset": 0, "loan": 230.406634, "interest": 1.32098, "turned_in": 2564.655064, "sub_total": 71410.419823, "sub_paid": 62015.667204, "sub_owed": 9394.752619, "pay_gap": 1062.247381, "reason": null, "measure": null, "cust_type": "市工务署"}, {"section": "已竣未结", "subsection": "力争结算项目", "name": "龙城街道龙飞学校新建工程(二期)", "mode": "兼职", "is_target": "否", "hq_deadline": null, "settle_date": null, "months": 1.2, "manager": "唐清鉴", "status": "在施", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 15446.97, "total_settle": 30155.91, "self_cost": 14434.46, "total_cost": 29143.4, "profit": 1012.51, "profit_rate": 0.065547, "approved_rate": 0.0526, "received": 26163.96, "self_received": 12062.92, "loan_gap": 974.52, "remaining": 3384.05, "house_offset": null, "loan": null, "interest": null, "turned_in": 530.92, "sub_total": 12775.21, "sub_paid": 9799.56, "sub_owed": 2975.65, "pay_gap": 408.4, "reason": null, "measure": null, "cust_type": "区工务署"}, {"section": "已竣未结", "subsection": "力争结算项目", "name": "机场教育基地", "mode": "兼职", "is_target": "否", "hq_deadline": null, "settle_date": null, "months": 4.633333, "manager": "王洪艳", "status": "在施", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 29190.45, "total_settle": 45700.29, "self_cost": 27649.19, "total_cost": 44159.03, "profit": 1541.26, "profit_rate": 0.0528, "approved_rate": 0.0528, "received": 38180.23, "self_received": 21093.07, "loan_gap": 4380.67, "remaining": 8097.38, "house_offset": null, "loan": null, "interest": 5.14, "turned_in": 954.31, "sub_total": 25774.08, "sub_paid": 20361.47225, "sub_owed": 5412.60775, "pay_gap": 2684.77225, "reason": null, "measure": null, "cust_type": "机场"}, {"section": "已竣未结", "subsection": "力争结算项目", "name": "佛山怡翠尊堤嘉园D2区", "mode": "兼职", "is_target": "否", "hq_deadline": null, "settle_date": "2026-06-11", "months": 85.6, "manager": "张培培", "status": "已竣已结", "category": "C", "target": null, "done": 30248.44, "floor": 30248.44, "strive": 30248.44, "stretch": 30248.44, "self_settle": 17748.43, "total_settle": 30248.436, "self_cost": 18305.16, "total_cost": 30805.166, "profit": -556.73, "profit_rate": -0.031368, "approved_rate": 0.06, "received": 21933.02, "self_received": 9433.02, "loan_gap": -8765.26, "remaining": 8315.41, "house_offset": null, "loan": 8765.7, "interest": 3077.27, "turned_in": 960, "sub_total": 14980.03, "sub_paid": 14889.72, "sub_owed": 90.31, "pay_gap": 8225.1, "reason": "诉讼办理结算及回款", "measure": null, "cust_type": "地产类"}, {"section": "已竣未结", "subsection": "力争结算项目", "name": "东莞骏鼎达功能性保护材料生产建设", "mode": "兼职", "is_target": "否", "hq_deadline": null, "settle_date": null, "months": 1.7, "manager": "王正亮", "status": "已竣未结", "category": "C", "target": null, "done": null, "floor": 12202.4, "strive": 12202.4, "stretch": 12202.4, "self_settle": 10398.1, "total_settle": 12202.4, "self_cost": 10398.1, "total_cost": 12202.4, "profit": 0, "profit_rate": 0, "approved_rate": 0.0511, "received": 9515.19, "self_received": 8222.68, "loan_gap": 566.485665, "remaining": 2175.42, "house_offset": 0, "loan": 0, "interest": 0, "turned_in": 0, "sub_total": 8603.82, "sub_paid": 6795.54, "sub_owed": 1808.28, "pay_gap": 367.14, "reason": null, "measure": null, "cust_type": "产业类"}, {"section": "已竣未结", "subsection": "力争结算项目", "name": "东莞小天才滨海湾项目", "mode": "兼职", "is_target": "否", "hq_deadline": null, "settle_date": null, "months": 1.2, "manager": "席亮", "status": "已竣未结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 71890, "total_settle": 71890, "self_cost": 68000, "total_cost": 68000, "profit": 3890, "profit_rate": 0.05411, "approved_rate": 0.054, "received": 57642.572523, "self_received": 57642.572523, "loan_gap": 661.83, "remaining": 14247.427477, "house_offset": null, "loan": null, "interest": null, "turned_in": 2671.0298, "sub_total": 61431.5834, "sub_paid": 51148, "sub_owed": 10283.5834, "pay_gap": 3963.844077, "reason": null, "measure": null, "cust_type": "产业类"}, {"section": "已竣未结", "subsection": "力争结算项目", "name": "东莞小天才滨海湾智能科技中心", "mode": "兼职", "is_target": "否", "hq_deadline": null, "settle_date": null, "months": 8.266667, "manager": "席亮", "status": "已竣未结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 4100, "total_settle": 4100, "self_cost": 3878.6, "total_cost": 3878.6, "profit": 221.4, "profit_rate": 0.054, "approved_rate": 0.054, "received": 3265.6977, "self_received": 3265.6977, "loan_gap": 46.83, "remaining": 834.3023, "house_offset": null, "loan": null, "interest": null, "turned_in": 151.7269, "sub_total": 3300, "sub_paid": 2900.75, "sub_owed": 399.25, "pay_gap": 435.0523, "cust_type": "产业类"}, {"section": "已竣未结", "subsection": "力争结算项目", "name": "东莞华为研发实验室（一期）", "mode": "兼职", "is_target": "否", "hq_deadline": null, "settle_date": null, "months": null, "manager": "周文", "status": "已竣未结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 17792.63, "total_settle": 17792.63, "self_cost": 29950, "total_cost": null, "profit": -12157.37, "profit_rate": -0.683281, "approved_rate": 0.06, "received": 17272.05, "self_received": 17272.05, "loan_gap": -13002.69, "remaining": 520.58, "house_offset": null, "loan": 14396.03, "interest": 171.13, "turned_in": 1357.94, "sub_total": 26722.99, "sub_paid": 26618.81, "sub_owed": 104.18, "pay_gap": 416.4, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "产业类"}, {"section": "已竣已结", "subsection": null, "name": "深圳鹏鼎时代大厦机电", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2025-07-25", "months": 32.233333, "manager": "张旭柱", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 13122.59, "total_settle": 16144.54, "self_cost": 13879.94, "total_cost": 16901.89, "profit": -757.35, "profit_rate": -0.057713, "approved_rate": 0.07, "received": 15944.54, "self_received": 12922.59, "loan_gap": -217.16, "remaining": 200, "house_offset": null, "loan": 580.09, "interest": 123.26, "turned_in": 597.61, "sub_total": 11885.79, "sub_paid": 11520.583, "sub_owed": 365.207, "pay_gap": -157.19, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "产业类"}, {"section": "已竣已结", "subsection": null, "name": "深圳首创商务大厦", "mode": "总部", "is_target": null, "hq_deadline": null, "settle_date": "2025/12/02", "months": 49.966667, "manager": "张波", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 11691.69, "total_settle": 11691.69, "self_cost": 14232.15, "total_cost": 14232.15, "profit": -2540.46, "profit_rate": -0.217288, "approved_rate": 0.07, "received": 11359.02, "self_received": 11359.02, "loan_gap": -6619.24, "remaining": 332.67, "house_offset": 332.67, "loan": 6603.68, "interest": 66.71, "turned_in": 737.52, "sub_total": 12789.8, "sub_paid": 12312.39, "sub_owed": 477.41, "pay_gap": -144.74, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "深圳国深博物馆", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2025/12/05", "months": 18.633333, "manager": "莫倍金", "status": "已竣已结", "category": "A", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 22410.049112, "total_settle": 22410.049112, "self_cost": 21001.95, "total_cost": 21001.95, "profit": 1408.099112, "profit_rate": 0.062833, "approved_rate": 0.0606, "received": 20829.03, "self_received": 20829.03, "loan_gap": 2.52, "remaining": 1581.019112, "house_offset": null, "loan": 750.51, "interest": 36.844601, "turned_in": 1033.01, "sub_total": 19206.78, "sub_paid": 18851.5367, "sub_owed": 355.2433, "pay_gap": 1225.775812, "reason": "跟进收款800万，本年11月质保到期正在沟通保函置换（收款支付）", "measure": "土方单位欠款较多", "cust_type": "国有企业/政府"}, {"section": "已竣已结", "subsection": null, "name": "深圳前湾信息枢纽中心", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2025/08/21", "months": 13.9, "manager": "莫倍金", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 52434.45, "total_settle": 52434.45, "self_cost": 50566.7479, "total_cost": 50566.7479, "profit": 1867.7021, "profit_rate": 0.03562, "approved_rate": 0.056, "received": 51315.73, "self_received": 51315.73, "loan_gap": 19.41, "remaining": 1118.72, "house_offset": null, "loan": 197.83, "interest": 77.95, "turned_in": 2355.97, "sub_total": 45362.35, "sub_paid": 44126.4975, "sub_owed": 1235.8525, "pay_gap": -117.1325, "reason": "8月底报出，4100万，在走业主OA流程，10月底或11月可能受。12月18日到期，发起质保金到期，1100万尾款。加速收款，收款后处理下游风险分包", "measure": null, "cust_type": "产业类"}, {"section": "已竣已结", "subsection": null, "name": "深圳平安财险大厦", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2025-09-08", "months": 59.1, "manager": "周坚", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 10691.42, "total_settle": 10691.42, "self_cost": 11910.91, "total_cost": 11910.91, "profit": -1219.49, "profit_rate": -0.114062, "approved_rate": 0.06, "received": 10585.76734, "self_received": 10585.76734, "loan_gap": -1843.83, "remaining": 105.65266, "house_offset": null, "loan": 1904.917328, "interest": 99.928315, "turned_in": 651.006687, "sub_total": 10888.387028, "sub_paid": 10888.387028, "sub_owed": 0, "pay_gap": 105.65266, "reason": "下周走盖章流程", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "深圳职业技术学院北校区", "mode": "蒹职", "is_target": null, "hq_deadline": null, "settle_date": "2025-07-03", "months": 16.8, "manager": "周坚", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 43944.41, "total_settle": 43944.41, "self_cost": 45375, "total_cost": 45375, "profit": -1430.59, "profit_rate": -0.032555, "approved_rate": 0.0624, "received": 43898.95, "self_received": 43898.95, "loan_gap": -2878.08, "remaining": 45.46, "house_offset": null, "loan": 5604.6, "interest": 938.90568, "turned_in": 2185.062025, "sub_total": 42794.330524, "sub_paid": 40729.601365, "sub_owed": 2064.729159, "pay_gap": -2019.269159, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "佛山建鑫乐家花园", "mode": "无商务经理", "is_target": null, "hq_deadline": null, "settle_date": "2025-12-20", "months": 56.966667, "manager": "伊丽娟", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 655.17, "total_settle": 655.17, "self_cost": 645.02, "total_cost": 645.02, "profit": 10.15, "profit_rate": 0.015492, "approved_rate": 0.0606, "received": 457.09, "self_received": 457.09, "loan_gap": -0.02, "remaining": 198.08, "house_offset": null, "loan": 0, "interest": 0, "turned_in": 21.24, "sub_total": 525.34, "sub_paid": 340.01, "sub_owed": 185.33, "pay_gap": 12.75, "reason": "加速结算收款，收款后清欠", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "深圳香港中文大学二期II标", "mode": "集中", "is_target": null, "hq_deadline": null, "settle_date": "2025-09-08", "months": 13.5, "manager": "郎静海", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 79883.82, "total_settle": 91456.174105, "self_cost": 90807.38, "total_cost": 102379.745, "profit": -10923.56, "profit_rate": -0.136743, "approved_rate": 0.0606, "received": 88322.62, "self_received": 77097.436518, "loan_gap": -22836.28, "remaining": 2786.383482, "house_offset": null, "loan": 24984.05, "interest": 2796.52, "turned_in": 4833.46, "sub_total": 96332.53, "sub_paid": 95533.68, "sub_owed": 798.85, "pay_gap": 3930.40126, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "深圳市皇岗公园改造", "mode": "分公司", "is_target": null, "hq_deadline": null, "settle_date": "2024-09-20", "months": 21, "manager": "陈雷", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 3946.977829, "total_settle": 3946.977829, "self_cost": 4984.977, "total_cost": 4984.977, "profit": -1037.999171, "profit_rate": -0.262986, "approved_rate": 0.0501, "received": 3562, "self_received": 3562, "loan_gap": -1084.975344, "remaining": 384.977829, "house_offset": null, "loan": 1084.975344, "interest": 244.124547, "turned_in": 179.573226, "sub_total": 4521.297096, "sub_paid": 4145.344159, "sub_owed": 375.952937, "pay_gap": 9.024892, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "湛江华发新城花园", "mode": "集中", "is_target": null, "hq_deadline": null, "settle_date": "2025-12-25", "months": 40.433333, "manager": "郎静海", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 39285.29, "total_settle": 39285.29, "self_cost": 41450.71, "total_cost": 41450.71, "profit": -2165.42, "profit_rate": -0.05512, "approved_rate": 0.0505, "received": 35983.16, "self_received": 35983.16, "loan_gap": -6278.83, "remaining": 3302.13, "house_offset": 2311.49, "loan": 6279.49, "interest": 1742.14, "turned_in": 2208.26, "sub_total": 36357.09, "sub_paid": 35966.77, "sub_owed": 390.32, "pay_gap": 2911.81, "reason": "加快结算，结算后优先抵房，抵完前若有高风险包商需贷款支付", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "珠海正威科创中心", "mode": "调离", "is_target": null, "hq_deadline": null, "settle_date": "2025-12-18", "months": 23.333333, "manager": "房延国", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 27000, "total_settle": 28600, "self_cost": 24600, "total_cost": 26200, "profit": 2400, "profit_rate": 0.088889, "approved_rate": 0.0702, "received": null, "self_received": 0, "loan_gap": -22153.43, "remaining": 27000, "house_offset": null, "loan": 22419.21, "interest": 600.09, "turned_in": 1077.77, "sub_total": 18872.28, "sub_paid": 16655.29, "sub_owed": 2216.99, "pay_gap": 24783.01, "reason": "诉讼办理结算及回款", "measure": null, "cust_type": "产业类"}, {"section": "已竣已结", "subsection": null, "name": "广州市增城区房地产开发", "mode": "调离", "is_target": null, "hq_deadline": null, "settle_date": "2025-12-02", "months": 5.133333, "manager": "崔硕磊", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 52752.6, "total_settle": 91013.519363, "self_cost": 52752.6, "total_cost": 91013.5193, "profit": 0, "profit_rate": 0, "approved_rate": 0.0528, "received": 86192.533329, "self_received": 50896.854855, "loan_gap": -671.11, "remaining": 1855.745145, "house_offset": null, "loan": 6394.55, "interest": 15.19, "turned_in": 1279.22, "sub_total": 48137.451618, "sub_paid": 45289.897211, "sub_owed": 2847.554407, "pay_gap": -1370.04, "reason": "加快结算回款", "measure": "抵房+贷款清欠", "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "深圳SZX-GF01字节跳动后海中心", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2025-12-31", "months": 15.233333, "manager": "陈基艺", "status": "已竣已结", "category": "A", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 38684.85, "total_settle": 48367.52, "self_cost": 36130.45, "total_cost": 47025.28, "profit": 2554.4, "profit_rate": 0.066031, "approved_rate": 0.06, "received": 54870.03, "self_received": 31750.53, "loan_gap": -292.04, "remaining": 6934.32, "house_offset": null, "loan": 600, "interest": 8.551483, "turned_in": 532.68, "sub_total": 32071.59, "sub_paid": 28273.358, "sub_owed": 3798.232, "pay_gap": 3119.27, "reason": "加速结算收款，收款后清欠", "measure": null, "cust_type": "产业类"}, {"section": "已竣已结", "subsection": null, "name": "深圳小米国际总部", "mode": "调离", "is_target": null, "hq_deadline": null, "settle_date": "2024-01-24", "months": 6.433333, "manager": "房延国", "status": "已竣已结", "category": "A", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 8621.96, "total_settle": 9184.64, "self_cost": 7864.82, "total_cost": 8416.984588, "profit": 757.14, "profit_rate": 0.087815, "approved_rate": 0.0606, "received": 9184.64, "self_received": 8621.96, "loan_gap": 363.53, "remaining": 0, "house_offset": null, "loan": 0, "interest": 3.01, "turned_in": 512.35, "sub_total": 6822.91, "sub_paid": 6822.91, "sub_owed": 0, "pay_gap": 0, "reason": "按仲裁书支付", "measure": null, "cust_type": "产业类"}, {"section": "已竣已结", "subsection": null, "name": "深圳市创新创业无障碍服务中心", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2024-08-19", "months": 11.9, "manager": "周文", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 10604.21, "total_settle": 10604.21, "self_cost": 10599, "total_cost": 10599, "profit": 5.21, "profit_rate": 0.000491, "approved_rate": 0.0606, "received": 10604.21, "self_received": 10604.21, "loan_gap": -855.11, "remaining": 0, "house_offset": null, "loan": 1140, "interest": 338.56, "turned_in": 601.94, "sub_total": 9491.44, "sub_paid": 9491.44, "sub_owed": 0, "pay_gap": 0, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "深圳职业技术学院留仙洞校区", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2024-12-18", "months": 23.966667, "manager": "周坚", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 36629.73, "total_settle": 44382.706776, "self_cost": 36628.53, "total_cost": 44381.51, "profit": 1.2, "profit_rate": 3.3e-05, "approved_rate": 0.0623, "received": 44213.302347, "self_received": 36612.89, "loan_gap": -2146.67, "remaining": 16.84, "house_offset": null, "loan": 2164.070717, "interest": 622.194851, "turned_in": 1823.205708, "sub_total": 41408.736737, "sub_paid": 41083.506471, "sub_owed": 325.230266, "pay_gap": -308.390266, "reason": "加快回款，若有高风险包商需贷款支付", "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "深圳机场开发区西区", "mode": "调离", "is_target": null, "hq_deadline": null, "settle_date": "2024-12-20", "months": 46.366667, "manager": "张广杰", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 28877.0116, "total_settle": 28877.0116, "self_cost": 28877.01, "total_cost": 28877.01, "profit": 0.0016, "profit_rate": 0.0, "approved_rate": 0.056, "received": 28801.11, "self_received": 28801.11, "loan_gap": -5769.44, "remaining": 75.9016, "house_offset": null, "loan": 5776.27, "interest": 548.19, "turned_in": 1682.17, "sub_total": 29542.73, "sub_paid": 29185.81, "sub_owed": 356.92, "pay_gap": -281.0184, "reason": "回款先清下游，剩余还贷款", "measure": null, "cust_type": "机场"}, {"section": "已竣已结", "subsection": null, "name": "深圳技术大学建设项目（一期）", "mode": "调离", "is_target": null, "hq_deadline": null, "settle_date": null, "months": 0, "manager": "张广杰", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 122010.9, "total_settle": 122010.9, "self_cost": 141097.9, "total_cost": 141097.9, "profit": -19087, "profit_rate": -0.156437, "approved_rate": 0.07, "received": 122010.9, "self_received": 122010.9, "loan_gap": -18779.35, "remaining": 0, "house_offset": null, "loan": 18779.4, "interest": 483.73, "turned_in": 0, "sub_total": 133466.26, "sub_paid": 133232.72, "sub_owed": 233.54, "pay_gap": -233.54, "reason": "若有高风险包商需贷款支付", "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "珠海臻林山庄", "mode": "集中", "is_target": null, "hq_deadline": null, "settle_date": "2024-01-19", "months": 34.333333, "manager": "程玉琦", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 24808.05, "total_settle": 44399.223, "self_cost": 24798.22, "total_cost": 44389.395277, "profit": 9.83, "profit_rate": 0.000396, "approved_rate": 0.0505, "received": 24808.05, "self_received": 24808.05, "loan_gap": -5034.92, "remaining": 0, "house_offset": null, "loan": 5526.09, "interest": 916.848907, "turned_in": 1404.100712, "sub_total": 25328.01, "sub_paid": 24509.05, "sub_owed": 818.96, "pay_gap": -818.96, "reason": null, "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "佛山绿城", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2020-03-25", "months": 0, "manager": "张培培", "status": "已竣已结", "category": "A", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 45500, "total_settle": 45600, "self_cost": 42877.38, "total_cost": 42977.38, "profit": 2622.62, "profit_rate": 0.05764, "approved_rate": 0.0577, "received": 44688, "self_received": 44588, "loan_gap": -720.1, "remaining": 912, "house_offset": null, "loan": 715.23, "interest": 369, "turned_in": 2384.42, "sub_total": 40287.21, "sub_paid": 40234.724, "sub_owed": 52.486, "pay_gap": 859.514, "reason": "采用诉讼方式回收保修金", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "深圳嘉里商务中心（一期）", "mode": "分公司", "is_target": null, "hq_deadline": null, "settle_date": "2022-12-30", "months": 0, "manager": "沈志斌", "status": "已竣已结", "category": "A", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 959.76593, "total_settle": 959.76593, "self_cost": 906.019, "total_cost": 906.019, "profit": 53.74693, "profit_rate": 0.056, "approved_rate": 0.056, "received": 959.76593, "self_received": 959.76593, "loan_gap": 42.23, "remaining": 0, "house_offset": null, "loan": 0, "interest": 0, "turned_in": 47.328835, "sub_total": 901.475514, "sub_paid": 868.423433, "sub_owed": 33.052081, "pay_gap": -33.052081, "reason": "需要审批付款额度", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "深圳嘉里商务中心", "mode": "分公司", "is_target": null, "hq_deadline": null, "settle_date": "2022-12-30", "months": 0, "manager": "沈志斌", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 36670.8, "total_settle": 86719.78, "self_cost": 36630.97, "total_cost": 86679.95, "profit": 39.83, "profit_rate": 0.001086, "approved_rate": 0.056, "received": 82935.387997, "self_received": 34849.33816, "loan_gap": -2257.2, "remaining": 1821.46184, "house_offset": null, "loan": 2976.5, "interest": 1347.638401, "turned_in": 1626.21, "sub_total": 31102.87, "sub_paid": 30827.34, "sub_owed": 275.53, "pay_gap": 1545.93184, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "佛山市原干部家属区部分政府旧物业修缮改造", "mode": "无商务经理", "is_target": null, "hq_deadline": null, "settle_date": "2022-10-28", "months": 9.366667, "manager": "伊丽娟", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 1920.01, "total_settle": 1920.01, "self_cost": 1920.01, "total_cost": 1920.01, "profit": 0, "profit_rate": 0, "approved_rate": 0.08, "received": 1920.01, "self_received": 1920.01, "loan_gap": -258.32, "remaining": 0, "house_offset": null, "loan": 2.45, "interest": 38.92, "turned_in": 121.11, "sub_total": 1879.98, "sub_paid": 1847.9699, "sub_owed": 32.0101, "pay_gap": -32.0101, "reason": null, "measure": null, "cust_type": "国有企业/政府"}, {"section": "已竣已结", "subsection": null, "name": "佛山市东亚项目西区EPC", "mode": "无商务经理", "is_target": null, "hq_deadline": null, "settle_date": "2024-05-16", "months": 22.866667, "manager": "伊丽娟", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 25169.93, "total_settle": 26375.62, "self_cost": 25157.47, "total_cost": 26363.1589, "profit": 12.46, "profit_rate": 0.000495, "approved_rate": 0.0727, "received": 26019.91, "self_received": 24814.22, "loan_gap": -2164.58, "remaining": 355.71, "house_offset": null, "loan": 2164.67, "interest": 1039.54, "turned_in": 1600.98, "sub_total": 23885.5, "sub_paid": 23535.7, "sub_owed": 349.8, "pay_gap": 5.91, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "佛山顺德光正实验学校", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2022-09-15", "months": 16.766667, "manager": "张培培", "status": "已竣已结", "category": "A", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 18404.06, "total_settle": 18404.06, "self_cost": 17351.756786, "total_cost": 17351.756786, "profit": 1052.303214, "profit_rate": 0.057178, "approved_rate": 0.056, "received": 16764.649226, "self_received": 16764.649226, "loan_gap": -2146.09, "remaining": 1639.410774, "house_offset": 410, "loan": 2153.65, "interest": 454.7, "turned_in": 1053.8, "sub_total": 16083.580168, "sub_paid": 16000.28, "sub_owed": 83.300168, "pay_gap": 1556.110606, "reason": "下批回款时先清下游，剩余还贷款", "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "东莞小天才生产中心", "mode": "分公司", "is_target": null, "hq_deadline": null, "settle_date": "2023-01-16", "months": 8.7, "manager": "顾宗强", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 30354.83, "total_settle": 30354.83, "self_cost": 30349.41, "total_cost": 30349.41, "profit": 5.42, "profit_rate": 0.000179, "approved_rate": 0.0572, "received": 30081.83, "self_received": 30081.83, "loan_gap": 395.1, "remaining": 273, "house_offset": null, "loan": 256.63, "interest": 233.47, "turned_in": 0, "sub_total": 27024.48, "sub_paid": 26795.682396, "sub_owed": 228.797604, "pay_gap": -263.96, "reason": null, "measure": null, "cust_type": "产业类"}, {"section": "已竣已结", "subsection": null, "name": "深圳大学西丽校区", "mode": "分公司", "is_target": null, "hq_deadline": null, "settle_date": "2023-07-31", "months": 16.233333, "manager": "李博", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 44544.81, "total_settle": 44544.81, "self_cost": 49137.26, "total_cost": 49137.26, "profit": -4592.45, "profit_rate": -0.103097, "approved_rate": 0.0629, "received": 44544.81, "self_received": 44544.81, "loan_gap": -7736.83, "remaining": 0, "house_offset": null, "loan": 7584.86, "interest": 3225.41, "turned_in": 2806.32, "sub_total": 43927.55, "sub_paid": 43706.29, "sub_owed": 221.26, "pay_gap": -221.26, "reason": null, "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "广州金融街海珠区石岗路", "mode": "分公司", "is_target": null, "hq_deadline": null, "settle_date": "2023-09-19", "months": 50.9, "manager": "李博", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 45998.957893, "total_settle": 45998.957893, "self_cost": 48023.93, "total_cost": 48023.93, "profit": -2024.972107, "profit_rate": -0.044022, "approved_rate": 0.045, "received": 44957.88, "self_received": 45145.84, "loan_gap": -5263.73, "remaining": 853.117893, "house_offset": 335.058947, "loan": 5494.29, "interest": 1187.08, "turned_in": 1940.577, "sub_total": 43339.01, "sub_paid": 43328.211, "sub_owed": 10.799, "pay_gap": 842.318893, "reason": null, "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "三亚海棠湾国际购物中心物流基地", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2022-12-27", "months": 27.933333, "manager": "席亮", "status": "已竣已结", "category": "B", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 7029.998486, "total_settle": 7029.998486, "self_cost": 6643.3479, "total_cost": 6643.3479, "profit": 386.650586, "profit_rate": 0.055, "approved_rate": 0.055, "received": 7029.998486, "self_received": 7029.998486, "loan_gap": 51.062853, "remaining": 0, "house_offset": null, "loan": 0, "interest": 14.11, "turned_in": 386.649916, "sub_total": 4462.65, "sub_paid": 4411.668, "sub_owed": 50.982, "pay_gap": -50.982, "reason": null, "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "三亚海棠湾河心岛", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2022-12-27", "months": 27.933333, "manager": "席亮", "status": "已竣已结", "category": "A", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 29401.16, "total_settle": 29401.16, "self_cost": 27772.02, "total_cost": 27772.02, "profit": 1629.14, "profit_rate": 0.055411, "approved_rate": 0.055, "received": 29401.16, "self_received": 29401.16, "loan_gap": 295.780031, "remaining": 0, "house_offset": null, "loan": 0, "interest": 813.38341, "turned_in": 1469.080119, "sub_total": 26719.55, "sub_paid": 26635.163, "sub_owed": 84.387, "pay_gap": -84.387, "reason": null, "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "深圳职业技术学院学生公寓拆建", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2024-07-26", "months": 34.333333, "manager": "席亮", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 23411.062912, "total_settle": 23411.062912, "self_cost": 26200, "total_cost": 26200, "profit": -2788.937088, "profit_rate": -0.119129, "approved_rate": 0.07, "received": 23365.85, "self_received": 23365.85, "loan_gap": -4064.63, "remaining": 45.212912, "house_offset": null, "loan": 4044.82, "interest": 197.72, "turned_in": 1681.52, "sub_total": 23555.4432, "sub_paid": 23390, "sub_owed": 165.4432, "pay_gap": -120.230288, "reason": "若有高风险包商需贷款支付", "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "上海黄金交易所深圳运营中心", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2024-03-29", "months": 27.333333, "manager": "王洪艳", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 14284.403807, "total_settle": 20031.989998, "self_cost": 14284.403807, "total_cost": 20031.989998, "profit": 0, "profit_rate": 0, "approved_rate": 0.0561, "received": 20031.989998, "self_received": 14284.403807, "loan_gap": -2270.74, "remaining": 0, "house_offset": null, "loan": 3294.72, "interest": 222.0982, "turned_in": 1097.429684, "sub_total": 18346.768426, "sub_paid": 18346.768, "sub_owed": 0.000426, "pay_gap": -0.000426, "reason": "需要审批付款额度", "measure": null, "cust_type": "市工务署"}, {"section": "已竣已结", "subsection": null, "name": "深圳石厦村综合管廊", "mode": "分公司", "is_target": null, "hq_deadline": null, "settle_date": "2023-12-06", "months": 53.433333, "manager": "顾宗强", "status": "已竣已结", "category": "A", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 5974.879155, "total_settle": 5974.879155, "self_cost": 5615.850606, "total_cost": 5615.850606, "profit": 359.028549, "profit_rate": 0.06009, "approved_rate": 0.06, "received": 5590.73, "self_received": 5590.73, "loan_gap": 53.54, "remaining": 384.149155, "house_offset": null, "loan": 0, "interest": 0, "turned_in": 289.79, "sub_total": 5012, "sub_paid": 4905.45, "sub_owed": 106.55, "pay_gap": 277.599155, "reason": "对接业主推进收款", "measure": null, "cust_type": "国有企业/政府"}, {"section": "已竣已结", "subsection": null, "name": "广东惠州金融街巽寮湾海世界", "mode": "集中", "is_target": null, "hq_deadline": null, "settle_date": "2022-04-07", "months": 32.233333, "manager": "郎静海", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 46202.29, "total_settle": 46202.29, "self_cost": 45977.35546, "total_cost": 45977.35546, "profit": 224.93454, "profit_rate": 0.004868, "approved_rate": 0.045, "received": 45970.78, "self_received": 45970.78, "loan_gap": -2238.07, "remaining": 231.51, "house_offset": 231.51, "loan": 2981.11, "interest": 630.39, "turned_in": 1894.08, "sub_total": 43677.18, "sub_paid": 43319.46, "sub_owed": 357.72, "pay_gap": -126.21, "reason": null, "measure": null, "cust_type": "地产类"}, {"section": "已竣已结", "subsection": null, "name": "海口空港综合保税区监管设施", "mode": "兼职", "is_target": null, "hq_deadline": null, "settle_date": "2024-04-26", "months": 31.3, "manager": "席亮", "status": "已竣已结", "category": "C", "target": null, "done": null, "floor": null, "strive": null, "stretch": null, "self_settle": 5820, "total_settle": 5820, "self_cost": 6211, "total_cost": 6211, "profit": -391, "profit_rate": -0.067182, "approved_rate": 0.08, "received": 4653.91, "self_received": 4653.91, "loan_gap": -1912.57, "remaining": 1166.09, "house_offset": null, "loan": 1917.21, "interest": 111.63, "turned_in": 465.6, "sub_total": 5523.4637, "sub_paid": 5378.38, "sub_owed": 145.0837, "pay_gap": 1021.0063, "reason": "一审二审已完成，跟进业主调研进展", "measure": null, "cust_type": "国有企业/政府"}], "sec1_total": {"target": 702554.065942, "done": 217930.6, "floor": 571904.919, "strive": 608204.919, "stretch": 694204.919, "self_settle": 772332.441329, "total_settle": 914734.899398, "self_cost": 786519.65277, "total_cost": 898972.10432, "received": 794168.727892, "self_received": 656741.184592, "loan_gap": -71820.660344, "remaining": 115591.256737, "house_offset": 5815.95, "loan": 94704.389597, "interest": 12373.859833, "turned_in": 31653.333738, "sub_total": 742552.389485, "sub_paid": 674409.461902, "sub_owed": 68142.927582, "pay_gap": 47448.329154, "profit": -14187.21144, "profit_rate": -0.0183693066}, "sec2_total": {"target": 0, "done": 0, "floor": 0, "strive": 0, "stretch": 0, "self_settle": 1009702.136724, "total_settle": 1158849.116159, "self_cost": 1043261.498459, "total_cost": 1193610.137715, "received": 1091859.344653, "self_received": 956082.574322, "loan_gap": -127270.17246, "remaining": 53619.562402, "house_offset": 3620.728947, "loan": 144375.873389, "interest": 19547.838395, "turned_in": 42581.043912, "sub_total": 981533.814011, "sub_paid": 962490.291163, "sub_owed": 19043.522848, "pay_gap": 35823.713198, "profit": -33559.361735, "profit_rate": -0.0332368929}, "indicators": [{"kind": "外控", "name": "深圳新皇岗口岸综合业务楼", "pm": "李颖辉", "manager": "周坚", "org": "04.华南", "segment": "总包", "self_settle_plan": 68439.891207, "total_settle_plan": 85500.015942, "target": 85500.015942, "approved_rate": 0, "approved_profit": 4536.83056, "est_profit": 5813.92, "est_profit_rate": 0.067999, "due_date": "2025-12-22", "overdue_months": -16.8, "cust_type": "市工务署"}, {"kind": "外控", "name": "深圳南山中国电子科技园", "pm": "王博", "manager": "桑海鹏", "org": "04.华南", "segment": "总包", "self_settle_plan": 70000, "total_settle_plan": 86000, "target": 86000, "approved_rate": 0.055, "approved_profit": 3850, "est_profit": -1711.63, "est_profit_rate": -0.019903, "due_date": "2025-03-25", "overdue_months": -7.733333, "cust_type": "国有企业/政府"}, {"kind": "外控", "name": "深圳市坪地北地块场平工程", "pm": "王岩", "manager": "周文", "org": "04.华南", "segment": "基础设施", "self_settle_plan": 13500, "total_settle_plan": 13500, "target": 13500, "approved_rate": 0.08, "approved_profit": 1080, "est_profit": 42.38, "est_profit_rate": 0.003139, "due_date": "2025-04-01", "overdue_months": -7.966667, "cust_type": "区工务署"}, {"kind": "外控", "name": "珠海华发广场", "pm": "程玉琦", "manager": "无人", "org": "04.华南", "segment": "总包", "self_settle_plan": 22800, "total_settle_plan": 22800, "target": 22800, "approved_rate": 0.0561, "approved_profit": 1279.08, "est_profit": -5720, "est_profit_rate": -0.250877, "due_date": "2022-09-30", "overdue_months": 22.5, "cust_type": "地产类"}, {"kind": "外控", "name": "江门华发四季", "pm": "姜超", "manager": "刘子轩", "org": "04.华南", "segment": "总包", "self_settle_plan": 38300, "total_settle_plan": 38300, "target": 38300, "approved_rate": 0.0563, "approved_profit": 2156.29, "est_profit": -5769.29, "est_profit_rate": -0.150634, "due_date": "2021-10-29", "overdue_months": 33.7, "cust_type": "地产类"}, {"kind": "外控", "name": "东莞OPPO滨海湾数据中心机电", "pm": "刘飞", "manager": "张旭柱", "org": "04.华南", "segment": "机电", "self_settle_plan": 14067.53, "total_settle_plan": 15582.16, "target": 15582.16, "approved_rate": 0.065, "approved_profit": 892.5345, "est_profit": 50, "est_profit_rate": 0.003209, "due_date": "2022-11-30", "overdue_months": 20.466667, "cust_type": "产业类"}, {"kind": "外控", "name": "深圳礼鼎高端集成电路载板及先进封装基地", "pm": "辛昕", "manager": "龙郑浩", "org": "04.华南", "segment": "总包", "self_settle_plan": 134000, "total_settle_plan": 132000, "target": 132000, "approved_rate": 0.0566, "approved_profit": 7492.5, "est_profit": 5893.58, "est_profit_rate": 0.044648, "due_date": "2023-10-30", "overdue_months": 9.333333, "cust_type": "产业类"}, {"kind": "外控", "name": "深圳前海深港青年梦工场北区(二期)", "pm": "辛昕", "manager": "龙郑浩", "org": "04.华南", "segment": "总包", "self_settle_plan": 14500, "total_settle_plan": 28400, "target": 28400, "approved_rate": 0.0548, "approved_profit": 794.6, "est_profit": -833.57, "est_profit_rate": -0.029351, "due_date": "2023-09-25", "overdue_months": 10.5, "cust_type": "国有企业/政府"}, {"kind": "外控", "name": "广州保利三元里", "pm": "杨丽鹏", "manager": "张培培", "org": "04.华南", "segment": "总包", "self_settle_plan": 50786.59, "total_settle_plan": 51500, "target": 50000, "approved_rate": 0.0601, "approved_profit": 3052.274059, "est_profit": -6300, "est_profit_rate": -0.12233, "due_date": "2023-04-30", "overdue_months": 15.433333, "cust_type": "地产类"}, {"kind": "外控", "name": "深圳嘉里商务中心(三期)", "pm": "张建锋", "manager": "沈志斌", "org": "04.华南", "segment": "总包", "self_settle_plan": 41225.065484, "total_settle_plan": 88693.888769, "target": 88693.89, "approved_rate": 0.0506, "approved_profit": 2085.988313, "est_profit": 1225.4, "est_profit_rate": 0.013816, "due_date": "2024-11-30", "overdue_months": -3.9, "cust_type": "地产类"}, {"kind": "外控", "name": "深圳光明区金融街", "pm": "张秋学", "manager": "石福生", "org": "04.华南", "segment": "总包", "self_settle_plan": 36300, "total_settle_plan": 36300, "target": 36300, "approved_rate": 0.057, "approved_profit": 2069.1, "est_profit": -5030.15, "est_profit_rate": -0.138572, "due_date": "2023-04-30", "overdue_months": 15.433333, "cust_type": "地产类"}, {"kind": "外控", "name": "深圳中山大学附属七院二期", "pm": "林志松", "manager": "许亚男", "org": "04.华南", "segment": "总包", "self_settle_plan": 105478, "total_settle_plan": 105478, "target": 105478, "approved_rate": 0.0534, "approved_profit": 5642.2645, "est_profit": 5734.64, "est_profit_rate": 0.054368, "due_date": "2025-06-30", "overdue_months": -10.966667, "cust_type": "市工务署"}, {"kind": "内控", "name": "龙城街道龙飞学校新建工程(二期)", "pm": "王啸飞", "manager": "唐清鉴", "org": "04.华南", "segment": "总包", "self_settle_plan": 15446.97, "total_settle_plan": 30155.914147, "target": null, "approved_rate": 0.0526, "approved_profit": 812.510622, "est_profit": 1012.510622, "est_profit_rate": 0.033576, "due_date": "2026-12-30", "overdue_months": 0, "cust_type": "区工务署"}, {"kind": "内控", "name": "深圳机场教育基地项目", "pm": "张建锋", "manager": "王洪艳", "org": "04.华南", "segment": "总包", "self_settle_plan": 26224.4, "total_settle_plan": 44383.68, "target": null, "approved_rate": 0.0528, "approved_profit": 1384.64832, "est_profit": 1384.65, "est_profit_rate": 0.0528, "due_date": "2026-04-30", "overdue_months": null, "cust_type": "机场"}, {"kind": "内控", "name": "佛山怡翠尊堤嘉园D2区", "pm": "杨丽鹏", "manager": "张培培", "org": "04.华南", "segment": "总包", "self_settle_plan": 17748.43, "total_settle_plan": 30248.44, "target": null, "approved_rate": 0.06, "approved_profit": 1064.9058, "est_profit": -556.73, "est_profit_rate": -0.031368, "due_date": null, "overdue_months": null, "cust_type": "地产类"}, {"kind": "内控", "name": "东莞骏鼎达功能性保护材料生产建设", "pm": "邬海涛", "manager": "胡华谋", "org": "04.华南", "segment": "总包", "self_settle_plan": 10398.1, "total_settle_plan": 12202.4, "target": null, "approved_rate": 0.0511, "approved_profit": 531.34291, "est_profit": null, "est_profit_rate": null, "due_date": "2026-06-15", "overdue_months": null, "cust_type": "产业类"}, {"kind": "内控", "name": "东莞小天才滨海湾项目", "pm": "薛仁宗", "manager": "席亮", "org": "04.华南", "segment": "总包", "self_settle_plan": null, "total_settle_plan": null, "target": null, "approved_rate": null, "approved_profit": null, "est_profit": null, "est_profit_rate": null, "due_date": "2026-06-30", "overdue_months": null, "cust_type": "产业类"}], "ind_total": {"self_settle_plan": 609397.076691, "total_settle_plan": 704054.064711, "target": 702554.065942}};
 // ===================== 工具 =====================
 const N = v => (typeof v === 'number' && !isNaN(v)) ? v : 0;
+const WEEKLY = {
+ "weeks": [
+  "26.1.16",
+  "26.1.31",
+  "26.2.28",
+  "26.3.6",
+  "26.3.20",
+  "26.4.2",
+  "26.4.10",
+  "26.4.17",
+  "26.4.24",
+  "26.4.30",
+  "26.5.9",
+  "26.5.14",
+  "26.5.22",
+  "26.5.29",
+  "26.6.5",
+  "26.6.12",
+  "26.6.18",
+  "26.6.26",
+  "26.7.3",
+  "26.7.10",
+  "26.7.17",
+  "26.7.24",
+  "26.8.3",
+  "26.8.7",
+  "26.8.18"
+ ],
+ "progress": {
+  "深圳新皇岗口岸综合业务楼项目": {
+   "26.1.16": "1、结算计量文件偏保守申报93104.41万元（金额未考虑材料调差等事宜），实际申报合理金额应为85500.02万元； 2、目前与一审核对进展：钢结构部分核对基本完成；土建装饰和机电部分待咨询公司春节前审核初稿后开展核对工作； 3、工作计划：2026年2月13日前闭合项目变更费用未确认部分42份（事项确认流程已走完）；2026年4月30日前完成一审初步出具审核意见，2026年5月30日完成一审最终确定",
+   "26.2.28": "1、预计结算额84673.75万元，预计成本80085.4万元 2、结算进展：结算已申报，钢结构基本对完，土建装饰机电咨询在审核中，变更有42份未闭合流程 重难点：项目材料调差计算问题，工期顺延确认问题 3、预计4月份一审完，5月份送二审，本年度出结算书",
+   "26.3.6": "1、预计结算额84673.75万元，预计成本80085.4万元 2、结算进展：结算已申报，钢结构基本对完，土建装饰机电咨询在审核中，变更有30份未闭合流程 重难点：项目材料调差计算问题，工期顺延确认问题 3、预计6月份一审完，6月底送二审，本年度12月底出结算书",
+   "26.3.20": "1、预计结算额84673.75万元，预计成本80085.4万元 2、结算进展：结算已申报，钢结构基本对完，土建装饰正在核对，变更有17份未闭合流程，预计4月底核对完成 重难点：项目材料调差计算问题，工期顺延确认问题 机电合同内4.15才能开始核对，影响整体进展 3、预计6月份一审完，6月底送二审，本年度12月底出结算书",
+   "26.4.2": "1、预计结算额84673.75万元，预计成本80085.4万元 2、结算进展：结算已申报，钢结构图纸部分已对完，土建结构4月中下旬对完，装饰4月底对完，变更有8份未闭合流程，预计4月底核对完成 重难点：项目材料调差计算问题，工期顺延确认问题 机电合同内4.10才能开始核对，影响整体进展 3、预计6月份一审完，6月底送二审，本年度12月底出结算书",
+   "26.4.10": "1、预计结算额84673.75万元，预计成本80085.4万元 2、结算进展：结算已申报，钢结构图纸部分已对完，土建结构4月中下旬对完，装饰4月底对完，变更有2份未闭合流程，预计4月底核对完成 重难点：项目材料调差计算问题，工期顺延确认问题 机电合同内4.10开始核对，（给排水电气开始，消防暖通还没开始） 3、预计6月份一审完，6月底送二审，本年度12月底出结算书 较上期无变化",
+   "26.4.17": "1、预计结算额84673.75万元，预计成本80085.4万元 2、结算进展：结算已申报；钢结构图纸部分已对完；土建结构地下部分已核对完成；装修地下已核对完成；结构地上核对中，预计4月中下旬对完，装饰地上暂未开始，预计4月底对完，变更有2份未闭合流程，预计4月底核对完成。 机电安装部分：给排水工程、电气工程咨询公司已开始核对，暖通工程、消防工程暂未启动核对。 重难点：项目材料调差计算问题，工期顺延确认问题 3、预计6月份一审完，6月底送二审，本年度12月底出结算书",
+   "26.4.24": "结算进展：结算已申报；钢结构图纸部分已对完；土建结构地下部分已核对完成；装修地下已核对完成；结构地上核对中，预计4月中下旬对完，装饰地上暂未开始，预计4月底对完，变更有1份未闭合流程，预计4月底核对完成。 机电安装部分：给排水工程、电气工程咨询公司已开始核对，暖通工程、消防工程暂未启动核对。 重难点：项目材料调差计算问题，工期顺延确认问题 预计6月份一审完，6月底送二审，本年度12月底出结算书",
+   "26.4.30": "结算进展：土建部分预计4月底可核对完成，节后回来收下尾；变更4月底完成；机电部分：给排水、暖通、电气我方正在复核咨询底稿，消防底稿咨询答应5.6给到我方，争取在5月15日完成核对 5月份重点处理调差、工期闭合、送审资料整理等问题 整体目标不变，预计6月份一审完，6月底送二审，本年度12月底出结算书",
+   "26.5.9": "土建部分及变更：已基本核对完成； 机电部分：给排水、暖通、电气我方正在复核咨询底稿，消防底稿咨询暂未给我方，争取在5月30日完成核对 5月份重点处理调差、工期闭合、送审资料整理等问题 整体目标不变，预计6月份一审完，6月底送二审，本年度12月底出结算书",
+   "26.5.14": "土建部分及变更：已基本核对完成； 机电部分：给排水、暖通、电气、消防我方正在复核咨询底稿，争取在5月30日完成核对（机电被调离的剩余1个人，土建剩余1个预算员，影响结算进程） 5月份重点处理调差、工期闭合（下周上工务署中心会）、送审资料整理等问题 整体目标不变，预计6月份一审完，6月底送二审，本年度12月底出结算书",
+   "26.5.22": "土建部分：已核对完成 机电部分：给排水今天核对完，暖通和电气已对大半，计划下周对完；消防下周基本能完成，但消防有300万左右没有体现在图纸上的节点，下周周坚去处理 整体计划5月底全部核对完； 5.20咨询提出16项资料问题，下周补充完成； 工期闭合5.19上了工务署会，因缺少甲指精装工期，被退回，项目组再整理后再上会；",
+   "26.5.29": "土建部分：已核对完成 机电部分：给排水已核对完，暖通、电气、消防核对完成70%，计划下周对完。消防有300万左右没有体现在图纸上的节点，已和咨询沟通需设计出具说明资料，正在和设计对接中。 5.20咨询提出16项资料问题，已补充8项，剩余资料持续完善整理； 工期闭合5.19上了工务署会，因缺少甲指精装工期，被退回，项目组再整理后再上会；截至今日上午甲指包工期资料尚未补充完成，已联系甲指包负责人督促。",
+   "26.6.5": "土建部分：已核对完成 机电部分：消防水合同内核对完成；给排水、暖通、电气核对中，计划下周对完。暖通和电气部分为手算稿，现咨询表示二审需求提供广联达建模，要求我司补充；消防有300万左右水炮和主机没有体现在图纸上，穿墙套管、综合支架、非空调区保温、喷头下喷等未完全体现在图纸，需设计出具说明资料，正在和设计对接中。 5.20咨询提出16项资料问题，本周可完成14项，剩余资料持续完善整理； 工期闭合5.19上了工务署会，因缺少甲指精装工期，被退回，项目组再整理后再上会；现甲指包工期资料已补充完成，等待项目主任下周上会。",
+   "26.6.12": "土建部分：已核对完成 机电部分：消防水合同内核对完成；给排水、暖通、电气核对中，合同内的计划下周核对完； 消防有300万左右水炮和主机没有体现在图纸上，穿墙套管、综合支架、非空调区保温、喷头下喷等未完全体现在图纸，需设计出具说明资料，正在和设计对接中。 5.20咨询提出16项资料问题，本周可完成15项，仅剩调差的资料，调差部分已初步达成一致，下周可上报； 工期闭合预计下周上工务署会；",
+   "26.6.18": "土建部分：已出初步数据6.9亿，处理些争议 机电部分：消防水合同内核对完成；给排水及暖通基本核对完成、电气咨询复核中，空调今天能出核对结果，合同内的计划假期期间出个数； 消防有300万左右水炮和主机没有体现在图纸上，穿墙套管、综合支架、非空调区保温、喷头下喷等未完全体现在图纸，需设计出具说明资料，正在和设计对接中。 5.20咨询提出16项资料问题，已完成15项，仅剩调差的资料，调差部分已初步达成一致，下周可上报； 工期闭合预计下周上工务署会； 6月底及7月初具备送审条件，争取最晚在7月中旬送审完成",
+   "26.6.26": "土建及机电已核对完成，初步数据为约在8.5-8.6亿之间，项目计划通过与各方沟通，调整图纸等方式把一审数据提高到8.8亿，预计下周完成，调差数据也已确定，7月10日送二审",
+   "26.7.3": "预计下周7.10出数且完成资料整理，送咨询内审及闭合流程，约7.17号左右送财委二审",
+   "26.7.10": "预计7.10出数且完成资料整理，送咨询内审及闭合流程，约7.17号左右送财委二审",
+   "26.7.17": "结算一审出数8.8亿，结算整套资料已送业主项目部审核，其中调差部分还未完全确定",
+   "26.7.24": "预计一审8.8亿，底线8.5亿可交收益，成本8左右 1、资料问题：管理公司提出的资料问题，下周可全部补充完成 2、争议金额：我方提出和咨询有1000万争议需业主解决，预计能拿到270万 3、调差：相差500万，等着业主回复选哪种方式送审",
+   "26.8.3": "一审咨询审核8.8亿，资料已按要求整改完成，当前已具备送审条件。 上周管理公司五洲提出其公司新规定，要求再次全面审核结算文件，要求我方重新配合核对，项目部正在沟通中",
+   "26.8.7": "与五洲公司还没谈好，其他都已完成，具备送审条件",
+   "26.8.18": "项管五洲的审核已基本谈好，本周出汇总数，工务署走送审流程"
+  },
+  "深圳中山大学附属七院二期": {
+   "26.1.16": "预计1月底前可以和咨询公司完成一审图纸部分及变更签证的核对，预计可出一个大概结算额。",
+   "26.2.28": "图纸部分及变更已核对完成，目前正在洽谈争议 总体进展计划：一审已基本核对完成，目前正在梳理资料，边整理边核对，计划26年3月份送财评中心",
+   "26.3.6": "1、预计结算额105478万元，预计成本99843万元， 2、图纸部分及变更已核对完成，正在核查调整清单量，争议部分正在补充资料。 总体进展计划：一审已基本核对完成，目前正在梳理资料，边整理边核对， 3、计划26年3月份底送财评中心",
+   "26.3.20": "正在处理最后的一些争议尾项，整理资料，3月底上报计划不变",
+   "26.4.2": "一审已出数10.84亿元，已送二审排队，排队期间整理纸版送审资料，预计4月10号整理完",
+   "26.4.10": "一审已出数10.84亿元，已送二审排队，排队期间整理纸版送审资料，预计4月10号整理完 资料完成情况：机电变更39份还未完成，土建新下发1份变更，需甲方补会议纪要",
+   "26.4.17": "一审已出数10.84亿元，已送二审排队，排队期间整理纸版送审资料，预计4月10号整理完 资料完成情况：机电变更11份还未完成，土建新下发1份变更，需甲方补会议纪要",
+   "26.4.24": "一审已出数10.84亿元，财评已分组并确定二审组长，资料可以送了，目前资料还有部分缺失 资料完成情况：机电变更流程本周可完成，变更图纸正在盯设计院出，机电的竣工图纸仍需要完善； 计划下周一先送财审资料，竣工图纸待选定咨询单位后补送",
+   "26.4.30": "一审已出数10.84亿元，工务署通知五一节后总资料给财评中心； 分两批送，下次再送招标图和竣工图纸。",
+   "26.5.9": "一审已出数10.84亿元，5月6日资料已给财评中心； 分两批送，下次再送招标图和竣工图纸。",
+   "26.5.14": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，要求下周一之前补充完成资料（其中包含调整计价清单、变更手算计算底稿、进度款斯维尔模型、调试证明等资料）；",
+   "26.5.22": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成；",
+   "26.5.29": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 暂无消息",
+   "26.6.5": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审审核中，暂无回复",
+   "26.6.12": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审审核中，暂无回复",
+   "26.6.18": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审审核中，持续补充机电资料，暂无回复",
+   "26.6.26": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审审核中，持续补充机电资料，暂无回复",
+   "26.7.3": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审审核中",
+   "26.7.10": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审审核中",
+   "26.7.17": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审审核中",
+   "26.7.24": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审上周看过现场，目前判断土建有10多米栏杆没做要扣，机电安装300-400万要扣",
+   "26.8.3": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审已给出初步审核金额，审减率4.02%，我方正派人驻场核对；",
+   "26.8.7": "一审已出数10.84亿元，5月6日资料已给财评中心，5.13财审提出补充资料清单，已补充完成； 二审已给出初步审核金额10.4亿，审减率4.02%，审减4300万；我方与协审单位土建已对完，找回来80万工程量，机电初步对了一遍，争议都在补资料，补完资料再谈。 同步送审的其他标段不断暴露出新问题，关联我方审核",
+   "26.8.18": "二审结算已定数10.5亿元，正在盖章中"
+  },
+  "深圳南山中国电子科技园": {
+   "26.1.16": "1）桩基1.6亿已确认； 2）嘉苑：图纸部分一二审无争议2.2亿+争议400万；三审审核2.12亿，一二审同意的800+400万争议暂未报三审，在整体结算及后续索赔谈判时洽谈； 变更共计200份，约2500万，已初步核对完，确认金额800万，争议金额1300万。 3）创新： 重计量未开始核对 变更工作联系单流程已完成，完工单流程计划还要1个月的时间，边走流程边核对；变更整体完成预计最快到1月底； 4）索赔目前还未申报，预计5000万，还未申报；",
+   "26.2.28": "1）桩基1.6亿已确认； 2）嘉苑：图纸部分一二审无争议2.2亿+争议400万；三审审核2.12亿，一二审同意的800+400万争议暂未报三审，在整体结算及后续索赔谈判时洽谈； 变更共计200份，约2500万，已初步核对完，确认金额800万，争议金额1300万。 3）创新： 重计量未开始核对 变更工作联系单流程已完成，完工单流程计划还要1个月的时间，边走流程边核对；变更整体完成预计最快到1月底； 4）索赔目前还未申报，预计5000万，还未申报； 较上期整体无变化",
+   "26.3.6": "结算进展情况： 1）桩基1.6亿已确认； 2）嘉苑：图纸部分一二审无争议2.2亿+争议400万；三审审核2.12亿，一二审同意的800+400万争议暂未报三审，在整体结算及后续索赔谈判时洽谈； 变更共计200份，约2500万，预计26年4月底核对完。 3）创新： 图纸部分结算已上报，暂未确定核对时间，预计26年6月底完成 变更预计26年5月底完成工作联系单流程，完工单流程计划还要1个月的时间；变更整体完成预计需要到26年6月底； 4）索赔目前还未正式申报，预计5000万，其中嘉苑部分已私下申报，甲方未同意；",
+   "26.3.20": "结算进展情况： 1）桩基1.6亿已确认； 2）嘉苑：图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 3）创新： 重计量核对：需组会决定开始核对时间，计划26年3月开始核对 变更：共计165份，资料已完成94份，未完成74份，计划4月15日全部提交监理业主签字，4月30日前上传系统，5月份开始核对 4）索赔目前还未正式申报，预计5000万，其中嘉苑部分已私下申报，甲方未同意；",
+   "26.4.2": "嘉苑：图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新： 重计量核对：本周二已组会讨论开始时间，仍需进一步沟通 变更：共计167份，资料已完成94份，未完成74份，计划4月15日全部提交监理业主签字，4月30日前上传系统，5月份开始核对",
+   "26.4.10": "嘉苑： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新： 重计量核对：项目经理需找业主董事长沟通 变更：共计167份，资料已完成123份，未完成34份，计划4月15日全部提交监理业主签字，4月30日前上传系统，5月份开始核对",
+   "26.4.17": "嘉苑： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新： 重计量核对：项目经理需找业主董事长沟通 变更：共计167份，资料已完成143份，未完成24份，计划4月25日全部提交监理业主签字，4月30日前上传系统，5月份开始核对",
+   "26.4.24": "嘉苑： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新： 重计量核对：项目经理需找业主董事长沟通 变更：共计167份，资料已完成158份，未完成9份，计划4月25日全部提交监理业主签字，4月30日前上传系统，5月份开始核对 已完成签字113份，下周全力突击剩余54份签字",
+   "26.4.30": "嘉苑： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新： 创新： 重计量核对：5.10结算报出后一起核对 变更：共计167份，已基本签字完成144份。 剩余23份（16单等发指令单、2单项管核实中、2单受缺外用电梯安拆资质影响、2单争议暂不报、1单工期延期类） 5月10日报总结算计划不变",
+   "26.5.9": "嘉苑： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新： 重计量核对：5.10结算报出后一起核对 变更：共计167份，已基本签字完成144份。 剩余23份（5单昨天下发指令单，11单等发指令单、2单项管核实中、2单受缺外用电梯安拆资质影响、2单争议暂不报、1单工期延期类） 5月11日报总结算",
+   "26.5.14": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 重计量核对：5.10结算报出后一起核对 变更：共计167份，已基本签字完成144份。 剩余23份（8单昨天下发指令单，11单等发指令单、2单项管核实中、2单受缺外用电梯安拆资质影响、2单争议暂不报、1单工期延期类） 5月11日已报出总结算。业主提出补充资料清单，要求补充完整后再安排核对 赵勇总明天下午过去找董事长。我们建议，就是拿630节点说事儿，希望业主倒排计划",
+   "26.5.22": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 下周除了有争议的3单、延期费3单，剩余161份下周全部签完完工单，接下来催项管上系统 甲方要求补的结算资料，今天已提交甲方，对量的事情还没落实好，下周一找下甲方，看一下什么意见？",
+   "26.5.29": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、变更164万下周一二全部盖章完成 2、6月5日结算资料补充完成提交甲方 3、盯着深化图上甲方流程，下周完成 4、下下周找甲方启动核对结算 （已找董事长，模型要补） 6月中旬可以开始核对，预计一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间，顺利的话最快11月底出结算书",
+   "26.6.5": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、变更164份全部盖章完成 2、6月5日可以把机电计算模型提供给甲方，展厅的工程量确认还要跟监理沟通； 3、深化图流程被成本总退了，今天项目经理去沟通 4、咨询已经开始核对变更，下周找甲方沟通整体启动核对结算 6月中旬可以开始核对，预计一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间，顺利的话最快11月底出结算书",
+   "26.6.12": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、变更164份全部盖章完成 2、机电计算模型已提供给甲方，展厅的工程量确认还要跟监理沟通； 3、深化图流程被成本总退了，图纸已修改完善，需找设计顾问签字 4、变更签证部分核对完8份，剩余的待咨询审核后核对（项目反馈咨询目前只审核，暂不核对，后续项目找业主沟通）； 5、结算资料已补充，图纸量的核对暂未开始，成本马总反馈已安排咨询审核，具体核对时间未给； 6月中旬可以开始核对，预计一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间，顺利的话最快11月底出结算书； 项目部整理好住宅楼的争议和索赔，暂定下周四项目部带上资料来分公司组会过争议和索赔。",
+   "26.6.18": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、变更164份全部盖章完成 2、机电计算模型已提供给甲方，展厅的工程量确认还要跟监理沟通； 3、深化图流程被成本总退了，图纸已修改完善，厂家及设计顾问已签完，监理未签字盖章 业主停发监理进度款，影响以上签字盖章 4、变更签证部分核对完8份，剩余的待咨询审核后核对（项目反馈咨询目前只审核，暂不核对，节后项目经理找业主董事长沟通核对计划）； 5、结算资料已补充，图纸量的核对暂未开始，成本马总反馈已安排咨询审核，具体核对时间未给； 6月底预计可以开始核对，预计一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间，顺利的话最快11月底出结算书； 项目部本周没有整理好住宅楼的争议和索赔，分公司要求最晚下周二项目部带上资料来分公司组会过争议和索赔。",
+   "26.6.26": "6月底也无法开始核对办公楼（创新）图纸及变更，业主成本以各种理由推脱核对，暂无法确定开始核对时间； 预计绝对审核时间4个月（一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间） 6.25项目来分公司过索赔和争议: 1、争议部分：项目认为之前已经和公司领导汇报过，没有新补充资料 2、索赔部分：项目提出4条认为可谈的索赔 2.1 工期奖金700，合同有条款约定 2.2 措施费（大机、脚手架）：合同条款有约定，项目想按实计取，咨询审核时间按合同时间，数量按照实际调减 2.3钢筋调差:合同约定算术平均，项目计划按加权平均，取时间点（形象进度时间或者进场时间），没有计算明细 2.4垃圾消纳：政策变化，垃圾的数量没有依据，只能提供40多万消纳场打印的台账 以上索赔有一个共同的前提，工期是否闭合，当前业主方提出双方互不索赔 项目没有再提供更进一步的详细依据资料，只有一个EXCELL表，无法进一步分析",
+   "26.7.3": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、结算深化图及展厅资料监理项管已签字，待业主签字； 2、变更签证部分已开始核对，核对完21份，剩余的待咨询审核后核对，预计一个月完成； 5、结算资料已补充，图纸量的核对暂未开始，成本马总反馈已安排咨询审核，具体核对时间未给 预计绝对审核时间4个月（一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间）",
+   "26.7.10": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、结算深化图及展厅资料监理项管甲方已签字完成，盯上系统流程； 2、变更签证部分已开始核对，核对完21份，剩余的待咨询审核后核对，预计一个月完成； 3、图纸量的核对暂未开始，赵勇总找了董事长，已答应尽快安排核对。 预计绝对审核时间4个月（一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间）",
+   "26.7.17": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、业主成本提出结算深化图图框需要更换，目前仍未开始核对创新（办公楼）图纸部分，项目在调整图框 2、变更签证部分咨询公司正在边审边对，但进展缓慢 预计绝对审核时间4个月（一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间）",
+   "26.7.24": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、深化图图框已更换设计并已盖章，差监理业主签字，下周完成，后续再发起流程 2、变更签证部分咨询公司正在边审边对，共计167份，已核对28份，但进展缓慢 预计绝对审核时间4个月（一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间）",
+   "26.8.3": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、业主成本退回深化图流程，要求换图框，项目已更换并完成签字发起流程，再次流转到成本 业主成本表示重计量对量要资料完善后开始，暂因图框问题受阻 2、变更签证部分咨询公司正在边审边对，共计167份，已核对28份，但进展缓慢 预计绝对审核时间4个月（一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间）",
+   "26.8.7": "嘉苑（住宅）： 图纸部分一二审无争议21967万元+变更签证无争议933万；争议图纸部分527万+变签942，累计争议1469万元，待进一步洽谈； 变更签证已核对完一遍，索赔整体洽谈； 创新（办公楼）： 1、图纸流程已完成，业主成本要求项管审结算资料后再开始重计量，（机电的重计量已私下开始核对） 2、变更签证部分咨询公司正在边审边对，共计167份，已核对28份，但进展缓慢 预计绝对审核时间4个月（一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间）",
+   "26.8.18": "8.13分公司及项目共同与甲方组织召开结算会议，主要商谈创新（办公室）结算进展情况： 创新（办公楼）： 1、总包负责预制构件深化图完成系统流程（8.21完成），施工蓝图没有按要求找监理、项管和甲方签字，一周内完成以上工作（8.28完成），并交由项管审核后即可开始图纸工程量核对。 2、整体结算资料，要按照业主要求的资料清单提供，总包三周内完成（9.15完成） 预计绝对审核时间4个月（一二审同步审核约2个月时间，三审审核约1个月；谈争议索赔约1个月时间） PC构件（每页都签）及施工蓝图（蓝图签封面）已全部签字完成，后续走评审流程。"
+  },
+  "深圳市坪地北地块场平工程": {
+   "26.1.16": "预计结算金额 13800万元一审对数中，已完成合同内工程量核对，剩余未核对变更3个，预计本周初步核对完成，计划春节前完成一审定数，6月末完成财审",
+   "26.2.28": "1、预计结算额13800万元（已确定13000万元），完全成本13500万元 2、当前进展：合同内清单已核对完成，变更共计10份，已核对完成9份，竣工图补充完善中，根据核对情况完善竣工图。 3、已初步核对完成，部分争议待补充图纸后重新计算，资料补充完善中，预计3月初出一审数据，6月份完成结算",
+   "26.3.6": "1、预计结算额13800万元（已确定13000万元），完全成本13500万元 2、当前进展：合同内清单已核对完成，变更共计10份已核对完成，正在补充完善竣工图，根据核对情况完善竣工图。 结算已初步核对完成，剩余争议待竣工图补充完成后重新调整计算，预计3月底完成资料补充及一审最终对数 3、预计4月份送财审审核，争取6月份财审出报告",
+   "26.3.20": "1、预计结算额13800万元（已确定13000万元），完全成本13500万元 2、当前进展：合同内清单已核对完成，变更共计10份已核对完成，正在补充完善竣工图，根据核对情况完善竣工图。 结算已初步核对完成，剩余争议待竣工图补充完成后重新调整计算，预计3月底完成资料补充及一审最终对数 3、预计4月份送财审审核，争取6月份财审出报告",
+   "26.4.2": "1、预计结算额13500万元（已确定13000万元），完全成本13500万元 2、当前进展：合同内清单已核对完成，变更共计10份已核对完成，正在补充完善竣工图，根据核对情况完善竣工图。 结算已初步核对完成，剩余争议待竣工图补充完成后重新调整计算，资料补充滞后，预计4月10号前补充完毕 3、预计4月份底完成一审，5月份送财审审核，争取7月份财审出报告",
+   "26.4.10": "1、预计结算额13500万元（已确定13000万元），完全成本13500万元 2、当前进展：合同内清单已核对完成，变更共计10份已核对完成，资料已补充完毕，正在和咨询核对，预计下周咨询出结算金额，后续再跟进。 3、预计4月份底完成一审，5月份送财审审核，争取7月份财审出报告",
+   "26.4.17": "大数出了大概1.395，剩一点小争议在核对，这两天基本完事，预计最后1.4亿左右，下周咨询去现场，预计下周定数， 咨询提出资料需要完善部分资料，",
+   "26.4.24": "咨询审核结算额约1.395，剩一点小争议在核对，这两天基本完事，预计最后1.4亿左右，下周上变更业务会，争取430定数， 咨询提出资料需要完善部分资料，",
+   "26.4.30": "当前1.396亿元，剩余约60吨钢筋计量争议在谈； 资料大概需要10多天整理补充 5月底送二审目标不变",
+   "26.5.9": "当前审定无争议金额1.396亿元，剩余约60吨钢筋计量争议在谈； 资料大概需要10多天整理补充 5月底送二审目标不变",
+   "26.5.14": "当前审定无争议金额1.398亿元； 周文明天约协助审核的单位碰一下， 5月底内部审核完毕，6月10号前整理完资料，6月份底前送二审；",
+   "26.5.22": "当前审定无争议金额1.398亿元； 周文今天把资料送到协助单位审核， 6月10号前审核完成，看情况补充整理完资料，6月份底前送二审；",
+   "26.5.29": "没时间参会",
+   "26.6.5": "当前审定无争议金额1.398亿元； 6.3协助审核单位提出缺少资料清单，今天下午周文去找协审单位再梳理一下，六月底送二审目标不变",
+   "26.6.12": "当前审定无争议金额1.398亿元； 6.3协助审核单位提出缺少资料清单，这周项目组会补资料，预计6.19前补完资料，协助单位6.30出初稿；然后与一审核对，预计7.15定数；因送审需要整体送审，项目预估7.30送审；",
+   "26.6.18": "当前审定无争议金额1.398亿元； 6.3协助审核单位提出缺少资料清单，本周项目组会补资料，预计6.19前补完资料，协助单位6.30出初稿；然后与一审核对，预计7.15定数；因送审需要整体送审，项目预估7.30送审； 较上期没变化",
+   "26.6.26": "当前审定无争议金额1.398亿元； 6.3协助审核单位提出缺少资料清单，本周项目组会补资料，预计6.19前补完资料，协助单位6.30出初稿；然后与一审核对，预计7.15定数；因送审需要整体送审，项目预估7.30送审； 较上期没变化",
+   "26.7.3": "当前审定无争议金额1.398亿元； 6.3协助审核单位提出缺少资料清单，项目在补资料，预计下周补完资料，协助单位等补完资料后出初稿；然后与一审核对，预计7.15定数；因送审需要整体送审，项目预估7.30送审； 较上期没变化",
+   "26.7.10": "当前审定无争议金额1.398亿元； 6.3协助审核单位提出缺少资料清单，项目在补资料，预计下周补完资料，协助单位等补完资料后出初稿；然后与一审核对，预计7.15定数；因送审需要整体送审，项目预估7.30送审； 较上期没变化",
+   "26.7.17": "当前审定无争议金额1.398亿元； 6.3协助审核单位提出缺少资料清单，项目在补资料，预计下周补完资料，协助单位等补完资料后出初稿；然后与一审核对，预计7.15定数；因送审需要整体送审，项目预估7.30送审； 较上期没变化",
+   "26.7.24": "当前审定无争议金额1.398亿元； 1、有15项内容（见附图）需要协助审核单位审核后补充再找各方签字，预计下周协助审核单位出意见及出结算数，下下周补完资料签字； 2、业主通知送财审需要和其他甲指包一并送审，当前甲指包审核进度较慢； 总包815之前可以出一审报告，具体送财审时间还要看甲指包结算一审进展；",
+   "26.8.3": "当前审定无争议金额1.398亿元； 1、有15项内容（见附图）协助审核单位给了审核意见，项目正在组织落实修改签字，上周协助审核单位出数1.35亿（其中包含有扣款风险项1、水土保持的变更与安文费有盖网重复约100万和措施的隔音屏清单，现场按围挡施工，相差约200万）； 2、业主通知送财审需要和其他甲指包一并送审，当前甲指包审核进度较慢； 总包823之前可以出一审报告，具体送财审时间还要看甲指包结算一审进展；",
+   "26.8.7": "本周无进展，周文在忙阿秒的事",
+   "26.8.18": "当前审定无争议金额1.398亿元； 1、有15项内容（见附图）协助审核单位给了审核意见，项目正在组织落实修改签字，上周协助审核单位出数1.35亿（其中包含有扣款风险项1、水土保持的变更与安文费有盖网重复约100万和措施的隔音屏清单，现场按围挡施工，相差约200万）； 2、业主通知送财审需要和其他甲指包一并送审，当前甲指包审核进度较慢； 总包823之前可以出一审报告，具体送财审时间还要看甲指包结算一审进展； 上周也无进展"
+  },
+  "珠海华发广场": {
+   "26.1.16": "一、合同内工作： 1、母线槽：机电部已复核完成，25.11月已回复业主，催业主回复； 2、调差：已审核完并回复业主，催业主核对，按合同68万差异。 二、变更（79份）： 1、总包正在复审21份262.08万元 2、机电变更12份，暂未找到文件 3、剩余的大部分变更都需解决争议及闭合手续 三、签证（48份） 1、总包正在复审14份，95.85万 2、暂未查明情况的土建14份、机电13份 3、剩余的大部分签证需解决争议及闭合手续 四、扣款基索赔暂未与业主核对：",
+   "26.2.28": "一、合同内工作： 1、母线槽：机电部已复核完成，25.11月已回复业主，催业主回复； 2、调差：已审核完并回复业主，催业主核对，按合同68万差异。 二、变更（79份）： 1、总包正在复审21份262.08万元 2、机电变更12份，暂未找到文件 3、剩余的大部分变更都需解决争议及闭合手续 三、签证（48份） 1、总包正在复审14份，95.85万 2、暂未查明情况的土建14份、机电13份 3、剩余的大部分签证需解决争议及闭合手续 四、扣款基索赔暂未与业主核对： 较上期无明显进展",
+   "26.3.6": "A、预计结算额2.1亿，完全成本2.89亿 B、当前结算进展： 一、合同内工作： 1、母线槽：机电部已复核完成，25.11已回复业主，催业未回复，继续催办； 2、调差：已审核完并回复业主，25.12催业主核对，按合同68万差异，继续催办。 二、合同外--变更（79份）： 1、总包正在复审21份262.08万元，已复核237万元，待回复业主； 2、机电变更12份，未找源文件； 3、绝大部分变更已完成造价确认（线下谈定），需赴珠海闭合手续。 三、合同外--签证（48份） 1、总包正在复审6份，61.25万； 2、缺源文件的土建5份、机电13份； 3、绝大部分签证已完成造价确认（线下谈定），需赴珠海闭合手续。 四、合同外--扣款+索赔； 无进展，较上期无明显进展，拟3月下旬开扣款推进会。",
+   "26.3.20": "A、预计结算额2.11亿，完全成本2.89亿 B、当前结算进展： 一、合同内工作： 1、母线槽：机电部已复核完成，25.11已回复业主，继续催办，415完成； 2、调差：已审核完并回复业主，25.12催业主核对，按合同68万差异，继续催办，420完成。 二、合同外--变更（79份）： 1、总包正在复审21份262.08万元，已复核237万元，与咨询、业主当面碰，420收掉； 2、机电变更12份，部分源文件丢失，426收掉； 3、绝大部分变更已完成造价确认（线下谈定），在与咨询、业主碰，420收掉。 三、合同外--签证（48份） 1、未完工确认的土建5份、机电13份； 3、绝大部分签证已完成造价确认（线下谈定），420收掉。 四、合同外--扣款+索赔； C、4月份结算核对--拆解计划： 一、签证变更（上线）计划： 31日在线最新状态 2日列出争议(筛选大额) 4日列出三方争议(大额) 8日按争议属性：归类整理 10-11日组会解决 15日解决80%以上 20日定数 二、签证变更（离线）计划： 31日最新状态 3日离线内容的缺失补充情况 9日补充最后一批至工程部 15日咨询初步意见 20日各方争议解决 25日定数 三、第三方扣款计划： 0322/0331开会 8日与江南在线会推进 12-15日与业主、江南处理争议 19日定数 （以上国基扣款同步）",
+   "26.4.2": "程玉琦与咨询拉通了一下无争议金额2.1143亿，正在处理未核对完成及未上完流程的变更签证，程玉琦近期待着珠海处理结算事宜 结算计划： 1、母线槽及调差争议在420收掉 2、变更计划420定数 2、签证计划425定数 3、第三方扣款计划19日定数",
+   "26.4.10": "程玉琦与咨询拉通了一下无争议金额2.1143亿，正在处理未核对完成及未上完流程的变更签证，程玉琦近期待着珠海处理结算事宜 结算计划： 1、母线槽及调差争议在420收掉 2、变更计划420定数 2、签证计划425定数 3、第三方扣款计划19日定数 上述事项整理完成后，谈索赔 预计4月30日定结算数据。",
+   "26.4.17": "430的目标不变",
+   "26.4.24": "程玉琦与咨询拉通了一下无争议金额2.1143亿，正在处理未核对完成及未上完流程的变更签证，程玉琦近期待着珠海处理结算事宜 结算计划： 1、母线槽及调差争议在420收掉 2、变更计划420定数 2、签证计划425定数 3、第三方扣款计划19日定数 上述事项整理完成后，谈索赔 预计4月30日定结算数据。",
+   "26.4.30": "程玉琦与咨询拉通了一下无争议金额2.1143亿，正在处理未核对完成及未上完流程的变更签证，程玉琦近期待着珠海处理结算事宜 结算计划： 1、母线槽及调差争议在420收掉 2、变更计划420定数 2、签证计划425定数 3、第三方扣款计划19日定数 上述事项整理完成后，谈索赔 预计4月30日定结算数据。 五一节后约业主组会，拉通结算数据",
+   "26.5.9": "程玉琦与咨询拉通了一下无争议金额2.1143亿，正在处理未核对完成及未上完流程的变更签证，程玉琦近期待着珠海处理结算事宜 结算计划： 1、母线槽及调差争议在420收掉 2、变更计划420定数 2、签证计划425定数 3、第三方扣款计划19日定数 上述事项整理完成后，谈索赔 计划约业主组会，分公司和项目共同参会，商定结算金额",
+   "26.5.14": "程玉琦与咨询拉通的无争议金额为2.12亿； 计划与业主继续洽谈争议， 变更部分：a、完成流程的变更争议797万元，计划谈定保底金额200万元，其余放弃；b、未完成前置流程的变更有12份，主动放弃； 签证部分：a、完成流程的签证争议138万元，计划谈定保底金额41万元，其余放弃；b、未完成前置流程的15份签证，争议金额209万元，可放弃争议。 本周前完成争议事项的洽谈，与咨询、业主拉齐无争议金额及梳理争议事项清单，已确定下周四与业主组会碰结算事宜",
+   "26.5.22": "分公司及项目与甲方成本部于26.5.21组会洽谈结算 1.合同内金额19746万元（甲方认可） 2.会后母线槽分公司协调韦肖与甲方核对，一周内对完 3.需要补充资料的（变更9+签证3份），本周六甲方组织相关各方开会，共同洽谈，给出明确说法如何补充资料； 4.已核对有争议（变更14+签证14） 甲方成本部与我方再次洽谈，出具审核意见，可以保留争议，争议跟张强进行一起商谈； 5.未发起立项流程（变更1+签证12） 本周六组会解决，明确未立项的原因 原则为5月底都核对完，只剩争议，争议暂时定为6月1日进行最终结算的商谈 结算阶段：一审完成送股份二审，二审大约40-50天。",
+   "26.5.29": "1、母线槽审核稿找不到，还要再找找 2、大额负变更：仙静已经开始看抽时间核对，机电还未落实好核对人员 3、立项和措施补资料的预计下周四给业主 4、下周一周二，程和张可秋在线谈28份变更争议，分公司上线参与",
+   "26.6.5": "1、母线槽还没就开始审核，今天韦肖和咨询刚对接 2、大额负变更：仙静已经开始看抽时间核对，机电落实韦肖核对，暂未开始 3、立项和措施补资料的计划本周四完成，仍未完成 4、本周一周二，程和张可秋在线谈28份变更争议(完成5份)，业主张可秋辞职，剩余23份下周约甲方咨询核对",
+   "26.6.18": "1、母线槽还差1份资料未提供给机电 2、大额负变更：仙静已经复核完成，机电变更6.17给到韦肖核对开始复核 3、措施资料12份补充了6份，已超期仍未完成 4、未立项资料13份暂未启动，项目计划发函 5、28份变更争议(完成5份)，业主张可秋辞职，剩余23份暂未启动 业主方要求提供结算整体的结算资料，否则不给推进结算核对，资料被程玉琦带到雄安分公司进行补充",
+   "26.6.26": "1、母线槽因为界面问题不能核对 2、大额负变更：仙静已经复核完成，机电变更6.17给到韦肖核对开始复核，正在复核 3、措施资料12份补充了6份，已超期仍未完成 4、未立项资料13份暂未启动，项目计划发函 5、28份变更争议(完成5份)，业主张可秋辞职，剩余23份暂未启动 业主方要求提供结算整体的结算资料，否则不给推进结算核对，资料被程玉琦带到雄安分公司进行补充 下周二分公司去珠海与业主咨询详细对接，详细结算推进动作，待周二会议以后再进行梳理",
+   "26.7.3": "本周二分公司去珠海与业主开了碰头会： 1、未审批通过的53份变更，正在梳理（7.10梳理完） 2、结算纸版资料：分公司已收到，已安排王林杰开始梳理资料，完成时间待定 3、截止目前未提供资料的将不再受理 4、业主成本表示索赔至今没提供，后续由我方自己找其领导协商 预计结算时间：核对及整资料1个月，二审至少1个月，走流程1个月，整体完成最快也要9月底",
+   "26.7.10": "分公司已接手结算工作，6.30分公司去珠海与业主开了碰头会： 1、业主要求先行处理未审批通过的53份变更（7.7已梳理完成，咨询正在安排人员复核） 2、业主提出当前结算纸版资料未按其标准整理，分公司协同项目部一同梳理完成，缺失资料清单已交给程玉琦去补充 3、截止目前未提供资料的业主表示将不再受理 4、业主成本表示索赔至今没提供，后续由我方自己找其领导协商 预计结算时间：核对及整资料1个月，二审至少1个月，走流程1个月，整体完成最快也要9月底",
+   "26.7.17": "分公司已接手结算工作，6.30分公司去珠海与业主开了碰头会： 1、业主要求先行处理未审批通过的53份变更（7.7已梳理完成，咨询回复计划下周三四与我方核对土建部分，机电人手还没安排好） 2、结算资料缺失较多、工程资料未交档案馆、工程资料未交华发档案室，经分公司到珠海排查后，以上资料杂乱，当前缺失较多，需要项目部安排人员重点梳理资料，如资料未按要求提交，结算将不能上华发的流程。 3、截止目前未提供资料的业主表示将不再受理 4、业主成本表示索赔至今没提供，后续由我方自己找其领导协商 预计结算时间：核对及整资料1个月，二审至少1个月，走流程1个月，整体完成最快也要9月底",
+   "26.7.24": "1、本周四咨询公司安排共同梳理了12份变更，咨询表示其换人了需要重新审核这53份变更将会拖慢进展 2、结算资料缺失较多、工程资料未交档案馆、工程资料未交华发档案室，以上资料程玉琦在珠海自行负责补充。 3、截止目前未提供资料的业主表示将不再受理 4、业主成本表示索赔至今没提供，后续由我方自己找其领导协商 预计结算时间：核对及整资料1个月，二审至少1个月，走流程1个月，整体完成最快也要10月底",
+   "26.8.3": "分工： 分公司提级管控，做了相应分工，分公司负责牵头对接咨询增派人手核对，程玉琦负责补充资料； 进展： 1、当前剩余未达成一致的变更40份，7.23咨询公司安排共同梳理了13份变更，咨询换人需要重新审核这40份变更将会拖慢进展，目前反馈最快要本周三再继续梳理核对 2、结算资料缺失较多、工程资料未交档案馆、工程资料未交华发档案室，以上资料程玉琦在珠海自行负责补充。 结算核对和完善资料同步进行，当前工程资料及结算资料缺失较多，资料找寻难度大，资料是发起结算流程的前置条件",
+   "26.8.7": "分工： 分公司提级管控，做了相应分工，分公司负责牵头对接咨询增派人手核对，程玉琦负责补充资料； 进展： 1、当前剩余未达成一致的变更40份，7.23咨询公司安排共同梳理了13份变更，8.5梳理了18份变更，共计梳理31份，8.9本周日继续核对 咨询换人需要重新审核这40份变更将会拖慢进展， 2、结算资料缺失较多、工程资料未交档案馆、工程资料未交华发档案室，以上资料程玉琦在珠海自行负责补充。 结算核对和完善资料同步进行，当前工程资料及结算资料缺失较多，资料找寻难度大，资料是发起结算流程的前置条件",
+   "26.8.18": "分工： 分公司提级管控，做了相应分工，分公司负责牵头对接咨询增派人手核对，程玉琦负责补充资料； 进展： 1、当前剩余未达成一致的变更40份，7.23咨询公司安排共同梳理了13份变更，8.5梳理了18份变更，共计梳理31份，本周正在对量 咨询换人需要重新审核这40份变更将会拖慢进展， 2、结算资料缺失较多、工程资料未交档案馆、工程资料未交华发档案室，以上资料程玉琦自行负责补充。 结算核对和完善资料同步进行，当前工程资料及结算资料缺失较多，资料找寻难度大，资料是发起结算流程的前置条件"
+  },
+  "江门华发四季": {
+   "26.1.16": "结算定数3.88亿元，正在补资料 1、土建有8份造价附表在咨询和业主成本部走系统流程 2、机电32份； a、减账10份，预估金额127万，整理完资料未签字； b、22份已签完完工单，咨询出最终造价金额14份，8份流程未到咨询未出审核稿 3、结算额约580万业主项目部不同意上系统（其中：已立项有124万、未立项73.7万、罚款221万、索赔类约160万）",
+   "26.2.28": "结算定数3.88亿元，正在补资料 1、土建有8份造价附表在咨询和业主成本部走系统流程，4份负签证暂未开始补资料 2、机电32份； a、减账10份，预估金额127万，整理完资料姜总未签字； b、22份已签完完工单，12份咨询流程结束后签字，2份存争议，8份流程在牟总审核 3、距离结算额约580万业主项目部不同意上系统（其中：已立项有124万、未立项73.7万、罚款221万、索赔类约160万），节后暂未开始，预计下周开始约业主",
+   "26.3.6": "结算定数3.88亿元，完全成本4.4亿；正在补资料 1、土建【正签证】剩8份，其中有6份造价附表咨询签完待业主签字（约好业主下周一签字），有1份南侧道路收方单业主工程部暂未同意签字，1份涉及土建机电专业签证造价确认流程未完（机电扣款项目总还未同意）。4份【负签证】暂未开始走流程（涉及是维修扣款） 2、机电32份； a、减账11份，预估金额127万，整理完资料姜总未签字； b、有8份完工确认单流程牟总还未同意 c、造价确认流程有13份，其中有11份无争议（9份咨询签完待业主签字，2份在咨询造价确认流程中），有2份有争议 3、距离结算额约580万业主项目部不同意上系统（其中：已立项有124万、未立项73.7万、罚款221万、索赔类约160万），节后暂未开始，预计下周开始约业主",
+   "26.3.20": "结算定数3.88亿元，正在补资料 1、土建【正签证】剩2份，有1份南侧道路收方单业主工程部暂未同意签字，1份涉及土建机电专业签证造价确认流程未完（机电扣款项目总还未同意）。4份【负签证】暂未开始走流程（涉及是维修扣款） 2、机电32份； a、减账12份，预估金额127万，整理完资料姜总未签字； b、5份待咨询对数 c、13份确认金额：6份已交文总闭合，3份重签造价附表，4份造价确认流程中， d、2份造价存争议（19880：灯具损坏数量缺少资料支撑，19072已协调牟总重新发起确认流程） 3、距离结算额约580万业主项目部不同意上系统（其中：已立项有124万、未立项73.7万、罚款221万、索赔类约160万），因牟总出差武汉今天才回来，暂未开始对接",
+   "26.4.2": "1.原来580万索赔共计包含23条约302万元，3月26与牟沟通后，同意给8条，金额约101.35万元，另新增5条约10万，合计111.35万，需要补充施工方案、收方单及照片； （正在补充） 2.罚款211万：项目王海正在补充情况说明，补充完成后，牟总拿着这些资料跟佛中江公司总汇报，然后他们约合作方谈 当前正在与华发中江事业部进行沟通，其回复将在4月10号前再次给出调整后结算额",
+   "26.4.10": "华发中江事业部4月10号抛出一个结算金额4.83亿（不含130的围挡），项目暂未同意",
+   "26.4.17": "没有显著的新进展",
+   "26.4.24": "华发中江事业部4月10号抛出一个结算金额3.83亿（不含130的围挡），项目还在找业主争取",
+   "26.4.30": "华发中江事业部4月10号抛出一个结算金额3.83亿（不含130的围挡），项目还在找业主争取 较上期无进展",
+   "26.5.9": "华发中江事业部4月10号抛出一个结算金额3.83亿（不含130的围挡），项目还在找业主争取 较上期无进展",
+   "26.5.14": "华发中江事业部4月10号抛出一个结算金额3.83亿（不含130的围挡），项目还在找业主争取 较上期无进展 5.13业主再次提出扣保温砂浆69及抹灰29万，预留电缆25万，一共124万； 业主告知变更补资料的暂停推进，业主声明工抵认购有实质性进展，就会实质性的推进结算进展",
+   "26.5.22": "项目在组织分包看房，结算无进展",
+   "26.5.29": "华发中江事业部4月10号抛出一个结算金额3.83亿（不含130的围挡）， 5.13业主再次提出扣保温砂浆69及抹灰29万，预留电缆25万，一共124万； 下周一已约甲方开结算会，甲方计划给出审核金额及谈下争议",
+   "26.6.5": "6.1日结算会与华发中江事业部，甲方抛出的3.809亿；业主当前明确以下事项还有可能再争取下 1、抹灰扣减的工程量，可以再次抽查，增加抽查房间数量； 2、3个事项（南侧道路、南侧围挡、展示区销售通道）大概150万可争取； 3、免除罚款，中江事业部与审计去协商适当免除,金额待定；",
+   "26.6.12": "6.1日结算会与华发中江事业部，甲方抛出的3.809亿；业主抛出的事项的进展情况如下： 1、抹灰扣减的工程量：业主提供20套房，去现场后只有5套能进，全都没做，业主扣款暂未反馈； 2、3个事项项目部已提供照片，业主暂未走流程； 3、免除罚款的事项暂无进展；",
+   "26.6.18": "6.1日结算会与华发中江事业部，甲方抛出的3.809亿；业主抛出的事项的进展情况如下： 1、抹灰扣减的工程量：业主提供20套房，去现场后只有5套能进，全都没做，业主扣款暂未反馈； 2、3个事项项目部已提供照片，业主暂未走流程； 3、免除罚款的事项暂无进展； 吴表示姜超还计划按照3.88亿的金额，再找业主牟争取一下，分公司本次会议要求吴转达姜超要给一个完成的时间节点",
+   "26.6.26": "计划下周约中江事业部林子栋，碰结算定数",
+   "26.7.3": "计划下周约中江事业部林子栋，碰结算定数",
+   "26.7.10": "正在约中江事业部人员，计划敲定结算金额",
+   "26.7.17": "暂定中江事业部本周二碰结算，计划敲定结算金额",
+   "26.7.24": "7.21结算会确定结算金额至少为3.81亿： 业主方先出具体结算金额3.81+多少，最快下周二业主返回审核最终金额给我方，双方再核对一下确定结算具体金额，完成后闭合流程（同时上增减项变更）",
+   "26.8.3": "7.21结算会确定原则结算金额不能低于3.81亿，当前业主方正在核对资料出具最终结算金额，资料核对完成后闭合流程，出具结算书。业主承诺预计8月底完成结算审批流程。",
+   "26.8.7": "7.21结算会确定原则结算金额不能低于3.81亿， 8.5业主核算后出具结算审核汇总表，结算额3.81亿元，需要我方签字，当前在等项目经理同意签字后，才能发起结算流程。业主找到分公司如不尽快完成签字，不能保证8月底完成结算流程",
+   "26.8.18": "7.21结算会确定原则结算金额不能低于3.81亿， 8.5业主核算后出具结算审核汇总表，结算额3.81亿元，结算汇总表沈总签字了，当前配合业主方完善结算流程"
+  },
+  "东莞OPPO滨海湾数据中心机电": {
+   "26.1.16": "元旦前项目配合咨询复核了我们成本与对应业主收入1.569亿（自己报的数）。上周一咨询汇报了业主成本和商务，计划本周业主部长正式给朱总汇报",
+   "26.1.31": "本周已与业主开会洽谈争议，下周继续梳理争议，春节前争取确定结算金额。",
+   "26.2.28": "一审咨询和成本审核金额大致为1.558亿元，节前业主成本把审核明细邮件发我司复核，明细有问题需更正的已反馈业主，等节后复工明细经二审、三审复核后，才能确定最终结算金额，后发起结算流程。",
+   "26.3.6": "1、预计结算额1.558亿元，完全成本1.55亿 2、当前进展 一审咨询和成本审核金额大致为1.558亿元，节前业主成本把审核明细邮件发我司复核，明细有问题需更正的已反馈业主，业主成本回复3月9日前把审核明细发二审、三审复核后。",
+   "26.3.20": "1、预计结算额1.558亿元，完全成本1.55亿 2、当前进展 业主成本已发起合同结算审批流程，目前审批流程在刘彦彦岗，审批流程最终CEO陈永明签完才结束。 二三审目前还在核查，估计问题不大。",
+   "26.4.2": "1、预计结算额1.558亿元，完全成本1.55亿 2、当前进展 业主结算审批中，近几天业主内部审批完事，他们可以出正式结算文件了（到最后一人CEO陈永明）",
+   "26.4.10": "1、预计结算额1.558亿元，完全成本1.55亿 2、当前进展 业主结算审批流程已完成， 我方流程：特批申请-调整成本锁定-结算盖章评审流程（当前需与总部碰下两家劳务成本，再发起特批申请流程）",
+   "26.4.17": "1、预计结算额1.558亿元，完全成本1.55亿 2、当前进展 业主结算审批流程已完成， 我方流程：特批申请-调整成本锁定-结算盖章评审流程（已发起成本锁定调整）",
+   "26.4.24": "1、预计结算额1.558亿元，完全成本1.55亿 2、当前进展 业主结算审批流程已完成， 我方流程：特批申请-调整成本锁定-结算盖章评审流程（结算评审流程流转中）",
+   "26.4.30": "总部结算盖章评审流程已完成，总部已盖章邮寄中，完成后交由甲方盖章",
+   "26.5.9": "结算协议书已盖章",
+   "26.5.14": "结算已归档",
+   "26.5.22": "结算已归档",
+   "26.5.29": "结算已归档",
+   "26.6.5": "结算已归档",
+   "26.6.12": "结算已归档",
+   "26.6.18": "结算已归档",
+   "26.6.26": "结算已归档",
+   "26.7.3": "结算已归档",
+   "26.7.10": "结算已归档",
+   "26.7.17": "结算已归档",
+   "26.7.24": "结算已归档",
+   "26.8.3": "结算已归档",
+   "26.8.7": "结算已归档",
+   "26.8.18": "结算已归档"
+  },
+  "深圳嘉里商务中心": {
+   "26.4.24": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，预计7月30日出具结算书； 3、紫荆街北段道路及供冷管网工程：结算初审已完成，预计4月30日送造价站； 4、十米代建工程：结算已申报，清单部分已与咨询进行初步核对，存在争议较大，已协调业主开结算专项会议解决；目前还有2份变更待下发，已派专人跟进； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。",
+   "26.4.30": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，预计7月30日出具结算书； 3、紫荆街北段道路及供冷管网工程：结算一审已完成，因投控工期闭合资料待提供，预计5月10日移送造价站； 4、十米代建工程：结算已申报，清单部分已与咨询进行初步核对，存在争议较大，已协调业主开结算专项会议解决；目前还有2份变更待下发，已派专人跟进； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。",
+   "26.5.9": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，预计7月30日出具结算书； 3、紫荆街北段道路及供冷管网工程：结算一审已完成，因投控工期闭合资料待提供，预计5月10日移送造价站； 4、十米代建工程：结算已申报，清单部分已与咨询进行初步核对，存在争议较大，已协调业主开结算专项会议解决；目前还有2份变更待下发，已派专人跟进； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。",
+   "26.5.14": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，预计7月30日出具结算书； 3、紫荆街北段道路及供冷管网工程：结算一审已完成，因投控工期闭合资料待提供，预计5月10日移送造价站； 4、十米代建工程：结算已申报，清单部分已与咨询进行初步核对，存在争议较大，已协调业主开结算专项会议解决；目前还有2份变更待下发，已派专人跟进； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。",
+   "26.5.22": "无进展",
+   "26.5.29": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，预计7月30日出具结算书； 3、紫荆街北段道路及供冷管网工程：结算一审已完成，投控工期闭合资料已完成，预计下周移送造价站审核； 4、十米代建工程：结算已申报，清单部分已与咨询进行初步核对，存在争议较大，已协调业主开结算专项会议解决；目前还有2份变更待下发，已派专人跟进； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。 较上期无进展",
+   "26.6.5": "较上期无进展",
+   "26.6.12": "较上期无进展",
+   "26.6.18": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，需随嘉里三期一同结算； 3、紫荆街北段道路及供冷管网工程：结算资料已于2026年6月12日移送至造价站审核； 4、十米代建工程：结算已申报，因合同无清单，导致单价争议较大，业主已协调咨询单位找寻该类似工程项目计价依据，作为参考进行审核；目前变更已全部下发完成； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。",
+   "26.6.26": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，需随嘉里三期一同结算； 3、紫荆街北段道路及供冷管网工程：结算资料已于2026年6月12日移送至造价站审核； 4、十米代建工程：结算已申报，因合同无清单，导致单价争议较大，业主已协调咨询单位找寻该类似工程项目计价依据，作为参考进行审核；目前变更已全部下发完成； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。",
+   "26.7.3": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，需随嘉里三期一同结算； 3、紫荆街北段道路及供冷管网工程：结算资料已于2026年6月12日移送至造价站审核； 4、十米代建工程：结算已申报，因合同无清单，导致单价争议较大，业主已协调咨询单位找寻该类似工程项目计价依据，作为参考进行审核；目前变更已全部下发完成； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。 较上期无进展",
+   "26.7.10": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，需随嘉里三期一同结算； 3、紫荆街北段道路及供冷管网工程：结算资料已于2026年6月12日移送至造价站审核； 4、十米代建工程：结算已申报，因合同无清单，导致单价争议较大，业主已协调咨询单位找寻该类似工程项目计价依据，作为参考进行审核；目前变更已全部下发完成； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。",
+   "26.7.17": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，需随嘉里三期一同结算； 3、紫荆街北段道路及供冷管网工程：结算资料已于2026年6月12日移送至造价站审核； 4、十米代建工程：结算已申报，因合同无清单，导致单价争议较大，业主已协调咨询单位找寻该类似工程项目计价依据，作为参考进行审核；目前变更已全部下发完成； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。",
+   "26.7.24": "嘉里商务中心项目项下补充协议结算进展： 1、临时围墙工程：已结算完成，结算款已回收100%； 2、紫荆街地下空间利用人防配建工程：结算已申报，初版已核对完成，需随嘉里三期一同结算； 3、紫荆街北段道路及供冷管网工程：结算资料已于2026年6月12日移送至造价站审核； 4、十米代建工程：结算已申报，因合同无清单，导致单价争议较大，业主已协调咨询单位找寻该类似工程项目计价依据，作为参考进行审核；目前变更已全部下发完成； 5、紫荆街地下商业街地铁连通及市政配套工程：新签补充协议，目前仍在施工履约中，不具备办理结算条件。"
+  },
+  "深圳礼鼎高端集成电路载板及先进封装基地": {
+   "26.1.16": "整体结算暂未有新的进展，还在等淮安结算完成后才能推进。",
+   "26.1.31": "淮安结算手续走完后才结深圳礼鼎，业主预留5000万预留金，看最后是否能争取到",
+   "26.2.28": "年前已按咨询公司意见，补充了合同外索赔资料发给咨询公司和业主，年后已联系咨询公司帮助审核。咨询公司负责人员下周三上班，上班后推动结算工作。",
+   "26.3.6": "1、预计结算额13.2亿，完全成本12.755亿 2、当前进展： 年前已按咨询公司意见，补充了合同外索赔资料发给咨询公司和业主，年后已联系咨询公司帮助审核。咨询公司凯蒂思负责人员本周一刚上班，答应争取这周，最迟下周出来个成果。 平行单位兆联的718索赔未谈定。 3.最晚结算完成时间26年6月",
+   "26.3.20": "1、预计结算额13.2亿，完全成本12.755亿 2、当前进展： 年前已按咨询公司意见，补充了合同外索赔资料发给咨询公司和业主，年后已联系咨询公司进行审核。本周五咨询公司已审核出一版合同外金额发业主，待业主进行复核，给出意见。 平行单位兆联的718索赔未谈定。 3.最晚结算完成时间26年6月",
+   "26.4.2": "1.咨询公司3月18日已把合同外索赔审核金额报业主方，其中无指令的200万、疫情索赔按照淮安算法参照江苏的文件比例约400-800万区间，项目计划再多争取疫情索赔的金额。目前已通过杨丽鹏总约业主高管孙总谈结算，孙总明确表示需要先解决718事件兆联单位对我司的索赔事宜，才可谈结算。 2.本周三，辛昕和杨丽鹏总督促机电经理刘飞抓紧约谈兆联，以解决与业主结算及回款事宜。刘飞经理昨天联系后，暂时约的是下周五和兆联负责人在深圳面谈。",
+   "26.4.10": "1.咨询公司3月18日已把合同外索赔审核金额报业主方，其中无指令的200万、疫情索赔按照淮安算法参照江苏的文件比例约400-800万区间，项目计划再多争取疫情索赔的金额。目前已通过杨丽鹏总约业主高管孙总谈结算，孙总明确表示需要先解决718事件兆联单位对我司的索赔事宜，才可谈结算。 2.本周五刘飞经理和兆联负责人在深圳面谈，洽谈后再跟进。",
+   "26.4.17": "与兆联已谈补偿，目前分包方索要130万，我方目前抛出70万，计划再谈一轮抛出90万，下周一二左右确定",
+   "26.4.24": "与兆联于4月22日谈定补偿金额85万，正在准备和分包签协议",
+   "26.4.30": "1.业主已启动结算流程，当前咨询公司向业主汇报整体结算情况，征求业主索赔争议意见，争取在5月底办理完结算。 2.甲指兆联的索赔已谈定85万，正在签订协议，下一步计划与业主协商启动办理结算",
+   "26.5.9": "1.业主已启动结算流程，当前咨询公司向业主汇报整体结算情况，征求业主索赔争议意见，争取在5月底办理完结算。 2.甲指兆联的索赔已谈定85万，正在签订协议",
+   "26.5.14": "1.业主已启动结算流程，当前咨询公司向业主汇报整体结算情况，征求业主索赔争议意见，争取在5月底办理完结算。 2.甲指兆联的索赔已谈定85万，正在签订协议 5.13下午开始谈了，业主不太想给索赔补偿，推测会按咨询审核的数据结算，扣第三方维修施工内容120多万， 咨询数据：土建11.916（成本11.234）+机电1.546（成本1.55）",
+   "26.5.22": "1.业主已启动结算流程，当前咨询公司向业主汇报整体结算情况，征求业主索赔争议意见，争取在6月底办理完结算。 2.甲指兆联的索赔已谈定85万，协议签证卡点，业主孙总不同意由业主代付兆联的方式，让我方自行支付，机电正在与公司沟通处理方式",
+   "26.5.29": "1.本周和咨询公司已核实完全部的数据，土建119237万及机电15269万元双方都已认可，当前我方申报的1162多万索赔需要和业主确认； 杨总在持续找业主孙总商谈结算 2.甲指兆联的索赔已谈定85万，协议签证卡点，业主孙总不同意由业主代付兆联的方式，让我方自行支付，机电正在与公司沟通处理方式",
+   "26.6.5": "业主传回来的信息，甲方孙总意见结算内600万赶工费不想给，提出要求结算让打95折，今天杨总去找业主再沟通下",
+   "26.6.12": "本周主要是杨丽鹏总和业主孙总在进行结算商谈，目前业主倒没像上周那样说打折的事情了。孙总现在重心放在了工期上面，项目这两天在给业主写关于工期的文函，进行再次的分析说明。 杨总与孙总继续沟通着。",
+   "26.6.18": "业主方孙总现在重心放在了工期上面，项目这两天在给业主写关于工期的文函，进行再次的分析说明，杨总已于6.13将文件发给孙总，继续沟通中 兆联的费用已办理结算流程中，等待完善流程支付款项 要看下业主下一步的动向，我方再采取应对措施，暂不好估计完成时间， 业主暂没有对咨询给公司审核金额提出意见，主要还是关注工期的事",
+   "26.6.26": "业主方孙总现在重心放在了工期上面，项目这两天在给业主写关于工期的文函，进行再次的分析说明，杨总已于6.13将文件发给孙总，继续沟通中 兆联的费用已办理结算流程中，等待完善流程支付款项 要看下业主下一步的动向，我方再采取应对措施，暂不好估计完成时间， 业主暂没有对咨询给公司审核金额提出意见，主要还是关注工期的事 较上期没有变化",
+   "26.7.3": "业主方孙总现在重心放在了工期上面，项目这两天在给业主写关于工期的文函，进行再次的分析说明，杨总已于6.13将文件发给孙总，继续沟通中 兆联的费用已办理结算流程中，等待完善流程支付款项 要看下业主下一步的动向，我方再采取应对措施，暂不好估计完成时间， 业主暂没有对咨询给公司审核金额提出意见，主要还是关注工期的事 较上期没有变化",
+   "26.7.10": "礼鼎的业主孙总给抛了个结果，降价1千万就可以马上办结，再给参与投标新项目的机会，项目目前没同意",
+   "26.7.17": "结算总金额已确定13.4亿元 1、下一步要和咨询公司进行具体土建、机电的结算金额划定，预计下周完成详细结算数据确定，尽早盖章确认。 2、因结算金额超合同金额，后续继续跟进和业主合同补充协议事宜。",
+   "26.7.24": "结算总金额已确定13.4亿元 本周二咨询公司已整理完结算书给到业主，业主在内部走流程，正在跟进何时完成，可能不再签补充协议",
+   "26.8.3": "结算书已出133929.83万元 业主内部流程已完成，上周五结算书发我方审核盖章，本周正在调整成本锁定，预计下周发起结算评审盖章流程",
+   "26.8.7": "结算书已出133929.83万元 咨询结算书已调整好发我方盖章，正在沟通公司盖章",
+   "26.8.18": "结算我方已盖章，咨询公司上周五盖章，后转给甲方盖章"
+  },
+  "深圳前海深港青年梦工场北区(二期)": {
+   "26.1.16": "项目目前结算基础数据已经和一审、二审已经基本核对完成，目前有三个争议正在解决中 1、土方争议：总包和桩基包土方标高存在争议，目前方案已经协商完成，资料在闭合中，预计月底前完成此项争议 2、变更超估算：变更超估算一单罚5000左右，扣十多万左右，目前此项争议正在上报业主中 3、工期闭合：工期资料已经整理完毕，此项争议已完成，最终扣2~3天。",
+   "26.2.28": "1.土方争议，给业主谈了一次了，他们在协调桩基单位，预计扣款在60万左右。 2.变更超估算一单罚5000左右，扣十多万左右（无变化）。 3.工期也已整理完毕，可能扣2-3天。3万/天（无变化）。 较上期无变化",
+   "26.3.6": "结算进展： 项目历经三道审核（一审、二审、造价站），目前一审二审合同内及变更已全部核对完成。 目前对于土方工程量涉及平行包商桩基单位存在争议，正在沟通解决",
+   "26.3.20": "结算进展： 项目历经三道审核（一审、二审、造价站），目前一审二审合同内及变更已全部核对完成。 目前对于土方工程量涉及平行包商桩基单位存在争议，正在沟通解决 较上期无进展",
+   "26.4.2": "结算进展： 项目历经三道审核（一审、二审、造价站），目前一审二审合同内及变更已全部核对完成。 目前对于土方工程量涉及平行包商桩基单位存在争议，正在沟通解决 较上期无进展",
+   "26.4.10": "一审已基本核对，下周与二审再碰下几个争议",
+   "26.4.17": "下周再和咨询碰下，二审出数",
+   "26.4.24": "一审已基本核对，下周与二审再碰下几个争议",
+   "26.4.30": "土建幕墙、钢结构两项争议；机电开关插座等一点小争议，项目经理今天下午去和咨询谈",
+   "26.5.9": "1、一审当前正在核对罚款，本周完成，整合资料给二审： 2、二审当前正在同步核对剩余几份变更，预计本周完成， 预计下周出初版结算金额，预计下周五由二审送到业主方，而后再行与业主沟通送造价站审核（三审）",
+   "26.5.14": "一二审已出数2.86亿（成本2.91亿），需要李浩梳理资料后，送造价站审核",
+   "26.5.22": "项目暂未反馈",
+   "26.5.29": "目前一审全部结束，二审本周给初步结果",
+   "26.6.5": "目前一审全部结束，二审本周给了合同内的，项目正在看",
+   "26.6.12": "目前一审全部结束，二审本周给了合同内的，项目正在看",
+   "26.6.18": "基本完成了，争取本周二审结束",
+   "26.7.10": "二审已经报业主服务集团走业主审核流程，审核完成后送三审造价站",
+   "26.7.17": "/",
+   "26.7.24": "/",
+   "26.8.3": "计划本周送三审造价站审核",
+   "26.8.7": "项目还没回复",
+   "26.8.18": "项目还没回复"
+  },
+  "广州保利三元里": {
+   "26.1.16": "一标段：1.44亿一审报告已出，结算资料已补充完毕，1.5审已发送审核稿，审减额140万，项目未同意（审减额均为重计量转固定总价，业主重新打开审核）。目前正在核对（剩余地下室、签证未核对完），内审后转送结算二审 二标段：3.76亿机电甲供材对量预计11月底完成，目前仍未完成；机电未施工部位统计业主还未下发界面划分文函，暂不具备核对条件 春节前无回款 抵房承诺书，结算额的6%（已抵出一套350万，目前有分包正在看房）",
+   "26.1.31": "一标段：1.5审还差争议，未确定谈争议时间",
+   "26.2.28": "一标段：1.44亿一审报告已出，结算资料已补充完毕，1.5审已发送审核稿，审减额140万，项目未同意（审减额均为重计量转固定总价，业主重新打开审核）。目前正在核对（剩余地下室、签证未核对完），内审后转送结算二审 二标段：核对完成大数3.76亿，机电甲供材料超领罚款、施工部位剥离扣款争议未达成一致意见",
+   "26.3.6": "结算进展情况： 一标段：1.44亿一审报告已出，结算资料已补充完毕；1.5审已核对完成，审减额140万（审减额均为重计量转固定总价，业主重新打开审核），1.5审争议会因业主成本员1月份离职，尚未组织；3月1日业主成本经理已催促接手成本员尽快熟悉并组织开1.5审争议会。 二标段：核对完成大数3.76亿，机电甲供材料超领罚款、施工部位剥离扣款争议未达成一致意见；其他一审资料同步已送一审单位梳理，梳理后补充完善；",
+   "26.3.20": "结算进展情况： 一标段：1.44亿一审报告已出，结算资料已补充完毕；1.5审已核对完成，审减额140万（审减额均为重计量转固定总价，业主重新打开审核），新接手成本员审核意见： 1、业主内部变更签证流程，两个标段乱分，要么作废重新转，要么让利 2、2024年有两个大额变更，新来的说没上内部系统，100％是要扣的（涉及300多万） 二标段：核对完成大数3.76亿，机电甲供材料超领罚款、施工部位剥离扣款争议未达成一致意见；其他一审资料同步已送一审单位梳理，梳理后补充完善；",
+   "26.4.2": "一标段：1.5审业主新换成本提出 1.审减额由140万又提到210万，张培培约业主时间尽快谈一下争议 2.约300万的变更没有上流程，业主认为工程变更未上流程的二审会砍掉，据了解，因项目19年才有上流程规定，24年结算的时也补不了，业主当时同意工程部和技术部4人签字后作为结算依据 二标段：机电问题杨总给业主发了短信，暂时无进展",
+   "26.4.10": "一标段： 1、1.44亿一审完成； 2、1.5审核减210万及提出变更图差资料约300多万未上流程 3、当前进展： 4月8号与1.5审咨询再次洽谈 问题1：后加建楼板钢筋计算范围，要核实图纸（总包今天核实清楚） 问题2：未上流程的变更资料，1.5咨询还需要再核实资料（咨询核实） 咨询已明确今天把争议表同步发出来 二标段： 1、一审审核中，初步审核数据3.76亿 2、当前进展： 土建已核对完成，资料正在整理中 机电涉及钢筋调差争议及未施工工作扣款事项，本周咨询没时间核对 项目经理丽鹏总本周六下午约了业主负责人王挺开碰头会，洽谈以上问题",
+   "26.4.17": "一标段： 1、1.44亿一审完成； 2、1.5审核减210万及提出变更图差资料约300多万未上流程 3、当前进展： 4月8号与1.5审咨询再次洽谈 问题1：后加建楼板钢筋计算范围，要核实图纸（图纸已提供） 问题2：未上流程的变更资料，1.5咨询还需要再核实资料（4月11日与业主副总王廷碰面，成本员核实未上线变更情况，分析大额变更原因） 咨询已明确今天把争议表同步发出来（争议表已发出） 二标段： 1、一审审核中，初步审核数据3.76亿 2、当前进展： 土建已核对完成，资料正在整理中 机电涉及甲供材计算原则，已于4.16日和咨询业主核定计算原则，部分仍存在不合理的需要沟通高层决定，未施工工作扣款事项，本周咨询没时间核对",
+   "26.4.24": "一标段： 4月22日与甲方咨询开了争议会，三类问题如下： 1：后加建楼板钢筋计算范围，要核实图纸（会议决定我方会后找原钢筋计量人员补充资料与咨询再对接一下） 2、变更图差资料约300多万，业主要求重新核对 3、业主提出送二审的资料需要整体重新复核一遍，补充缺少的文件 二标段： 1、一审审核中，初步审核数据3.76亿 2、当前进展： 土建已核对完成，资料正在整理中 机电涉及甲供材计算原则，已于4.16日和咨询业主核定计算原则，部分仍存在不合理的需要沟通高层决定，未施工工作扣款事项，本周咨询没时间核对",
+   "26.5.9": "1、一标段机电：管件预扣已定;签证变更部分正在核对；钢筋计量问题5月7号组织于咨询对争议 2、二标段机电：甲供材计量原则已定，机电正在收集材料下单资料，以及现场串用甲供材规格的证件；施工范围剥离暂未核对(开会决议由我们计算，咨询审核），正在计算，计算后上报",
+   "26.5.14": "一、成本情况：完全成本58000万元，含收益成本61485.8万元，核定收益6.01% 三、最新结算进展： 一标段：一审报告已出，结算金额1.44亿。当前1.5审审减总金额约850万。其中： 1）需要补充资料类金额：730万（需上三重一大的447.83万） a)已签订转固补充协议的扣减：147万钢筋计量争议，图纸会审需转换为设计变更（上三重一大）。 b)设计变更：518万（转设计变更） 1）单份变更小于10万（金额79.45万）： 2）单份变更大于10万小于50万（涉及金额137.72万）：需上成本委员会通过 3）单份变更大于50万（金额300.83万，主要变更是未纳入预算转固的装修做法及砌筑深化）：需上建设单位三重一大通过 目前进展：资料已全部提供给业主工程部上流程 c)与建设单位副总经理洽谈结算已同意计算部分：65万； 1）D地块施工范围剥离导致的措施费调整：24万，补签证（上成本委员会通过） 2）铝模板深化图增加模板工程量：41万，补设计变更（上成本委员会通过） 进展：已提交补充签证变更资料给建设单位工程部 2）争议：1.5审扣减的金额：55万（我方评估为合理诉求，坚持谈判） a)地下室承台土方开挖措施费：24万 b)商品混凝土泵送增加费：26万。 c)砌砖计量争议：5万 3）无法提供资料金额：66万 a)签证中业主内部红头文件明确的防疫补贴：61万，实名制系统考勤记录无法提供 b)屋面聚乙烯薄膜：5万，1.5审认为不可能施工，目前项目无法提供带水印施工的照片。 备注：据了解标段3其他总包单位单份大于10万的补充变更流程自2025年12月至今仍未通过。 二标段：一审初审3.76亿，未包含机电甲供材超领扣款、机电未施工内容 机电甲供材扣款要在6.15核对完成，未施工部分扣款约10多万，当前联系单卡在业主未审核完成",
+   "26.5.22": "流程问题： 签证：在2021年3月31日有交底PPT补上明源系统流程 变更：进场到施工完成就没有提变更上系统的流程； 22.3.25报结算时，成本部表示设计变更加盖技术部章+预计算书，就是完成一份； 26年2月，1.5审的时新换的成本员（第5任）提出变更上流程 一标段：26.5.13已经把需要补上系统的资料都给到业主项目部工程师，当前进展情况培培再去了解 二标段：一审初审3.76亿，未包含机电甲供材超领扣款、机电未施工内容 机电甲供材扣款要在6.15核对完成，未施工部分扣款约10多万，当前联系单卡在业主未审核完成（二标无变化）",
+   "26.5.29": "甲方技术部说一二标段所有的包商都没上流程，目前在统计一共有多少钱，整体上内部会通过后，再说上流程的事，暂时停滞",
+   "26.6.5": "一标段：甲方技术部说一二标段所有的包商都没上流程，目前在统计一共有多少钱，整体上内部会通过后，再说上流程的事，暂时停滞 二标段：一审初审3.76亿，未包含机电甲供材超领扣款、机电未施工内容 机电甲供材扣款要在6.15核对完成，未施工部分扣款约10多万，当前联系单卡在业主未审核完成（二标无变化） 如果项目计划起诉，项目整理好全套资料来分公司和法务商务整体碰一下，再报公司总法，是否适合起诉，起诉能否达到预期以及回款",
+   "26.6.12": "一标段：甲方技术部说一二标段所有的包商都没上流程，目前在统计一共有多少钱，整体上内部会通过后，再说上流程的事，暂时停滞（二标无变化） 二标段：一审初审3.76亿，未包含机电甲供材超领扣款、机电未施工内容 机电甲供材扣款部分因机电商务离职，目前机电经理自己核对，无法按期完成； 未施工部分扣款约10多万，当前联系单卡在业主未审核完成； 项目目前正在整理全套资料，预计端午节后带着资料来分公司和法务商务整体碰一下，之后在报公司总法；",
+   "26.6.18": "6.17与业主高层见面洽谈结算情况 1、变更情况：清单梳理出来，按是否隐蔽工程分类，已隐蔽的不好上线有风险，没隐蔽去现场看再上会上线，（只签字没盖章的待项目统计） 2、转总,集团公司表示不能层层加码，广东公司转总必须打开重审核 3、富力3%的管理费，保利表示在谈合同前已包含，必须扣除 4、甲供材电缆：业主要求我方编制替换的合理理由，后在广东公司层面解决掉。当前我方机电预算员辞职，朱绘明回家，暂时没人弄",
+   "26.6.26": "转总部分:我方重计量有40多万漏掉的，本次在沟通咨询加进去 变更部分已分完:已隐蔽的是80万、310万半隐蔽、100多万未隐蔽，张培培计划找成本去碰下一步推进计划 甲供材电缆：业主要求我方编制替换的合理理由，后在广东公司层面解决掉。 目前还剩下电缆(电线没问题），桥架，镀锌钢管没对完，其他的完事了！整体采购金额低于重计量金额！缓慢原因：之前项目的商务人员已提离职，三元里活已不干！朱绘明自己又核对！预计在7月初能全部核对完成",
+   "26.7.3": "一标段： 7.2与业主成本组会结论 转总打开：扣件的和漏算的都可以调整 变更上线：业主成本让我方自己找技术部上线，总包先上 二标段： 甲供材7.10我方梳理完上报咨询公司审核",
+   "26.7.10": "6.17与业主高层见面洽谈结算情况 1、变更情况：清单梳理出来，按是否隐蔽工程分类，已隐蔽的不好上线有风险，没隐蔽去现场看再上会上线，（只签字没盖章的待项目统计） 2、转总,集团公司表示不能层层加码，广东公司转总必须打开重审核 3、富力3%的管理费，保利表示在谈合同前已包含，必须扣除 4、甲供材电缆：业主要求我方编制替换的合理理由，后在广东公司层面解决掉。 当前结算最新进展: 一标段： 7.2与业主成本组会结论 转总打开：扣减的和漏算的都可以调整 变更上线：业主成本让我方自己找技术部上线，找技术部，技术部又让找工程部 二标段： 甲供材7.18我方梳理完上报咨询公司审核",
+   "26.7.17": "7.16决议此项目向诉讼方向推进： 1、当前机电甲供材、土建变更签字未完成的具体工作，排计划快速处理掉 2、按照法务要求准备资料，排计划尽快完成",
+   "26.7.24": "7.16决议此项目向诉讼方向推进： 1、机电审核稿已反馈给咨询，催业主咨询核对，暂时没回复 2、本周完成从业主取回资料整理好给法务 暂无进展",
+   "26.8.3": "7.16决议此项目向诉讼方向推进： 1、机电审核稿已反馈给咨询，催业主咨询核对，暂时没回复 2、项目已从业主取回资料正在整理，准备转交法务审核",
+   "26.8.7": "7.16决议此项目向诉讼方向推进： 1、机电审核稿已反馈给咨询，催业主咨询核对，暂时没回复 2、本周项目与分公司法务在审核资料",
+   "26.8.18": "诉讼准备阶段，项目在上周末收集完零散文件的原件，分公司法务已拟定完成关于本项目8月份上公司总部合规会的汇报资料。等待上会"
+  },
+  "佛山怡翠尊堤嘉园D2区": {
+   "26.1.16": "25年8月初一审裁决金额1.67亿，已缴纳上诉费，业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息，我方已上诉，等待开庭。还有7000万尾款要收",
+   "26.2.28": "25年8月初一审裁决金额1.67亿，已缴纳上诉费，业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息，我方已上诉，等待开庭。还有7000万尾款要收",
+   "26.3.6": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，等待开庭通知。还有7000万尾款要收",
+   "26.3.20": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，等待开庭通知。还有7000万尾款要收",
+   "26.4.2": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，等待开庭通知。还有7000万尾款要收",
+   "26.4.10": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，等待开庭通知。还有7000万尾款要收 较上期无变化",
+   "26.4.17": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，等待开庭通知。还有7000万尾款要收 较上期无变化",
+   "26.4.24": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，还有7000万尾款要收，本周二已开庭，预计5月底取得二审判决；",
+   "26.4.30": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，还有7000万尾款要收，本周二已开庭，预计5月底取得二审判决； 较上期无变化",
+   "26.5.9": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，还有7000万尾款要收，本周二已开庭，预计5月底取得二审判决； 较上期无变化",
+   "26.5.14": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，还有7000万尾款要收，本周二已开庭，预计5月底取得二审判决； 较上期无变化",
+   "26.5.29": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，还有7000万尾款要收，已开庭，当前法院内部组织评审会议，评审出结果后，即可发二审判决，预计6月底取得二审判决； 较上期无变化",
+   "26.6.5": "25年8月初一审裁决金额1.67亿（不含逾期利息），业主逾期付款利息法院以我方未按合同约定提供发票为由，不支持逾期利息；我方已上诉，主张利息1500万，还有7000万尾款要收，已开庭，当前法院内部组织评审会议，评审出结果后，即可发二审判决，预计6月底取得二审判决； 较上期无变化",
+   "26.6.12": "已出二审判决；剩余收款81,666,854.36元 其中，本金：70,128,679.33元； 垫资利息：1,335,093元； 欠款利息：8,690,412元； 退一审诉讼费：414,649.25元； 退造价鉴定费：1,057.171.27元； 退二审诉讼费：40,849.51元（法院退回）； 项目收入：177,484,367.75元 项目完全成本：183,051,601.93（含退利息3,495,271.49元）； 盈亏：-5,567,234.18元",
+   "26.6.18": "已出二审判决；剩余收款81,666,854.36元 其中，本金：70,128,679.33元； 垫资利息：1,335,093元； 欠款利息：8,690,412元； 退一审诉讼费：414,649.25元； 退造价鉴定费：1,057.171.27元； 退二审诉讼费：40,849.51元（法院退回）； 项目收入：177,484,367.75元 项目完全成本：183,051,601.93（含退利息3,495,271.49元）； 盈亏：-5,567,234.18元",
+   "26.6.26": "结算已归档",
+   "26.7.3": "结算已归档",
+   "26.7.10": "结算已归档",
+   "26.7.17": "结算已归档",
+   "26.7.24": "结算已归档",
+   "26.8.3": "结算已归档",
+   "26.8.7": "结算已归档",
+   "26.8.18": "结算已归档"
+  },
+  "深圳嘉里商务中心(三期)": {
+   "26.1.16": "结算已正式报出： 项目已完成重计量工作已完成；CI变更已完成核对133份，金额4485万元，未确认7份，涉及金额300万元，剩余争议30条，涉及金额783万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，未谈判",
+   "26.2.28": "项目已完成重计量工作已完成；CI变更已完成核对133份，金额4485万元，未确认7份，涉及金额300万元，剩余争议30条，涉及金额783万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，未谈判。 较上期无变化",
+   "26.3.6": "项目已完成重计量工作已完成；CI变更已完成核对133份，金额4485万元，未确认7份，涉及金额300万元，剩余争议30条，涉及金额783万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，未谈判。 较上期无变化",
+   "26.3.20": "项目已完成重计量工作已完成；CI变更已完成核对133份，金额4812万元，未确认7份，涉及金额300万元，剩余争议21条，涉及金额456万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，未谈判。",
+   "26.4.2": "项目已完成重计量工作已完成；CI变更已完成核对135份，金额4862万元，未确认5份，涉及金额200万元，剩余争议12条，涉及金额192万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，未谈判。",
+   "26.4.10": "项目已完成重计量工作已完成；CI变更已完成核对135份，金额4862万元，未确认5份，涉及金额200万元，剩余争议12条，涉及金额192万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，未谈判。 较上期无变化",
+   "26.4.17": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，4份核对中。",
+   "26.4.24": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，4份核对中。",
+   "26.4.30": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，4份核对中。 较上期无变化",
+   "26.5.9": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，4份核对中。 较上期无变化",
+   "26.5.14": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1000万，需继续核对及补充资料。",
+   "26.5.22": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1000万，需继续核对及补充资料。 较上期无变化",
+   "26.5.29": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1000万，需继续核对及补充资料。 较上期无变化",
+   "26.6.5": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1000万，需继续核对及补充资料。 较上期无变化",
+   "26.6.12": "项目已完成重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议13条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1000万，需继续核对及补充资料。 较上期无变化",
+   "26.6.18": "项目重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议12条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1500万，需继续核对及补充资料。",
+   "26.6.26": "项目重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议12条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1500万，需继续核对及补充资料。",
+   "26.7.3": "项目重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议12条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1500万，需继续核对及补充资料。",
+   "26.7.10": "项目重计量工作已完成；CI变更已完成核对136份，金额4932万元，未确认4份，涉及金额41万元，剩余争议12条，涉及金额202万，需分批推进业主谈判；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1500万，需继续核对及补充资料。",
+   "26.7.17": "项目重计量工作已完成；变更全部核对完成，合同内审核金额3.93亿（其中393万已补充完资料仍需继续核对）；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1200万，需补资料后核对金额1000万，需继续核对及补充资料，剩余索赔仍需谈判。",
+   "26.7.24": "项目重计量工作已完成；变更全部核对完成，合同内审核金额3.93亿（其中393万已补充完资料仍需继续核对）；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额1200万，需补资料后核对金额1000万，需继续核对及补充资料，剩余索赔仍需谈判。",
+   "26.8.3": "项目重计量工作已完成；变更全部核对完成，合同内审核金额3.95亿；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额2100万，需要继续核对和争取金额700万。业主抛出了结算数，我方正在考虑是否接受。",
+   "26.8.7": "项目重计量工作已完成；变更全部核对完成，合同内审核金额3.95亿；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额2100万，需要继续核对和争取金额700万。业主抛出了结算数，我方正在考虑是否接受。 较上期无变化",
+   "26.8.18": "项目重计量工作已完成；变更全部核对完成，合同内审核金额3.95亿；发生费用补偿14份，涉及金额6865.57万元，已全部正式申报，核对中，初审金额2100万，需要继续核对和争取金额700万。业主抛出了结算数，我方回抛了结算数，双方正在协商。"
+  },
+  "深圳光明区金融街": {
+   "26.1.16": "1、变更洽商部分：有14份已核对有争议，待洽谈；有14份未核对的，咨询审核中，后续核对；新增洽商15份，待事项流程完成后上报； 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔部分资料已提交，部分资料需要业主项目经理签字，带签完字提交成本审核；",
+   "26.2.28": "1、变更洽商部分：有14份已核对有争议，待洽谈；有11份未核对的，咨询审核中，后续核对；新增洽商15份，待事项流程完成后上报； 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔部分资料已提交，部分资料需要业主项目经理签字，带签完字提交成本审核； 较上期无变化",
+   "26.3.6": "一、结算进展： 1、变更洽商部分：有14份已核对有争议，待洽谈；有11份未核对的，咨询审核中，后续核对；预计3月份完成变更洽商审核及核对，将争议问题递交业主成本，后续与成本洽谈； 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 二、当前结算重难点：结算进度按照甲方推进进度，甲方优先结算其他甲指包商； 三、承诺最终完成时间：2026年12月",
+   "26.3.20": "一、结算进展： 1、变更洽商部分：共计22份，其中有11份已核对有争议，待洽谈；有11份未核对的，咨询审核中，需业主补充事项流程，截止目前均已发起事项流程，流程结束后可核对；之前核对的争议问题重新梳理核对，剩余11份已提交至业主成本，下阶段约成本洽谈争议。 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 二、当前结算重难点：结算进度按照甲方推进进度，甲方优先结算其他甲指包商； 三、承诺最终完成时间：2026年12月",
+   "26.4.2": "深圳光明区金融街 1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对；",
+   "26.4.10": "深圳光明区金融街 1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.4.17": "深圳光明区金融街 1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.4.24": "深圳光明区金融街 1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对；",
+   "26.4.30": "深圳光明区金融街 1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.5.9": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.5.14": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.5.22": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.5.29": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.6.5": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.6.12": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.6.18": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.6.26": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.7.3": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 较上期无变化",
+   "26.7.10": "1、变更洽商部分：剩余22份洽商（其中，有11份已核对有争议，待洽谈；有11份正核对） 2、工期闭合部分：项目分期施工，业主内部组会表示认同，电子资料已提交，待业主项目经理组会与成本总汇报； 3、索赔部分：索赔资料已提交，部分资料需要业主项目经理签字，与业主沟通，索赔资料于4月份给到成本部，后续成本安排咨询审核并核对； 26.7.8日与业主组会，会议上业主要求我方派结算人员去惠州驻场，10月31号前完成结算",
+   "26.7.17": "26.7.8日会议后与业主梳理推进计划： 1、重计量遗留的未转固部分一审审核的577万，重新梳理 2、增项变更：按照金额街总部审计标准重新梳理合理性，保障合规性 3、减项变更：要求我方与其一起梳理核对 4、上述事项完成后，下一步谈变更争议及索赔 石福生驻场惠州，初步计划月底前完成增项变更梳理，根据增项变更完成情况再行铺排详细后续计划 力争在10月31号前完成结算",
+   "26.7.24": "26.7.8日会议后与业主梳理推进计划： 1、重计量遗留的未转固部分一审审核的577万（本周咨询换的新人在重新审核，我方配合解释） 2、增项变更：按照金额街总部审计标准重新梳理合理性，保障合规性（100份增项，本周梳理了7条） 3、减项变更：要求我方与其一起梳理核对 4、上述事项完成后，下一步谈变更争议及索赔 石福生驻场惠州，初步计划月底前完成增项变更梳理，根据增项变更完成情况再行铺排详细后续计划 力争在10月31号前完成结算",
+   "26.8.3": "26.7.8日会议后与业主梳理推进计划： 1、重计量遗留的未转固部分一审审核的577万，咨询重新审核，计划本周开始核对 2、增项变更：按照金额街总部审计标准梳理合理性，保障合规 3、减项变更：要求我方与其一起梳理核对 4、上述事项完成后，下一步谈变更争议及索赔 石福生驻场惠州，预计8月底前完成增项变更梳理及部分变更争议洽谈，力争在10月31号前完成结算",
+   "26.8.7": "26.7.8日会议后与业主梳理推进计划： 1、重计量遗留的未转固部分一审审核的577万，咨询重新审核，正在核对，预计8月底完成 2、增项变更：按照金融街总部审计标准梳理合理性已经梳理完成，（工程类变更剩余12份要求我司补充资料） 3、减项变更：台账1700万，详细资料没给 4、上述事项完成后，下一步谈变更争议及索赔 石福生驻场惠州，预计8月底前完成增项变更梳理及部分变更争议洽谈，力争在10月31号前完成结算",
+   "26.8.18": "26.7.8日会议后与业主梳理推进计划： 1、重计量遗留的未转固部分一审审核的577万，咨询重新审核，正在核对，预计8月底完成 2、增项变更：按照金融街总部审计标准梳理合理性已经梳理完成，（工程类变更剩余12份要求我司补充资料，难度大） 3、减项变更：台账1700万，详细资料没给 4、上述事项完成后，下一步谈变更争议及索赔 石福生驻场惠州，预计8月底前完成增项变更梳理及部分变更争议洽谈，力争在10月31号前完成结算"
+  },
+  "东莞华为研发实验室（一期）": {
+   "26.1.16": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.2.28": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.3.6": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.3.20": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.4.2": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.4.10": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.4.17": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.4.24": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.4.30": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.5.9": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.5.14": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.5.22": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.5.29": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.6.5": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.6.12": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.6.18": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.7.3": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.7.10": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.7.17": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化",
+   "26.7.24": "资料已梳理完，没什么可补的资料了，待领导约业主时间见面谈 较上期无变化"
+  },
+  "机场教育基地": {
+   "26.5.22": "1.工程变更共计144份变更，截至当前，已完成98份变更的核对工作，剩余46份待核对 2.合同内按照已于咨询及甲方商定按照重计量的结果，外加查漏补缺，不再打开重新核对 3.目前重计量部分存在土方消纳争议、围挡施工争议、球场区域回填种植土争议等，共涉及247万 整体计划：5月完成对量，6月谈争议，6月中下旬送二审，7月底送三审造价站审核",
+   "26.5.29": "1.工程变更共计144份变更，截至当前，已完成98+23份变更的核对工作，剩余23份待核对 2.合同内按照已于咨询及甲方商定按照重计量的结果，外加查漏补缺，不再打开重新核对 3.目前重计量部分存在土方消纳争议、围挡施工争议（需要业主工程师签字就给）、球场区域回填种植土争议（需要业主工程签字给）等，共涉及247万 整体计划：6月10号前完成对量，6月谈争议，6月中下旬送二审，7月底送三审造价站审核",
+   "26.6.5": "1.工程变更共计144份变更，截至当前，已完成125份变更，剩余19份也核对了有争议 下周二业主和咨询看现场",
+   "26.6.12": "1.工程变更共计144份变更，截至当前，已完成131份变更的核对工作，本周还能完成6份，剩余7份待核对； 2、本周二咨询与业主看现场，现场存在部分未施工的，项目部想办法处理。 3.目前重计量部分存在土方消纳争议、围挡施工争议（需要业主工程师签字就给）、球场区域回填种植土争议（需要业主工程签字给）等，共涉及247万",
+   "26.6.18": "1.工程变更共计144份变更，截至当前，已完成134份变更的核对工作，本周还能完成3份，剩余7份待核对； 2.咨询与业主看现场后，现场存在部分未施工的，项目部想办法处理。 3.目前重计量部分存在土方消纳争议、围挡施工争议（需要业主工程师签字就给）、球场区域回填种植土争议（需要业主工程签字给）等，共涉及247万 整体计划：7月10号完成变更及重计量核对工作同步开启资料整理及争议谈判工作，8月中送二审，9月底送三审造价站",
+   "26.6.26": "1.工程变更共计144份变更，截至当前，已完成139份变更的核对工作，剩余5份待核对（全为园林），总包变更已全部核对完成，其中争议有3份，目前已进入重计量部分的核对，； 2.目前重计量部分存在土方消纳争议、围挡施工争议（需要业主工程师签字就给）、球场区域回填种植土争议（需要业主工程签字给）等，共涉及247万 整体计划：当前处于洽谈争议拉扯阶段，争取8月中送二审，9月底送三审造价站",
+   "26.7.3": "1.工程变更共计144份变更，截至当前，已完成139份变更的核对工作，剩余5份待核对（全为园林），总包变更已全部核对完成，其中争议有3份；重计量核对情况：2栋完成40%，3栋完成50%，地下室完成30%，1栋完成40%，下周出基本无争议金额，梳理出争议项； 2.目前重计量部分存在土方消纳争议、围挡施工争议（需要业主工程师签字就给）、球场区域回填种植土争议（需要业主工程签字给）等，共涉及247万 整体计划：当前处于洽谈争议拉扯阶段，争取8月中送二审，9月底送三审造价站",
+   "26.7.17": "1.工程变更共计144份变更，截至当前，已完成144份变更的核对工作，，总包及园林变更已全部核对完成，重计量核对情况：2栋完成70%，3栋完成75%，地下室完成60%，1栋完成80%；预计7月底完成变更及重计量核对工作； 2.目前重计量部分存在土方消纳争议、围挡施工争议（需要业主工程师签字就给）、球场区域回填种植土争议（需要业主工程签字给）等； 3.后续重点工作主要是梳理结算争议点，补充争议资料； 整体计划：当前处于洽谈争议拉扯阶段，争取8月中送二审，9月底送三审造价站",
+   "26.8.3": "1.工程变更共计144份变更，已核对完成 2.重计量： 土建部分：3#楼及地下室预计下周核对完成； 机电部分：给排水、人防、消防及弱电正在核对，其余基本核对完成 2.目前重计量部分存在土方消纳争议、围挡施工争议（需要业主工程师签字就给）、球场区域回填种植土争议（需要业主工程签字给）等； 3.后续重点工作主要是梳理结算争议点，补充争议资料； 整体计划：当前处于洽谈争议拉扯阶段，争取8月底送二审，9月中送三审造价站",
+   "26.8.7": "1.工程变更共计144份变更，已核对完成 2.重计量： 土建部分：3#楼及地下室预计本周核对完成，园林没有内审； 机电部分：给排水、人防、消防及弱电正在核对，其余基本核对完成 2.目前重计量部分存在土方消纳争议、围挡施工争议（需要业主工程师签字就给）、球场区域回填种植土争议（需要业主工程签字给）等； 3.后续重点工作主要是梳理结算争议点，补充争议资料； 整体计划：当前处于洽谈争议拉扯阶段，争取8月底送二审，9月中送三审造价站",
+   "26.8.18": "1.工程变更共计144份变更，已核对完成 2.重计量： 土建部分：剩余3#楼今天在核对，本周能核对完； 机电部分：预计到25号核对完成 3.目前重计量部分存在土方消纳争议、围挡施工争议及球场区域回填种植土争议等涉及13项补充资料需在本月底前补充完成； 整体计划：当前处于洽谈争议拉扯阶段，争取8月底送二审，9月中送三审造价站"
+  },
+  "龙城街道龙飞学校新建工程(二期)": {
+   "26.5.22": "1、目前项目重计量结算已上报，幕墙工程已审核完成，其他专业正在审核中，咨询目前人员有限，审核进度较慢； 2、项目变更已上会通过36条，未上会变更30条，预计6月份上会。 整体计划：6月底完成合同内对数，7月底预计一审出数据，8月底报二审",
+   "26.5.29": "1、目前项目重计量结算已上报，幕墙工程已审核完成，正在核对精装修，咨询目前人员有限，审核进度较慢； 2、项目变更已上会通过36条，未上会变更30条，预计6月份上会。 整体计划：6月底完成合同内对数，7月底预计一审出数据，8月底报二审 主要是咨询人员不足，项目主任也提出要求6月份必须完成",
+   "26.6.5": "1、目前项目重计量结算已上报，幕墙工程已审核完成，正在核对精装修，咨询目前人员有限，审核进度较慢； 2、项目变更已上会通过36条，未上会变更30条，预计6月份上会。 整体计划：6月底完成合同内对数，7月底预计一审出数据，8月底报二审 主要是咨询人员不足，项目主任也提出要求6月份必须完成； 较上期没变化",
+   "26.6.12": "1、目前项目重计量结算已上报，幕墙工程已审核完成，正在核对精装修，咨询目前人员有限，审核进度较慢； 2、项目变更已上会通过36条，未上会变更30条，预计6月份上会。 整体计划：6月底完成合同内对数，7月底预计一审出数据，8月底报二审 主要是咨询人员不足，项目主任也提出要求6月份必须完成； 较上期没变化",
+   "26.6.18": "1、目前项目重计量结算已上报，幕墙工程已审核完成，精装修基本核对完成，正在提量，咨询目前人员有限，审核进度较慢； 2、项目变更已上会通过36条，未上会变更30条，预计6月份上会。 整体计划：6月底完成合同内对数，7月底预计一审出数据，8月底报二审，12月底必须结完。 主要是咨询人员不足，项目主任也提出要求6月份必须完成； 项目表示7月底竣工，12月底结算完有困难",
+   "26.6.26": "人员已调动去四十高，结算暂停",
+   "26.7.3": "人员已调动去四十高，结算暂停",
+   "26.7.10": "人员已调动去四十高，结算暂停",
+   "26.7.17": "人员已调动去四十高，结算暂停",
+   "26.7.24": "人员已调动去四十高，结算暂停",
+   "26.8.7": "无进展",
+   "26.8.18": "无进展"
+  },
+  "东莞骏鼎达功能性保护材料生产建设": {
+   "26.5.22": "未上会，通知项目，没回复；回头分公司再单独联系",
+   "26.5.29": "没时间参会",
+   "26.6.5": "计划6月底合同内及变更签证与甲方核对完，7月份开始谈争议，8月底业主及分包结算全部收掉",
+   "26.6.12": "计划6月底合同内及变更签证与甲方核对完，7月份开始谈争议，8月底业主及分包结算全部收掉",
+   "26.6.18": "计划6月底合同内及变更签证与甲方核对完，7月份开始谈争议，8月底业主及分包结算全部收掉",
+   "26.6.26": "计划6月底合同内及变更签证与甲方核对完，7月份开始谈争议，8月底业主及分包结算全部收掉",
+   "26.7.3": "计划6月底合同内及变更签证与甲方核对完，7月份开始谈争议，8月底业主及分包结算全部收掉",
+   "26.7.10": "合同内部分已申报甲方，变更 签证正在整理，项目表示8月底能完成结算",
+   "26.7.17": "合同内部分计划7月底对完，变更签证计划7月底报完，月底能完成结算目标不变",
+   "26.7.24": "计划8月5日开始和业主梳理变更签证，8月10日开始核对合同内图纸部分，计划10-15天核对完，8月底出结算书目标不变",
+   "26.8.3": "计划8月5日开始和业主梳理变更签证，8月10日开始核对合同内图纸部分，计划10-15天核对完，8月底出结算书目标不变",
+   "26.8.7": "合同内部分咨询公司按照竣工图在10号算完，开始核对；变更土建和室外已报给业主，机电还有200万在整理。8月底出结算书目标不变",
+   "26.8.18": "当前正在和咨询公司核对，土建预计在25号能出个数据。机电因未算清楚还需一段时间。预计9月底出结算书。"
+  },
+  "东莞小天才滨海湾项目": {
+   "26.8.18": "席亮反馈今天工人堵门，席亮需整理一下再说"
+  }
+ },
+ "extra": [
+  {
+   "name": "广东河源江东CD楼及源城E楼最小化机电",
+   "weeks": {
+    "26.4.24": "结算进展：预计上报结算时间2026年5月31日，当前正在核对变更，共计变更洽商58份，已完成52份，6份核对中，索赔事项暂未启动，预计整体结算26年6月30日可定数，26年8月31日完成结算流程",
+    "26.4.30": "预计上报结算时间2026年5月31日，当前正在核对变更，共计变更洽商58份，已完成54份，4份核对中，索赔事项暂未启动，预计整体结算26年6月30日可定数，26年8月31日完成结算流程",
+    "26.5.9": "预计上报结算时间2026年5月31日，当前正在核对变更，共计变更洽商58份，已完成54份，4份核对中，索赔事项暂未启动，预计整体结算26年6月30日可定数，26年8月31日完成结算流程",
+    "26.5.29": "预计上报结算时间2026年6月15日，当前正在核对变更，共计变更洽商58份，已完成56份，2份核对中，索赔事项与业主核对中，预计整体结算26年6月30日可定数，26年8月31日完成结算流程",
+    "26.6.5": "预计上报结算时间2026年6月15日，当前正在核对变更，共计变更洽商58份，已完成56份，2份核对中，索赔事项与业主核对中，预计整体结算26年6月30日可定数，26年8月31日完成结算流程",
+    "26.6.12": "预计上报结算时间2026年6月15日，当前正在核对变更，共计变更洽商58份，已完成56份，2份核对中，索赔事项与业主核对中，预计整体结算26年6月30日可定数，26年8月31日完成结算流程",
+    "26.7.3": "已上报结算时间2026年6月15日，当前正在核对变更，共计变更洽商58份，已完成58份，变更核对完成，索赔事项与业主核对中，预计整体结算26年7月30日可定数，26年8月31日完成结算流程",
+    "26.7.17": "已上报结算时间2026年6月15日，当前正在核对变更，共计变更洽商58份，已完成58份，变更核对完成，索赔事项与业主核对中，预计整体结算26年7月30日可定数，26年8月31日完成结算流程",
+    "26.8.3": "已上报结算时间2026年6月15日，当前正在核对变更，共计变更洽商58份，已完成58份，变更核对完成，索赔事项与业主核对中，预计整体结算26年8月30日可定数，26年9月31日完成结算流程",
+    "26.8.18": "已上报结算时间2026年6月15日，当前正在核对变更，共计变更洽商58份，已完成58份，变更核对完成，索赔事项与业主核对中，预计整体结算26年8月30日可定数，26年9月31日完成结算流程"
+   }
+  },
+  {
+   "name": "深圳云计算中心柴发机电",
+   "weeks": {
+    "26.8.18": "本项目结算共计3审（初审，复审，财审），2026.7.15结算文件送一审审核，正在审核中，预计完成时间2026.9.30，二三审未开始。 一审详细核对情况如下： a、重计量/图差已核对完成 b、洽商变更及签证完成情况：洽商变更共4单，已核对完成3单。预计2026.8.25核对完成. c、索赔情况：无 预计结算整体完成时间为27.6.30"
+   }
+  },
+  {
+   "name": "东莞OPPO滨海湾高级人才房机电",
+   "weeks": {
+    "26.8.18": "本项目结算共计3审，结算资料已报出，计划结算完成时间2027年6月30日。 a、重计量/图差完成情况：施工图工程量核对完成95%，目前业主再组织解决算量争议。 b、洽商变更及签证完成情况：洽商变更共71单，已完成上报71单，核对完1份双方已确认。 c、索赔情况：已报出。 以上结算待业主复核反馈，整体结算完成2027年6月30日。"
+   }
+  }
+ ],
+ "source": "04.华南26.8.14(2).xlsx / 26.8.14表"
+};
 const fmtWan = v => {
   const n = Math.abs(N(v));
   if (n >= 1e4) return (v < 0 ? '-' : '') + (n / 1e4).toFixed(2) + ' 亿';
@@ -874,8 +1428,188 @@ document.getElementById('download-data').addEventListener('click', () => {
   URL.revokeObjectURL(a.href);
 });
 
+
+// ===================== 周进展追踪 =====================
+const escH = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const LS_WEEK = 'upstream_weekly_v1';
+const loadWeek = () => { try { const o = JSON.parse(localStorage.getItem(LS_WEEK) || '{}'); return { added: o.added || [], removed: o.removed || [], edits: o.edits || {} }; } catch (e) { return { added: [], removed: [], edits: {} }; } };
+let WEEKED = loadWeek();
+const saveWeek = () => localStorage.setItem(LS_WEEK, JSON.stringify(WEEKED));
+const wkKey = w => { const m = String(w).match(/(\d{2})\.(\d{1,2})\.(\d{1,2})/); return m ? (2000 + +m[1]) * 10000 + (+m[2]) * 100 + (+m[3]) : 0; };
+const weekList = () => WEEKLY.weeks.concat(WEEKED.added).filter(w => !WEEKED.removed.includes(w)).sort((a, b) => wkKey(a) - wkKey(b));
+const weekText = (name, w) => {
+  const ov = WEEKED.edits[name] && WEEKED.edits[name][w];
+  if (ov !== undefined) return ov;
+  const p = WEEKLY.progress[name]; if (p && p[w] !== undefined) return p[w];
+  const ex = WEEKLY.extra.find(x => x.name === name); if (ex && ex.weeks[w] !== undefined) return ex.weeks[w];
+  return '';
+};
+const isExtra = n => WEEKLY.extra.some(x => x.name === n);
+const allTracked = () => Object.keys(WEEKLY.progress).concat(WEEKLY.extra.map(x => x.name));
+function latestOf(name) {
+  const ws = weekList();
+  for (let i = ws.length - 1; i >= 0; i--) { const t = weekText(name, ws[i]); if (t) return { week: ws[i], text: t }; }
+  return null;
+}
+const latestText = name => { const l = latestOf(name); return l ? l.text : ''; };
+// 停滞周数：从最新周往回，连续"无新内容"（空白或与上次文本相同）的周数
+function stallWeeks(name) {
+  const ws = weekList();
+  let lastNew = -1, prev = '';
+  ws.forEach((w, i) => { const t = weekText(name, w); if (t && t !== prev) { lastNew = i; prev = t; } });
+  return lastNew < 0 ? ws.length : ws.length - 1 - lastNew;
+}
+function renderWeekly() {
+  const ws = weekList(), cur = ws[ws.length - 1];
+  const names = allTracked();
+  const updCnt = names.filter(n => weekText(n, cur)).length;
+  const stalled = names.filter(n => stallWeeks(n) >= 3);
+  document.getElementById('wk-chips').innerHTML = [
+    ['跟踪项目', names.length + ' 个', `指标内 ${Object.keys(WEEKLY.progress).length} ＋ 名单外 ${WEEKLY.extra.length}`],
+    ['当前周', cur, `本周已更新 ${updCnt} 个项目`],
+    ['停滞预警 ≥3周', stalled.length + ' 个', stalled.length ? '见下方红色标记' : '全部正常推进'],
+  ].map(c => `<div class="wk-chip"><div class="l">${c[0]}</div><div class="v">${c[1]}</div><div class="l">${c[2]}</div></div>`).join('');
+  document.getElementById('wk-warn').innerHTML = stalled.length
+    ? stalled.map(n => { const l = latestOf(n); return `<span class="wk-badge stall" style="margin:0 6px 6px 0;cursor:pointer" data-wk="${escH(n)}">⚠ ${escH(n)} · ${stallWeeks(n)} 周未更新${l ? '（最近：' + l.week + '）' : ''}</span>`; }).join('')
+    : '<span class="wk-badge ok">✓ 全部项目近 2 周内有新进展</span>';
+  const editable = state.edit || state.wkEdit;
+  document.getElementById('wk-add-week').style.display = editable ? '' : 'none';
+  document.getElementById('wk-del-week').style.display = editable ? '' : 'none';
+  document.getElementById('wk-hint').style.display = editable ? '' : 'none';
+  const wkEt = document.getElementById('wk-edit-toggle');
+  wkEt.textContent = editable ? '✅ 完成进展编辑' : '✏️ 编辑进展';
+  wkEt.classList.toggle('editing', editable);
+  const heads = ['项目名称', '归属', '最新进展周', '状态', '最新进展摘要'];
+  if (editable) heads.push(`本周进展（${cur}）`);
+  document.querySelector('#wk-table thead tr').innerHTML = heads.map(h => `<th>${h}</th>`).join('');
+  const rows = names.map(n => ({ n, s: stallWeeks(n), l: latestOf(n) })).sort((a, b) => b.s - a.s);
+  document.querySelector('#wk-table tbody').innerHTML = rows.map(r => {
+    const badge = r.s >= 3 ? `<span class="wk-badge stall">停滞 ${r.s} 周</span>` : (r.s === 2 ? '<span class="wk-badge slow">放缓</span>' : '<span class="wk-badge ok">正常</span>');
+    const sum = r.l ? escH(r.l.text.slice(0, 42)) + (r.l.text.length > 42 ? '…' : '') : '—';
+    let h = `<tr class="wk-row" data-wk="${escH(r.n)}"><td>${escH(r.n)}</td>` +
+      `<td>${isExtra(r.n) ? '<span class="wk-badge extra">名单外</span>' : '<span class="wk-badge ok">指标内</span>'}</td>` +
+      `<td>${r.l ? r.l.week : '—'}</td><td>${badge}</td><td class="wk-sum" title="点击展开完整进展全文" style="max-width:380px">${sum}</td>`;
+    if (editable) h += `<td><input type="text" class="wk-input" data-wkname="${escH(r.n)}" data-week="${cur}" value="${escH(weekText(r.n, cur))}" placeholder="填写本周进展…"></td>`;
+    return h + '</tr>';
+  }).join('');
+}
+function openWeekTimeline(name) {
+  const ws = weekList().slice().sort((a, b) => wkKey(b) - wkKey(a));
+  const editable = state.edit || state.wkEdit;
+  const rowsH = ws.map(w => {
+    const t = weekText(name, w);
+    if (editable) return `<tr><td class="w">${w}</td><td><textarea class="tl-area" data-wkname="${escH(name)}" data-week="${w}">${escH(t)}</textarea></td></tr>`;
+    return t ? `<tr><td class="w">${w}</td><td>${escH(t)}</td></tr>` : '';
+  }).filter(Boolean).join('');
+  const proj = DATA.projects.find(p => p.name === name);
+  const sub = (proj ? `指标值 ${fmtNum(N(proj.target))} 万 · ${proj.manager || ''} · ` : '') +
+    (isExtra(name) ? '名单外项目 · ' : '指标内项目 · ') +
+    (editable ? '编辑模式：改动移出焦点即保存' : '开启编辑模式可修改各周文本');
+  openDrill(`📅 ${name} · 结算进展时间线`, sub,
+    `<table class="tl-table"><thead><tr><th style="width:90px">周次</th><th>进展内容</th></tr></thead><tbody>${rowsH || '<tr><td></td><td>暂无进展记录</td></tr>'}</tbody></table>`);
+}
+// 点击：明细表最新进展格 / 一览表行 / 预警标记 → 时间线
+document.addEventListener('click', e => {
+  const pc = e.target.closest('.prog-cell');
+  if (pc) { openWeekTimeline(pc.dataset.name); return; }
+  const wb2 = e.target.closest('.wk-badge.stall[data-wk]');
+  if (wb2) { openWeekTimeline(wb2.dataset.wk); return; }
+  const sc = e.target.closest('.wk-sum');
+  if (sc) {
+    const name = sc.closest('tr').dataset.wk, l = latestOf(name);
+    document.getElementById('wk-pop-title').textContent = '📄 ' + name + (l ? ' · ' + l.week + ' 周完整进展' : '');
+    document.getElementById('wk-pop-body').textContent = l ? l.text : '暂无进展记录';
+    document.getElementById('wk-pop-mask').classList.add('show');
+    return;
+  }
+  const wr = e.target.closest('#wk-table tbody tr.wk-row');
+  if (wr && !e.target.closest('input,textarea,.wk-sum') && !wr.classList.contains('wk-detail')) openWeekTimeline(wr.dataset.wk);
+});
+// 变更：本周进展输入框 / 时间线文本框 → 持久化 + 联动
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (!el.dataset || !el.dataset.wkname || !el.dataset.week) return;
+  const name = el.dataset.wkname, w = el.dataset.week, val = el.value.trim();
+  WEEKED.edits[name] = Object.assign({}, WEEKED.edits[name]);
+  if (val) WEEKED.edits[name][w] = val; else delete WEEKED.edits[name][w];
+  saveWeek();
+  renderWeekly(); renderTable();
+});
+// 新增一周
+document.getElementById('wk-add-week').addEventListener('click', () => {
+  const bar = document.getElementById('wk-addbar');
+  const d = new Date();
+  document.getElementById('wk-newlabel').value = String(d.getFullYear()).slice(2) + '.' + (d.getMonth() + 1) + '.' + d.getDate();
+  document.getElementById('wk-add-err').textContent = '';
+  bar.style.display = bar.style.display === 'none' ? '' : 'none';
+  if (bar.style.display !== 'none') document.getElementById('wk-newlabel').focus();
+});
+document.getElementById('wk-add-cancel').addEventListener('click', () => { document.getElementById('wk-addbar').style.display = 'none'; });
+function wkAddOk() {
+  const inp = document.getElementById('wk-newlabel'), err = document.getElementById('wk-add-err');
+  const label = inp.value.trim();
+  if (!/^\d{2}\.\d{1,2}\.\d{1,2}$/.test(label)) { err.textContent = '格式应为 YY.M.D，如 26.8.25'; return; }
+  if (WEEKLY.weeks.concat(WEEKED.added).includes(label)) { err.textContent = '该周已存在'; return; }
+  WEEKED.added.push(label); saveWeek();
+  document.getElementById('wk-addbar').style.display = 'none';
+  renderWeekly(); renderTable();
+}
+document.getElementById('wk-add-ok').addEventListener('click', wkAddOk);
+document.getElementById('wk-newlabel').addEventListener('keydown', e => { if (e.key === 'Enter') wkAddOk(); });
+
+// 周进展独立编辑开关
+document.getElementById('wk-edit-toggle').addEventListener('click', () => {
+  state.wkEdit = !state.wkEdit;
+  renderWeekly();
+});
+
+// 周次管理：删除（原始周=隐藏可恢复；自定义周=连内容移除）· 全程内联无弹窗
+function wkMgrRender() {
+  const box = document.getElementById('wk-weekmgr');
+  const allW = WEEKLY.weeks.concat(WEEKED.added).sort((a, b) => wkKey(b) - wkKey(a));
+  box.innerHTML = '<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">点 🗑 后该周标签变成红色「确认删除？」，再点一次即删除：Excel 原始周仅隐藏、可随时恢复；自定义周连同已填内容一并移除。</div>' +
+    allW.map(w => {
+      const removed = WEEKED.removed.includes(w), isCustom = WEEKED.added.includes(w);
+      return `<span class="wtag ${removed ? 'removed' : ''}">${w}${isCustom ? '（自定义）' : ''}${removed ? `<button class="rs" data-restore="${w}">恢复</button>` : `<button data-delweek="${w}">🗑</button>`}</span>`;
+    }).join('');
+}
+document.getElementById('wk-del-week').addEventListener('click', () => {
+  const box = document.getElementById('wk-weekmgr');
+  if (box.style.display !== 'none') { box.style.display = 'none'; return; }
+  wkMgrRender();
+  box.style.display = '';
+});
+document.getElementById('wk-weekmgr').addEventListener('click', e => {
+  const del = e.target.closest('[data-delweek]');
+  const cf = e.target.closest('[data-cfdel]');
+  const res = e.target.closest('[data-restore]');
+  if (del) {
+    del.outerHTML = `<button class="cf" data-cfdel="${del.dataset.delweek}">确认删除？</button>`;
+    return;
+  }
+  if (cf) {
+    const w = cf.dataset.cfdel, isCustom = WEEKED.added.includes(w);
+    if (isCustom) {
+      WEEKED.added = WEEKED.added.filter(x => x !== w);
+      Object.keys(WEEKED.edits).forEach(n => { delete WEEKED.edits[n][w]; });
+    } else if (!WEEKED.removed.includes(w)) WEEKED.removed.push(w);
+    saveWeek();
+    wkMgrRender(); renderWeekly(); renderTable();
+    return;
+  }
+  if (res) {
+    WEEKED.removed = WEEKED.removed.filter(x => x !== res.dataset.restore);
+    saveWeek();
+    wkMgrRender(); renderWeekly(); renderTable();
+  }
+});
+// 完整进展小弹窗关闭
+document.getElementById('wk-pop-close').addEventListener('click', () => document.getElementById('wk-pop-mask').classList.remove('show'));
+document.getElementById('wk-pop-mask').addEventListener('click', e => { if (e.target.id === 'wk-pop-mask') e.target.classList.remove('show'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('wk-pop-mask').classList.remove('show'); });
+
 // ===================== 明细表 =====================
-const state = { sec: '已竣未结', kw: '', cat: '', ctAll: true, cts: [], sortKey: null, sortAsc: true, edit: false };
+const state = { sec: '已竣未结', kw: '', cat: '', ctAll: true, cts: [], sortKey: null, sortAsc: true, edit: false, wkEdit: false };
 // 编辑模式下可修改的数值列（已竣未结页签）
 const EDITABLE_NUM = ['done', 'target', 'floor', 'strive', 'stretch', 'self_settle', 'self_cost', 'received', 'remaining', 'sub_owed'];
 
@@ -887,19 +1621,19 @@ const COLS = {
     ['floor', '保底预计'], ['strive', '争取预计'], ['stretch', '奋斗预计'],
     ['self_settle', '预计自施结算额'], ['self_cost', '预计自施成本'],
     ['profit', '预计收益额'], ['profit_rate', '预计收益率'],
-    ['received', '已收款'], ['remaining', '剩余回款'], ['sub_owed', '下游欠款'], ['measure', '措施'],
+    ['received', '已收款'], ['remaining', '剩余回款'], ['sub_owed', '下游欠款'], ['latest_prog', '最新进展'], ['measure', '措施'],
   ],
   '已竣已结': [
     ['name', '项目名称'], ['cust_type', '客户类型'], ['manager', '商务经理'], ['settle_date', '结算完成日期'],
     ['total_settle', '整体结算额'], ['self_settle', '自施结算额'], ['profit', '自施收益'],
-    ['profit_rate', '收益率'], ['received', '已收款'], ['turned_in', '已上缴收益'],
+    ['profit_rate', '收益率'], ['received', '已收款'], ['turned_in', '已上缴收益'], ['latest_prog', '最新进展'],
   ],
   '全部项目': [
     ['name', '项目名称'], ['cust_type', '客户类型'], ['section', '所属'], ['manager', '商务经理'],
     ['settle_date', '结算完成日期'], ['target', '指标值'], ['done', '已完成金额'],
     ['total_settle', '整体结算额'], ['self_settle', '自施结算额'], ['self_cost', '自施成本'],
     ['profit', '自施收益'], ['profit_rate', '收益率'],
-    ['received', '已收款'], ['remaining', '剩余回款'], ['turned_in', '已上缴收益'], ['sub_owed', '下游欠款'],
+    ['received', '已收款'], ['remaining', '剩余回款'], ['turned_in', '已上缴收益'], ['sub_owed', '下游欠款'], ['latest_prog', '最新进展'],
   ],
   '指标表': [
     ['name', '项目名称'], ['cust_type', '客户类型'], ['kind', '内/外控'], ['segment', '所属版块'], ['manager', '商务经理'],
@@ -910,6 +1644,7 @@ const COLS = {
 
 // 取值辅助：收益/收益率用派生值（已竣未结）
 function valOf(r, k) {
+  if (k === 'latest_prog') return latestText(r.name);
   if (r.section === '已竣未结') {
     if (k === 'profit') return profitOf(r);
     if (k === 'profit_rate') return rateOf(r);
@@ -1018,6 +1753,10 @@ function renderTable() {
     if (k === 'section') return `<td><span class="badge-status ${v === '已竣已结' ? 'done' : 'pending'}">${v}</span></td>`;
     if (k === 'category') return `<td>${v || '—'}</td>`;
     if (k === 'measure' && v) return `<td title="${String(v).replace(/"/g, '&quot;')}">${String(v).slice(0, 18)}${String(v).length > 18 ? '…' : ''}${isEdited(r.name, k) ? '<span class="modified-dot"></span>' : ''}</td>`;
+    if (k === 'latest_prog') {
+      if (!v) return '<td>—</td>';
+      return `<td class="prog-cell" data-name="${escH(r.name)}" title="点击查看逐周进展时间线">${escH(String(v).slice(0, 20))}${String(v).length > 20 ? '…' : ''}</td>`;
+    }
     return `<td>${v ?? '—'}</td>`;
   }).join('') + (editable ? `<td><button class="row-del" data-name="${r.name}" title="删除该项目">🗑</button></td>` : '') + '</tr>').join('');
 
@@ -1142,6 +1881,7 @@ document.getElementById('edit-toggle').addEventListener('click', () => {
   document.getElementById('add-row').style.display = state.edit && state.sec === '已竣未结' ? '' : 'none';
   document.getElementById('edit-hint').style.display = state.edit ? '' : 'none';
   renderTable();
+  renderWeekly();
 });
 
 // ---- 新增项目行 ----
@@ -1164,6 +1904,7 @@ document.getElementById('reset-data').addEventListener('click', () => {
   if (!confirm('确定恢复为 Excel 原始数据？本浏览器内的全部修改（含新增/删除行）将被清除。')) return;
   localStorage.removeItem(LS_KEY);
   localStorage.removeItem(LS_ROWS);
+  localStorage.removeItem(LS_WEEK);
   location.reload();
 });
 
@@ -1420,6 +2161,7 @@ function renderAll() {
   bindDrill();
   renderCtFilter();
   renderTable();
+  renderWeekly();
   renderHistKPIs();
   renderHistInsights();
   renderHistCharts();
