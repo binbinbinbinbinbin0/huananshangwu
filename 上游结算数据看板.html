@@ -299,6 +299,7 @@ tr.wk-detail td { background: rgba(59,130,246,.07); padding: 12px 16px; font-siz
     </div>
     <button class="btn" id="edit-toggle">✏️ 编辑模式</button>
     <button class="btn ghost" id="download-data">⬇️ 下载数据</button>
+    <button class="btn ghost" id="export-latest" title="把本浏览器的修改并入看板默认数据并导出整份HTML；上传到GitHub覆盖同名文件后，同事打开链接即可看到">📤 导出最新版</button>
     <button class="btn ghost" id="add-row" style="display:none">＋ 新增项目</button>
     <button class="btn ghost" id="reset-data" style="display:none">↩️ 恢复默认</button>
     <span class="edit-hint" id="edit-hint" style="display:none">编辑中：金框单元格可直接修改；「是否已完成」选“是”自动按指标值计入完成额（可再改金额）；收益率=收益额÷自施结算额实时计算；改动即时刷新全看板</span>
@@ -2180,6 +2181,47 @@ function renderAll() {
 renderAll();
 
 window.addEventListener('resize', () => Object.values(chartObjs).forEach(c => c.resize()));
+</script>
+
+<script>
+// ===================== 导出最新版（发布） =====================
+(function () {
+  var EXP_KEYS = ["upstream_edits_v2", "upstream_rows_v2", "upstream_weekly_v1"];
+  var EXP_PUB = '__pub_upstream';
+  var EXP_FNAME = '上游结算数据看板.html';
+  function expToast(msg) {
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#14532d;border:1px solid #22c55e;color:#d1fae5;padding:12px 24px;border-radius:10px;z-index:99999;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:90%';
+    t.textContent = msg; document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 5000);
+  }
+  document.getElementById('export-latest').addEventListener('click', function () {
+    try {
+      // 退出所有编辑态、关掉弹层，避免把界面临时状态带进导出文件
+      document.querySelectorAll('button.editing').forEach(function (b) { b.click(); });
+      document.querySelectorAll('.show').forEach(function (m) { m.classList.remove('show'); });
+    } catch (e) {}
+    var seed = {};
+    EXP_KEYS.forEach(function (k) { try { var v = localStorage.getItem(k); if (v !== null) seed[k] = v; } catch (e) {} });
+    var pubV = String(Date.now());
+    var inject = '<scr' + 'ipt>\n/* 发布基线 ' + pubV + '：作者导出的修改将作为所有打开者的默认数据 */\n'
+      + '(function(){var P={v:"' + pubV + '",k:"' + EXP_PUB + '",keys:' + JSON.stringify(EXP_KEYS)
+      + ',s:' + JSON.stringify(seed).replace(/</g, '\\u003c') + '};'
+      + 'try{var need=localStorage.getItem(P.k)!==P.v||P.keys.every(function(k){return localStorage.getItem(k)===null;});'
+      + 'if(need){P.keys.forEach(function(k){try{if(Object.prototype.hasOwnProperty.call(P.s,k))localStorage.setItem(k,P.s[k]);else localStorage.removeItem(k);}catch(e){}});localStorage.setItem(P.k,P.v);}}catch(e){}})();\n</scr' + 'ipt>\n';
+    var html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    var i = html.indexOf('</head>');
+    if (i < 0) { expToast('导出失败：页面结构异常'); return; }
+    html = html.slice(0, i) + inject + html.slice(i);
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = EXP_FNAME;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    expToast('✅ 已导出「' + EXP_FNAME + '」：修改已并入为默认数据，上传到 GitHub 覆盖同名文件后同事即可看到');
+  });
+})();
 </script>
 </body>
 </html>
